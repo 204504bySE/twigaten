@@ -21,6 +21,7 @@ create table crawlprocess(
 	user_id bigint primary key,
 	pid int not null,
 	rest_needed tinyint not null default 0,
+	foreign key (user_id) references token(user_id) on delete cascade,
 	foreign key (pid) references pid(pid) on delete cascade
 );
 
