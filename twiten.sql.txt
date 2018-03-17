@@ -1,0 +1,137 @@
+create database twiten character set utf8mb4;
+use twiten;
+
+create table token(
+	user_id bigint primary key,
+	token varchar(255) character set ascii not null,
+	token_secret varchar(255) character set ascii not null
+);
+
+create table viewlogin(
+	user_id bigint primary key,
+	logintoken varchar(88) character set ascii not null,
+	foreign key (user_id) references token(user_id) on delete cascade
+);
+
+create table pid(
+	pid int primary key
+);
+
+create table crawlprocess(
+	user_id bigint primary key,
+	pid int not null,
+	rest_needed tinyint not null default 0,
+	foreign key (pid) references pid(pid) on delete cascade
+);
+
+create table friend(
+	user_id bigint not null,
+	friend_id bigint not null,
+	unique (user_id, friend_id),
+	foreign key (user_id) references token(user_id) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+	
+create table block(
+	user_id bigint not null,
+	target_id bigint not null,
+	unique (user_id, target_id),
+	foreign key (user_id) references token(user_id) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+
+create table user(
+	user_id bigint primary key,
+	name varchar(20) not null,
+	screen_name varchar(20) character set ascii not null,
+	isprotected bool not null,
+	profile_image_url text character set ascii,
+	updated_at bigint,
+	is_default_profile_image bool not null default false,
+	location tinytext,
+	description text
+)engine=InnoDB row_format=COMPRESSED;
+	create index screen_name_index on user(screen_name);
+	create index updated_at_index on user(updated_at);
+	
+create table tweet(
+	tweet_id bigint primary key,
+	user_id bigint not null,
+	created_at bigint not null,
+	text text,
+	retweet_id bigint,
+	retweet_count int not null,
+	favorite_count int not null,
+	foreign key (user_id) references user(user_id),
+	foreign key (retweet_id) references tweet(tweet_id) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+
+create table media(
+	media_id bigint primary key,
+	source_tweet_id bigint,
+	type varchar(15) character set ascii not null default 'photo',
+	media_url text character set ascii not null,
+	dcthash bigint not null,
+	foreign key (source_tweet_id) references tweet(tweet_id) on delete set null
+)engine=InnoDB row_format=COMPRESSED;
+	create index dcthash_index on media(dcthash);
+
+create table media_downloaded_at(
+media_id bigint primary key,
+downloaded_at bigint not null,
+foreign key (media_id) references media(media_id) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+	create index downloaded_at_index on media_downloaded_at(downloaded_at);
+
+create table tweet_media(
+	tweet_id bigint not null,
+	media_id bigint not null,
+	foreign key (tweet_id) references tweet(tweet_id) on delete cascade,
+	foreign key (media_id) references media(media_id) on delete cascade,
+	unique (tweet_id, media_id)
+)engine=InnoDB row_format=COMPRESSED;
+
+create table dcthashpair(
+	hash_pri bigint not null,
+	hash_sub bigint not null,
+	dcthash_distance tinyint not null,
+	unique (hash_pri, hash_sub),
+	foreign key (hash_pri) references media(dcthash) on delete cascade,
+	foreign key (hash_sub) references media(dcthash) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+
+create user token, crawl, hash, tool, view;
+
+grant select, insert, update on twiten.token to token;
+grant select, insert, update on twiten.user to token;
+grant select, insert, update on twiten.viewlogin to token;
+
+grant select, delete on twiten.token to crawl;
+grant select, insert, update, delete, drop on twiten.crawlprocess to crawl;
+grant select, insert, delete, drop on twiten.pid to crawl;
+grant select, insert, delete on twiten.friend to crawl;
+grant select, insert, delete on twiten.block to crawl;
+grant select, insert, update on twiten.user to crawl;
+grant select, insert, update, delete on twiten.tweet to crawl;
+grant select, insert, update on twiten.media to crawl;
+grant select, insert, update on twiten.media_downloaded_at to crawl;
+grant select, insert, update on twiten.tweet_media to crawl;
+
+grant select on twiten.user to view;
+grant select, delete on twiten.viewlogin to view;
+grant select on twiten.friend to view;
+grant select on twiten.block to view;
+grant select on twiten.tweet to view;
+grant select on twiten.media to view;
+grant select on twiten.media_downloaded_at to view;
+grant select on twiten.tweet_media to view;
+grant select on twiten.dcthashpair to view;
+
+grant select on twiten.media to hash;
+grant select on twiten.media_downloaded_at to hash;
+grant insert on twiten.dcthashpair to hash;
+
+grant select, delete on tweet to tool;
+grant select, delete on user to tool;
+grant select, delete on twiten.media_downloaded_at to tool;
+grant select, insert, delete on tweet_media to tool;
+grant select, delete on media to tool;
+grant select on token to tool;
