@@ -20,7 +20,7 @@ namespace twidownparent
             Config config = Config.Instance;
             DBHandler db = new DBHandler();
 
-            LockerHandler.CheckAndStart();
+            //LockerHandler.CheckAndStart();
 
             bool GetMyTweet = false;    //後から追加されたアカウントはstreamer側で自分のツイートを取得させる
             Stopwatch LoopWatch = new Stopwatch();
@@ -63,12 +63,13 @@ namespace twidownparent
                 }
                 GetMyTweet = true;
 
+
                 //ここでプロセス間通信を監視して返事がなかったら再起動する
                 do
                 {
-                    LockerHandler.CheckAndStart();
+                    //LockerHandler.CheckAndStart();
                     await Task.Delay(1000);
-                } while (LoopWatch.ElapsedMilliseconds < 10000);
+                } while (LoopWatch.ElapsedMilliseconds < 60000);
                 LoopWatch.Stop();
             }
         }

@@ -78,7 +78,6 @@ namespace twidownstream
                 RemoveOldAndRefresh();
             }
 
-            //lock()の中で呼ぶからここではlockしない
             void RemoveOldAndRefresh()
             {
                 //あまり使ってなかったら古い要素を消す

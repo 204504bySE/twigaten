@@ -23,12 +23,6 @@ namespace twitool
             //CheckOldProcess.CheckandExit();
             Config config = Config.Instance;
             DBHandler db = new DBHandler();
-            await db.RemoveOrphanProfileImage();
-            return;
-            //db.RemoveOrphanTweet();
-            //Console.WriteLine("＼(^o^)／");
-            //Console.ReadKey();
-            //return;
 
             await db.RemoveOldMedia();
             await db.RemoveOrphanMedia();
@@ -252,7 +246,7 @@ ORDER BY updated_at LIMIT @limit;"))
             const string head = @"DELETE FROM tweet WHERE tweet_id IN";
             string BulkDeleteCmd = BulkCmdStrIn(BulkUnit, head);
 
-            TransformBlock<long, DataTable> GetTweetBlock = new TransformBlock<long, DataTable>((long id) =>
+            TransformBlock<long, DataTable> GetTweetBlock = new TransformBlock<long, DataTable>(async (long id) =>
             {
                 using (MySqlCommand Cmd = new MySqlCommand(@"SELECT tweet_id
 FROM tweet
@@ -263,7 +257,7 @@ ORDER BY tweet_id DESC;"))
                 {
                     Cmd.Parameters.AddWithValue("@begin", id);
                     Cmd.Parameters.AddWithValue("@end", id + SnowFlake.msinSnowFlake * RangeSeconds * 1000 - 1);
-                    return SelectTable(Cmd, IsolationLevel.RepeatableRead);
+                    return await SelectTable(Cmd, IsolationLevel.RepeatableRead);
                 }
             }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
