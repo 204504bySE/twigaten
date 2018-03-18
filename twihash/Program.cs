@@ -14,7 +14,7 @@ namespace twihash
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             //CheckOldProcess.CheckandExit();
             Config config = Config.Instance;
@@ -24,11 +24,11 @@ namespace twihash
             Console.WriteLine("{0} Loading hash", DateTime.Now);
             sw.Restart();
             long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
-            long Count = db.AllMediaHash();
+            long Count = await db.AllMediaHash();
             HashSet<long> NewHash = null;
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {
-                NewHash = db.NewerMediaHash();
+                NewHash = await db.NewerMediaHash();
                 if (NewHash == null) { Console.WriteLine("{0} New hash load failed.", DateTime.Now); Thread.Sleep(5000); Environment.Exit(1); }
                 Console.WriteLine("{0} {1} New hash", DateTime.Now, NewHash.Count);
             }
@@ -43,7 +43,7 @@ namespace twihash
             GC.Collect();
             sw.Restart();
             MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks);
-            media.Proceed();
+            await media.Proceed();
             sw.Stop();
             Console.WriteLine("{0} Multiple Sort, Store: {1}ms", DateTime.Now, sw.ElapsedMilliseconds);
             File.Delete(SortFile.AllHashFilePath);
@@ -142,14 +142,14 @@ namespace twihash
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
         }
 
-        public void Proceed()
+        public async Task Proceed()
         {
             Stopwatch sw = new Stopwatch();
             for (int i = 0; i < Combi.Length; i++)
             {
                 sw.Restart();
                 GC.Collect();
-                (int db, int sort) = MultipleSortUnit(i);
+                (int db, int sort) = await MultipleSortUnit(i);
                 sw.Stop();
                 Console.WriteLine("{0} {1}\t{2} / {3}\t{4}\t{5}ms ", DateTime.Now, i, db, sort, Combi.CombiString(i), sw.ElapsedMilliseconds);
             }
@@ -157,12 +157,12 @@ namespace twihash
 
 
         const int bitcount = 64;    //longのbit数
-        (int db, int sort) MultipleSortUnit(int Index)
+        async ValueTask<(int db, int sort)> MultipleSortUnit(int Index)
         {
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
             long FullMask = UnMask(BaseBlocks, Combi.Count);
-            string SortedFilePath = SortFile.MergeSortAll(FullMask);
+            string SortedFilePath = await SortFile.MergeSortAll(FullMask);
 
             int ret = 0;
             int dbcount = 0;
@@ -219,23 +219,22 @@ namespace twihash
                 }
             }, new ExecutionDataflowBlockOptions()
             {
-                BoundedCapacity = Environment.ProcessorCount << 6,
+                BoundedCapacity = Environment.ProcessorCount << 8,
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
                 SingleProducerConstrained = true
             });
 
             using (SortedFileReader Reader = new SortedFileReader(SortedFilePath, FullMask))
             {
-                for (long[] Sorted = Reader.ReadBlock(); Sorted != null; Sorted = Reader.ReadBlock())
+                for (long[] Sorted = await Reader.ReadBlock(); Sorted != null; Sorted = await Reader.ReadBlock())
                 {
-                    MultipleSortBlock.SendAsync(Sorted).Wait();
+                    if (Sorted.Length >= 2) { await MultipleSortBlock.SendAsync(Sorted); }
                 }
             }
             File.Delete(SortedFilePath);
             //余りをDBに入れる
-            MultipleSortBlock.Complete(); MultipleSortBlock.Completion.Wait();
-            PairBatchBlock.Complete();
-            PairStoreBlock.Completion.Wait();
+            MultipleSortBlock.Complete(); await MultipleSortBlock.Completion;
+            PairBatchBlock.Complete(); await PairStoreBlock.Completion;
             return (dbcount, ret);
         }
 

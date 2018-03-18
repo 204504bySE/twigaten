@@ -120,7 +120,7 @@ namespace twidownstream
         }
 
         DateTimeOffset? PostponedTime;    //ロックされたアカウントが再試行する時刻
-        public void PostponeRetry() { PostponedTime = DateTimeOffset.Now.AddSeconds(config.crawl.LockedTokenPostpone); }
+        public void PostponeConnect() { PostponedTime = DateTimeOffset.Now.AddSeconds(config.crawl.LockedTokenPostpone); }
         bool IsPostponed()
         {
             if (PostponedTime == null) { return false; }
@@ -197,7 +197,7 @@ namespace twidownstream
         //tokenの有効性を確認して自身のプロフィールも取得
         //Revokeの可能性があるときだけ呼ぶ
         public enum TokenStatus { Success, Failure, Revoked, Locked }
-        public async Task<TokenStatus> VerifyCredentials()
+        public async ValueTask<TokenStatus> VerifyCredentials()
         {
             try
             {
@@ -282,7 +282,7 @@ namespace twidownstream
 
         public void DisconnectStream() { StreamSubscriber?.Dispose(); StreamSubscriber = null; }
 
-        public async Task<TokenStatus> RecieveRestTimelineAuto()
+        public async ValueTask<TokenStatus> RecieveRestTimelineAuto()
         {
             //TLが遅い分は省略
             if(TweetTime.Count >= 2 && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
@@ -384,7 +384,7 @@ namespace twidownstream
         }
 
         enum RestCursorMode { Friend, Block }
-        async Task<long[]> RestCursored(RestCursorMode Mode)
+        async ValueTask<long[]> RestCursored(RestCursorMode Mode)
         {
             try
             {

@@ -13,11 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twilock", "twilock\twilock.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twitool", "twitool\twitool.csproj", "{BE6BDE09-F094-4088-A078-10DF8AE5AE20}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twiview", "twiview\twiview.csproj", "{333C04DF-C95F-479B-AF00-72551A805CF8}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dcthashserver", "dcthashserver\dcthashserver.csproj", "{EA9F3E22-0AC2-4305-A7F1-91822C03A51F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "twidownstream", "twidownstream\twidownstream.csproj", "{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twidownstream", "twidownstream\twidownstream.csproj", "{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,10 +43,6 @@ Global
 		{BE6BDE09-F094-4088-A078-10DF8AE5AE20}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE6BDE09-F094-4088-A078-10DF8AE5AE20}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE6BDE09-F094-4088-A078-10DF8AE5AE20}.Release|Any CPU.Build.0 = Release|Any CPU
-		{333C04DF-C95F-479B-AF00-72551A805CF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{333C04DF-C95F-479B-AF00-72551A805CF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{333C04DF-C95F-479B-AF00-72551A805CF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{333C04DF-C95F-479B-AF00-72551A805CF8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EA9F3E22-0AC2-4305-A7F1-91822C03A51F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EA9F3E22-0AC2-4305-A7F1-91822C03A51F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA9F3E22-0AC2-4305-A7F1-91822C03A51F}.Release|Any CPU.ActiveCfg = Release|Any CPU

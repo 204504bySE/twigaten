@@ -245,7 +245,7 @@ namespace twitenlib
             return BulkCmd.ToString();
         }
 
-        protected async Task<DataTable> SelectTable(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        protected async ValueTask<DataTable> SelectTable(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
             try
             {
@@ -270,7 +270,7 @@ namespace twitenlib
             catch { return null; }
         }
 
-        protected async Task<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        protected async ValueTask<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
             //SELECT COUNT() 用
             try
@@ -292,7 +292,7 @@ namespace twitenlib
             catch { return -1; }
         }
 
-        protected Task<int> ExecuteNonQuery(MySqlCommand cmd)
+        protected ValueTask<int> ExecuteNonQuery(MySqlCommand cmd)
         {
             return ExecuteNonQuery(new MySqlCommand[] { cmd });
         }
@@ -302,7 +302,7 @@ namespace twitenlib
         ///戻り値はDBの変更された行数
         ///失敗したら-1
         ///</summary>
-        protected async Task<int> ExecuteNonQuery(IEnumerable<MySqlCommand> cmd)
+        protected async ValueTask<int> ExecuteNonQuery(IEnumerable<MySqlCommand> cmd)
         {
             try
             {

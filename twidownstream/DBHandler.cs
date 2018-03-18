@@ -31,12 +31,11 @@ namespace twidownstream
 
         public enum SelectTokenMode
         {
-            StreamerAll,
-            RestProcess,
-            RestinStreamer
+            All,
+            RestInStreamer
         }
 
-        public async Task<Tokens[]> Selecttoken(SelectTokenMode Mode)
+        public async ValueTask<Tokens[]> Selecttoken(SelectTokenMode Mode)
         {
             DataTable Table;
             Tokens[] ret;
@@ -48,11 +47,9 @@ NATURAL JOIN crawlprocess
 WHERE ";
             switch (Mode)
             {
-                case SelectTokenMode.StreamerAll:
+                case SelectTokenMode.All:
                     cmdstr += "pid = @pid;"; break;
-                case SelectTokenMode.RestinStreamer:
-                    cmdstr += "pid = @pid AND rest_needed = 2;"; break;
-                case SelectTokenMode.RestProcess:
+                case SelectTokenMode.RestInStreamer:
                     cmdstr += "rest_needed IS TRUE;"; break;
             }
             using (MySqlCommand cmd = new MySqlCommand(cmdstr))
@@ -77,7 +74,7 @@ WHERE ";
             finally { Table.Clear(); Table.Dispose(); }
         }
 
-        public async Task<Tokens[]> SelectAlltoken()
+        public async ValueTask<Tokens[]> SelectAlltoken()
         //全tokenを返す
         {
             DataTable Table;
@@ -108,7 +105,7 @@ WHERE pid = @pid;"))
             finally { Table.Clear(); Table.Dispose(); }
         }
 
-        public async Task<int> StoreRestNeedtoken(long user_id)
+        public async ValueTask<int> StoreRestNeedtoken(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = TRUE WHERE user_id = @user_id;"))
             {
@@ -117,7 +114,7 @@ WHERE pid = @pid;"))
             }
         }
 
-        public async Task<int> StoreRestDonetoken(long user_id)
+        public async ValueTask<int> StoreRestDonetoken(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = FALSE WHERE user_id = @user_id;"))
             {
@@ -127,7 +124,7 @@ WHERE pid = @pid;"))
         }
 
         ///<summary>無効化されたっぽいTokenを消す</summary>
-        public async Task<int> DeleteToken(long user_id)
+        public async ValueTask<int> DeleteToken(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"DELETE FROM token WHERE user_id = @user_id;"))
             {
@@ -156,7 +153,7 @@ WHERE pid = @pid;"))
             return ret;
         }
 
-        public async Task<int> StoreUserProfile(UserResponse ProfileResponse)
+        public async ValueTask<int> StoreUserProfile(UserResponse ProfileResponse)
         //ログインユーザー自身のユーザー情報を格納
         //Tokens.Account.VerifyCredentials() の戻り値を投げて使う
         {
@@ -190,7 +187,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
             public string OldProfileImageUrl;
         }
 
-        public async Task<ProfileImageInfo> NeedtoDownloadProfileImage(long user_id, string NewProfileImageUrl)
+        public async ValueTask<ProfileImageInfo> NeedtoDownloadProfileImage(long user_id, string NewProfileImageUrl)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT profile_image_url, updated_at, is_default_profile_image FROM user WHERE user_id = @user_id;"))
             {
@@ -206,7 +203,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
             }
         }
 
-        public async Task<int> StoreUser(Status x, bool IconDownloaded, bool ForceUpdate = true)
+        public async ValueTask<int> StoreUser(Status x, bool IconDownloaded, bool ForceUpdate = true)
         {
             //DBにユーザーを入れる RTは先にやらないとキー制約が
             
@@ -255,7 +252,7 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_def
             }
         }
 
-        public async Task<int> StoreTweet(Status x, bool update)
+        public async ValueTask<int> StoreTweet(Status x, bool update)
         //<summary>
         //DBにツイートを入れる 先ににstoreuserしないとキー制約が
         //もちろんRT元→RTの順で呼ばないとキー制約が
@@ -290,7 +287,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             }
         }
         ///<summary> 消されたツイートをDBから消す 戻り値は削除に失敗したツイート Counterもここで処理する</summary>
-        public async Task<List<long>> StoreDelete(long[] DeleteID)
+        public async ValueTask<List<long>> StoreDelete(long[] DeleteID)
         {
             List<long> ret = new List<long>();
             if (DeleteID == null || DeleteID.Length == 0) { return ret; }
@@ -337,12 +334,12 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             return ret;
         }
 
-        public Task<int> StoreFriends(FriendsMessage x, long UserID)
+        public ValueTask<int> StoreFriends(FriendsMessage x, long UserID)
         {
             return StoreFriends(x.Friends, UserID);
         }
 
-        public async Task<int> StoreFriends(long[] x, long UserID)
+        public async ValueTask<int> StoreFriends(long[] x, long UserID)
         //<summary>
         //UserStream接続時のフォローしている一覧を保存する
         //自分自身も入れる
@@ -386,7 +383,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             return await ExecuteNonQuery(cmdList);
         }
 
-        public async Task<int> StoreBlocks(long[] x, long UserID)
+        public async ValueTask<int> StoreBlocks(long[] x, long UserID)
         //<summary>
         //ブロックしている一覧を保存する
         {
@@ -425,7 +422,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             return await ExecuteNonQuery(cmdList);
         }
 
-        public async Task<bool> ExistTweet(long tweet_id)
+        public async ValueTask<bool> ExistTweet(long tweet_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT COUNT(tweet_id) FROM tweet WHERE tweet_id = @tweet_id;"))
             {
@@ -435,7 +432,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
         }
 
         //true→Mediaにmedia_idが載ってる false→載ってない null→source_tweet_idがない
-        public async Task<bool?> ExistMedia_source_tweet_id(long media_id)
+        public async ValueTask<bool?> ExistMedia_source_tweet_id(long media_id)
         {
             DataTable Table;
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT source_tweet_id FROM media WHERE media_id = @media_id;"))
@@ -454,7 +451,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
         }
 
         //source_tweet_idを更新するためだけ
-        public async Task<int> UpdateMedia_source_tweet_id(MediaEntity m, Status x)
+        public async ValueTask<int> UpdateMedia_source_tweet_id(MediaEntity m, Status x)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE IGNORE media SET
 source_tweet_id = if (EXISTS (SELECT * FROM tweet WHERE tweet_id = @source_tweet_id), @source_tweet_id, source_tweet_id)
@@ -466,7 +463,7 @@ WHERE media_id = @media_id;"))
             }
         }
 
-        public async Task<int> StoreMedia(MediaEntity m, Status x, long hash)
+        public async ValueTask<int> StoreMedia(MediaEntity m, Status x, long hash)
         {
             MySqlCommand[] cmd = new MySqlCommand[] { new MySqlCommand(@"INSERT IGNORE 
 INTO media (media_id, source_tweet_id, type, media_url, dcthash) 
@@ -490,7 +487,7 @@ VALUES(@media_id, @downloaded_at)") };
             return ret + await Storetweet_media(x.Id, m.Id);
         }
 
-        public async Task<int> Storetweet_media(long tweet_id, long media_id)
+        public async ValueTask<int> Storetweet_media(long tweet_id, long media_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"INSERT IGNORE INTO tweet_media VALUES(@tweet_id, @media_id)"))
             {
@@ -500,7 +497,7 @@ VALUES(@media_id, @downloaded_at)") };
             }
         }
 
-        public async Task<int> StoreEvents(EventMessage x)
+        public async ValueTask<int> StoreEvents(EventMessage x)
         {
             //Eventを問答無用にDBに反映する
             //入れる必要があるイベントの仕分けはstreamer側で
@@ -532,7 +529,7 @@ VALUES(@media_id, @downloaded_at)") };
         }
 
         //MySQLが落ちてpidが消えてたら自殺したい
-        public async Task<bool> ExistThisPid()
+        public async ValueTask<bool> ExistThisPid()
         {
             using(MySqlCommand cmd = new MySqlCommand("SELECT COUNT(*) FROM pid WHERE pid = @pid;"))
             {

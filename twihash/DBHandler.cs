@@ -30,7 +30,7 @@ namespace twihash
             return Cmd;
         });
 
-        public async Task<int> StoreMediaPairs(MediaPair[] StorePairs)
+        public async ValueTask<int> StoreMediaPairs(MediaPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
             if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentOutOfRangeException(); }
@@ -57,7 +57,7 @@ namespace twihash
 
         MediaPair.OrderPri OrderPri = new MediaPair.OrderPri();
         MediaPair.OrderSub OrderSub = new MediaPair.OrderSub();
-        async Task<int> StoreMediaPairsInner(MySqlCommand Cmd, MediaPair[] StorePairs)
+        async ValueTask<int> StoreMediaPairsInner(MySqlCommand Cmd, MediaPair[] StorePairs)
         {
             Array.Sort(StorePairs, OrderPri);   //deadlock防止
             for (int i = 0; i < StorePairs.Length; i++)
@@ -91,40 +91,49 @@ GROUP BY dcthash;");
         });
 
         ///<summary>DBから読み込んだハッシュをそのままファイルに書き出す</summary>
-        public long AllMediaHash()
+        public async ValueTask<long> AllMediaHash()
         {
             try
             {
                 using (AllHashFileWriter writer = new AllHashFileWriter())
                 {
                     ActionBlock<DataTable> WriterBlock = new ActionBlock<DataTable>(
-                        (table) => { writer.Write(table.AsEnumerable().Select((row) => row.Field<long>(0))); },
+                        async (table) => { await writer.Write(table.AsEnumerable().Select((row) => row.Field<long>(0))); },
                         new ExecutionDataflowBlockOptions()
                         {
-                            BoundedCapacity = Environment.ProcessorCount,
                             MaxDegreeOfParallelism = 1,
                             SingleProducerConstrained = true
                         });
 
-                    long ret = 0;
+                    long TotalHashCOunt = 0;
                     int HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(config.hash.LastHashCount, 2)); //TableがLarge Heapに載らない程度に調整
-                    Parallel.For(0, 1 << (64 - HashUnitBits),
-                        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-                        () => 0,
-                        (long i, ParallelLoopState loop, long count) => //型を明示しないとiがintになって死ぬ
+                    TransformBlock<long, DataTable> LoadHashBlock = new TransformBlock<long, DataTable>(async (i) =>
                     {
                         DataTable Table;
                         do
                         {
                             GetMediaHashCmd.Value.Parameters["@begin"].Value = i << HashUnitBits;
                             GetMediaHashCmd.Value.Parameters["@end"].Value = unchecked(((i + 1) << HashUnitBits) - 1);
-                            Table = SelectTable(GetMediaHashCmd.Value, IsolationLevel.ReadUncommitted).Result;
+                            Table = await SelectTable(GetMediaHashCmd.Value, IsolationLevel.ReadUncommitted);
                         } while (Table == null);    //大変安易な対応
-                        WriterBlock.SendAsync(Table).Wait();
-                        return count + Table.Rows.Count;
-                    }, (c) => Interlocked.Add(ref ret, c));
-                    WriterBlock.Complete(); WriterBlock.Completion.Wait();
-                    return ret;
+                        Interlocked.Add(ref TotalHashCOunt, Table.Rows.Count);
+                        return Table;
+                    }, new ExecutionDataflowBlockOptions()
+                    {
+                        MaxDegreeOfParallelism = Environment.ProcessorCount,
+                        BoundedCapacity = Environment.ProcessorCount << 1,
+                        SingleProducerConstrained = true
+                    });
+
+                    LoadHashBlock.LinkTo(WriterBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+
+                    for(int i = 0; i < 1 << (64 - HashUnitBits); i++)
+                    {
+                        await LoadHashBlock.SendAsync(i);
+                    }
+                    LoadHashBlock.Complete();
+                    await WriterBlock.Completion;
+                    return TotalHashCOunt;
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return -1; }
@@ -144,29 +153,37 @@ WHERE downloaded_at BETWEEN @begin AND @end;");
             return Cmd;
         });
 
-        public HashSet<long> NewerMediaHash()
+        public async ValueTask<HashSet<long>> NewerMediaHash()
         {
             try
             {
                 HashSet<long> ret = new HashSet<long>();
                 const int QueryRangeSeconds = 600;
-                Parallel.For(0, Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - config.hash.LastUpdate) / QueryRangeSeconds + 1,
-                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-                    () => new List<long>(),
-                    (i, loop, localset) =>
+                ActionBlock<long> LoadHashBlock = new ActionBlock<long>(async (i) => 
+                {
+                    DataTable Table;
+                    do
                     {
-                        DataTable Table;
-                        do
+                        NewerMediaHashCmd.Value.Parameters["@begin"].Value = config.hash.LastUpdate + QueryRangeSeconds * i;
+                        NewerMediaHashCmd.Value.Parameters["@end"].Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
+                        Table = await SelectTable(NewerMediaHashCmd.Value, IsolationLevel.ReadUncommitted);
+                    } while (Table == null);    //大変安易な対応
+                    lock (ret)
+                    {
+                        foreach (long h in Table.AsEnumerable().Select((row) => row.Field<long>(0)))
                         {
-                            NewerMediaHashCmd.Value.Parameters["@begin"].Value = config.hash.LastUpdate + QueryRangeSeconds * i;
-                            NewerMediaHashCmd.Value.Parameters["@end"].Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
-                            Table = SelectTable(NewerMediaHashCmd.Value, IsolationLevel.ReadUncommitted).Result;
-                        } while (Table == null);    //大変安易な対応
-                        localset.AddRange(Table.AsEnumerable().Select((row) => row.Field<long>(0)));
-                        return localset;
-                    }, (s) => { lock (ret) { foreach (var h in s) { ret.Add(h); } } });
+                            ret.Add(h);
+                        }
+                    }
+                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
+                for(long i = 0; i < Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - config.hash.LastUpdate) / QueryRangeSeconds + 1; i++)
+                {
+                    LoadHashBlock.Post(i);
+                }
+                LoadHashBlock.Complete();
+                await LoadHashBlock.Completion;
                 return ret;
-            }catch(Exception e) { Console.WriteLine(e);return null; }
+            }catch(Exception e) { Console.WriteLine(e); return null; }
         }
     }
 }

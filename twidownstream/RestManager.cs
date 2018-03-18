@@ -36,16 +36,15 @@ namespace twidownstream
             }
         }
 
-        public async Task<int> Proceed()
+        public async ValueTask<int> Proceed()
         {
-            Tokens[] tokens = await db.Selecttoken(DBHandler.SelectTokenMode.RestProcess);
+            Tokens[] tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
             if (tokens.Length > 0) { Console.WriteLine("{0} App: {1} Accounts to REST", DateTime.Now, tokens.Length); }
             ActionBlock<Tokens> RestBlock = new ActionBlock<Tokens>(async (t) => 
             {
                 UserStreamer s = new UserStreamer(t);
                 await s.RestBlock();
                 await s.RestMyTweet();
-                await db.StoreRestDonetoken(t.UserId);
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.RestTweetThreads,

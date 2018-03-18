@@ -23,7 +23,7 @@ namespace twidownstream
         static readonly DBHandler db = DBHandler.Instance;
 
         private UserStreamerManager() { }
-        public static async Task<UserStreamerManager> Create()
+        public static async ValueTask<UserStreamerManager> Create()
         {
             UserStreamerManager ret = new UserStreamerManager();
             await ret.AddAll();
@@ -32,8 +32,8 @@ namespace twidownstream
 
         public async Task AddAll()
         {
-            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.StreamerAll);
-            Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestinStreamer);
+            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.All);
+            Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer);
             SetMaxConnections(false, token.Length);
             //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
             foreach (Tokens t in tokenRest)
@@ -86,33 +86,30 @@ namespace twidownstream
                         else
                         {
                             //TLはREST→Streamの順にしてTweetTimeのスレッドセーフ化を不要にする
-                            await Streamer.RecieveRestTimelineAuto();
-                            if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
-                            //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
-                            if (Streamer.NeedRestMyTweet)
+                            switch (await Streamer.RecieveRestTimelineAuto())
                             {
-                                Streamer.NeedRestMyTweet = false;
-                                await Streamer.RestMyTweet();
-                                await db.StoreRestDonetoken(Streamer.Token.UserId);
+                                case UserStreamer.TokenStatus.Locked:
+                                    Streamer.PostponeConnect(); break;
+                                case UserStreamer.TokenStatus.Revoked:
+                                    await RevokeRetry(Streamer); break;
+                                default:
+                                    if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
+                                    //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
+                                    if (Streamer.NeedRestMyTweet)
+                                    {
+                                        Streamer.NeedRestMyTweet = false;
+                                        await Streamer.RestMyTweet();
+                                        await db.StoreRestDonetoken(Streamer.Token.UserId);
+                                    }
+                                    break;
                             }
-                            //DBが求めていない場合は /REST に託す
-                            else { await db.StoreRestNeedtoken(Streamer.Token.UserId); }
                         }
                         break;
                     case UserStreamer.TokenStatus.Locked:
-                        Streamer.PostponeRetry();
+                        Streamer.PostponeConnect();
                         break;
                     case UserStreamer.TokenStatus.Revoked:
-                        if (RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
-                        {
-                            await db.DeleteToken(Streamer.Token.UserId);
-                            RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte z);
-                            RemoveStreamer(Streamer);
-                        }
-                        else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
-                        break;
-                    case UserStreamer.TokenStatus.Failure:
-                        break;  //何もしない
+                        await RevokeRetry(Streamer); break;
                 }
                 Streamer.ConnectWaiting = false;
             }, new ExecutionDataflowBlockOptions()
@@ -121,11 +118,22 @@ namespace twidownstream
                 BoundedCapacity = config.crawl.ReconnectThreads << 1,    //これでもawaitする
                 SingleProducerConstrained = true,
             });
+
+            async Task RevokeRetry(UserStreamer Streamer)
+            {
+                if (RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
+                {
+                    await db.DeleteToken(Streamer.Token.UserId);
+                    RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte z);
+                    RemoveStreamer(Streamer);
+                }
+                else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
+            }
         }
 
         //これを定期的に呼んで再接続やFriendの取得をやらせる
         //StreamerLockerのロック解除もここでやる
-        public async Task<int> ConnectStreamers()
+        public async ValueTask<int> ConnectStreamers()
         {
             if (!await db.ExistThisPid()) { Environment.Exit(1); }
 

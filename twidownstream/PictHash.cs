@@ -11,7 +11,7 @@ namespace twidown
     {
         readonly static HttpClient Http = new HttpClient(new HttpClientHandler() { UseCookies = false });
         ///<summary>クソサーバーからDCTHashをもらってくる</summary>
-        public static async Task<long?> DCTHash(byte[] Source, string ServerUrl, string FileName)
+        public static async ValueTask<long?> DCTHash(byte[] Source, string ServerUrl, string FileName)
         {
             try
             {

@@ -15,7 +15,7 @@ namespace twidownparent
         public DBHandler() : base("crawl", "", Config.Instance.database.Address) { }
 
         //全tokenを返す 失敗したらnull
-        public async Task<long[]> SelectAlltoken()
+        public async ValueTask<long[]> SelectAlltoken()
         {
             DataTable Table;
             using (MySqlCommand cmd = new MySqlCommand("SELECT user_id FROM token;"))
@@ -30,7 +30,7 @@ namespace twidownparent
             return ret;
         }
 
-        public async Task<long> CountToken()
+        public async ValueTask<long> CountToken()
         {
             using(MySqlCommand cmd = new MySqlCommand("SELECT COUNT(user_id) FROM token;"))
             {
@@ -38,7 +38,7 @@ namespace twidownparent
             }
         }
 
-        public async Task<long[]> SelectNewToken()
+        public async ValueTask<long[]> SelectNewToken()
         {
             //Newというより割り当てがないToken
             DataTable Table;
@@ -56,7 +56,7 @@ WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             return ret;
         }
 
-        public async Task<int> Assigntoken(long user_id, int pid, bool RestMyTweet)
+        public async ValueTask<int> Assigntoken(long user_id, int pid, bool RestMyTweet)
         {
             //Console.WriteLine("{0} Assign: {1} to {2}", DateTime.Now, user_id, pid);
             MySqlCommand cmd = new MySqlCommand(@"INSERT IGNORE INTO crawlprocess (user_id, pid, rest_needed) VALUES(@user_id, @pid, @rest_needed)");
@@ -67,7 +67,7 @@ WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
         }
 
 
-        public async Task<int> SelectBestpid()
+        public async ValueTask<int> SelectBestpid()
         {
             //一番空いてる子プロセスってわけ 全滅なら負数を返すからつまり新プロセスが必要
 
@@ -84,7 +84,7 @@ ORDER BY c LIMIT 1;"))
             return Table.Rows[0].Field<int>(0);
         }
 
-        public async Task<int> Insertpid(int pid)
+        public async ValueTask<int> Insertpid(int pid)
         {
             Console.WriteLine("{0} New PID {1}", DateTime.Now, pid); 
             using (MySqlCommand cmd = new MySqlCommand(@"INSERT IGNORE INTO pid VALUES(@pid)"))
@@ -94,7 +94,7 @@ ORDER BY c LIMIT 1;"))
             }
         }
 
-        public async Task<int[]> Selectpid()
+        public async ValueTask<int[]> Selectpid()
         {
             DataTable Table;
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT pid FROM pid;"))
@@ -110,7 +110,7 @@ ORDER BY c LIMIT 1;"))
             return ret;
         }
 
-        public async Task<long> CountPid()
+        public async ValueTask<long> CountPid()
         {
             using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(pid) FROM pid;"))
             {
@@ -118,7 +118,7 @@ ORDER BY c LIMIT 1;"))
             }
         }
 
-        public async Task<int> DeleteDeadpid()
+        public async ValueTask<int> DeleteDeadpid()
         {
             int DeadCount = 0;
             int[] pids = await Selectpid();
@@ -139,7 +139,7 @@ ORDER BY c LIMIT 1;"))
             return DeadCount;
         }
 
-        public async Task<int> InitTruncate()
+        public async ValueTask<int> InitTruncate()
         {
            return await ExecuteNonQuery(new MySqlCommand(@"DELETE FROM pid;"));
         }

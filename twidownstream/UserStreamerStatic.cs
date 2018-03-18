@@ -147,7 +147,7 @@ namespace twidownstream
             //StreamerLocker.UnlockTweet(x.Id);  //Lockは事前にやっておくこと
         }
 
-        static async Task<bool> DownloadStoreProfileImage(Status x)
+        static async ValueTask<bool> DownloadStoreProfileImage(Status x)
         {
             //アイコンが更新または未保存ならダウンロードする
             //RTは自動でやらない
