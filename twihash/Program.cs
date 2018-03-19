@@ -219,7 +219,6 @@ namespace twihash
                 }
             }, new ExecutionDataflowBlockOptions()
             {
-                BoundedCapacity = Environment.ProcessorCount << 8,
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
                 SingleProducerConstrained = true
             });
@@ -228,7 +227,9 @@ namespace twihash
             {
                 for (long[] Sorted = await Reader.ReadBlock(); Sorted != null; Sorted = await Reader.ReadBlock())
                 {
-                    if (Sorted.Length >= 2) { await MultipleSortBlock.SendAsync(Sorted); }
+                    if (Sorted.Length < 2) { continue; }
+                    while (MultipleSortBlock.InputCount > Environment.ProcessorCount << 16) { await Task.Delay(1); }
+                    MultipleSortBlock.Post(Sorted);
                 }
             }
             File.Delete(SortedFilePath);

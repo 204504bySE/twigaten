@@ -71,51 +71,61 @@ namespace twidownstream
             ConnectBlock = new ActionBlock<UserStreamer>(
             async (Streamer) =>
             {
-                UserStreamer.NeedConnectResult NeedConnect = Streamer.NeedConnect();
-                //初回とRevoke疑いのときだけVerifyCredentials()する
-                //プロフィールを取得したい
-                switch (NeedConnect == UserStreamer.NeedConnectResult.Verify
-                    ? await Streamer.VerifyCredentials() : UserStreamer.TokenStatus.Success)
+                try
                 {
-                    case UserStreamer.TokenStatus.Success:
-                        if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { }    //何もしない
-                        else if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
+                    UserStreamer.NeedConnectResult NeedConnect = Streamer.NeedConnect();
+                    //初回とRevoke疑いのときだけVerifyCredentials()する
+                    //プロフィールを取得したい
+                    if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { }    //何もしない
+                    else if (NeedConnect == UserStreamer.NeedConnectResult.Verify)
+                    {
+                        switch (await Streamer.VerifyCredentials())
                         {
-                            if(Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); }
+                            case UserStreamer.TokenStatus.Locked:
+                                Streamer.PostponeConnect(); return;
+                            case UserStreamer.TokenStatus.Revoked:
+                                await RevokeRetry(Streamer); return;
+                            case UserStreamer.TokenStatus.Failure:
+                                return;
+                            case UserStreamer.TokenStatus.Success:
+                                RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte gomi);
+                                NeedConnect = UserStreamer.NeedConnectResult.JustNeeded;    //無理矢理接続処理に突っ込む #ウンコード
+                                break;
                         }
-                        else
+                    }
+
+                    //Streamに接続したりRESTだけにしたり
+                    if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
+                    {   
+                        if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); }
+                    }
+                    else
+                    {
+                        //TLはREST→Streamの順にしてTweetTimeのスレッドセーフ化を不要にする
+                        switch (await Streamer.RecieveRestTimelineAuto())
                         {
-                            //TLはREST→Streamの順にしてTweetTimeのスレッドセーフ化を不要にする
-                            switch (await Streamer.RecieveRestTimelineAuto())
-                            {
-                                case UserStreamer.TokenStatus.Locked:
-                                    Streamer.PostponeConnect(); break;
-                                case UserStreamer.TokenStatus.Revoked:
-                                    await RevokeRetry(Streamer); break;
-                                default:
-                                    UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
-                                    if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
-                                    //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
-                                    if (Streamer.NeedRestMyTweet)
-                                    {
-                                        Streamer.NeedRestMyTweet = false;
-                                        await Streamer.RestMyTweet();
-                                        //User streamに繋がない場合はこっちでフォローを取得する必要がある
-                                        if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend(); }
-                                        await Streamer.RestBlock();
-                                        await db.StoreRestDonetoken(Streamer.Token.UserId);
-                                    }
-                                    break;
-                            }
+                            case UserStreamer.TokenStatus.Locked:
+                                Streamer.PostponeConnect(); break;
+                            case UserStreamer.TokenStatus.Revoked:
+                                await RevokeRetry(Streamer); break;
+                            default:
+                                UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
+                                if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
+                                //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
+                                if (Streamer.NeedRestMyTweet)
+                                {
+                                    Streamer.NeedRestMyTweet = false;
+                                    await Streamer.RestMyTweet();
+                                    //User streamに繋がない場合はこっちでフォローを取得する必要がある
+                                    if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend(); }
+                                    await Streamer.RestBlock();
+                                    await db.StoreRestDonetoken(Streamer.Token.UserId);
+                                }
+                                break;
                         }
-                        break;
-                    case UserStreamer.TokenStatus.Locked:
-                        Streamer.PostponeConnect();
-                        break;
-                    case UserStreamer.TokenStatus.Revoked:
-                        await RevokeRetry(Streamer); break;
+                    }
                 }
-                Streamer.ConnectWaiting = false;
+                finally { Streamer.ConnectWaiting = false; }
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.ReconnectThreads,

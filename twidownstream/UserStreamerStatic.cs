@@ -275,7 +275,7 @@ namespace twidownstream
             MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads
         });
 
-        public static  Task DownloadStoreMedia(Status x, Tokens t)
+        public static Task DownloadStoreMedia(Status x, Tokens t)
         {
             if (x.RetweetedStatus != null)
             {   //そもそもRTに対してこれを呼ぶべきではない
