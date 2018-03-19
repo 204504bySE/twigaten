@@ -32,6 +32,7 @@ namespace twidownstream
         public enum SelectTokenMode
         {
             All,
+            CurrentProcess,
             RestInStreamer
         }
 
@@ -47,10 +48,12 @@ NATURAL JOIN crawlprocess
 WHERE ";
             switch (Mode)
             {
-                case SelectTokenMode.All:
+                case SelectTokenMode.CurrentProcess:
                     cmdstr += "pid = @pid;"; break;
                 case SelectTokenMode.RestInStreamer:
                     cmdstr += "rest_needed IS TRUE;"; break;
+                case SelectTokenMode.All:
+                    cmdstr += ";"; break;
             }
             using (MySqlCommand cmd = new MySqlCommand(cmdstr))
             {

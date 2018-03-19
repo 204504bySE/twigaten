@@ -19,7 +19,7 @@ namespace twidownstream
 
         public RestManager()
         {
-            ServicePointManager.DefaultConnectionLimit = Math.Max(config.crawl.DefaultConnections, config.crawl.RestTweetThreads * 3);
+            ServicePointManager.DefaultConnectionLimit = Math.Max(config.crawl.DefaultConnectionThreads, config.crawl.RestTweetThreads * 3);
             Task.Run(async () => { await IntervalProcess(); });
         }
 
@@ -40,9 +40,10 @@ namespace twidownstream
         {
             Tokens[] tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
             if (tokens.Length > 0) { Console.WriteLine("{0} App: {1} Accounts to REST", DateTime.Now, tokens.Length); }
-            ActionBlock<Tokens> RestBlock = new ActionBlock<Tokens>(async (t) => 
+            ActionBlock<Tokens> RestProcess = new ActionBlock<Tokens>(async (t) => 
             {
                 UserStreamer s = new UserStreamer(t);
+                await s.RestFriend();
                 await s.RestBlock();
                 await s.RestMyTweet();
             }, new ExecutionDataflowBlockOptions()
@@ -50,9 +51,9 @@ namespace twidownstream
                 MaxDegreeOfParallelism = config.crawl.RestTweetThreads,
                 BoundedCapacity = config.crawl.RestTweetThreads << 1
             });
-            foreach(Tokens t in tokens) { await RestBlock.SendAsync(t); }
-            RestBlock.Complete();
-            await RestBlock.Completion;
+            foreach(Tokens t in tokens) { await RestProcess.SendAsync(t); }
+            RestProcess.Complete();
+            await RestProcess.Completion;
             return tokens.Length;
         }
     }

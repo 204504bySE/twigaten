@@ -32,7 +32,7 @@ namespace twidownstream
 
         public async Task AddAll()
         {
-            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.All);
+            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess);
             Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer);
             SetMaxConnections(false, token.Length);
             //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
@@ -93,12 +93,16 @@ namespace twidownstream
                                 case UserStreamer.TokenStatus.Revoked:
                                     await RevokeRetry(Streamer); break;
                                 default:
-                                    if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
+                                    UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
+                                    if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
                                     //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
                                     if (Streamer.NeedRestMyTweet)
                                     {
                                         Streamer.NeedRestMyTweet = false;
                                         await Streamer.RestMyTweet();
+                                        //User streamに繋がない場合はこっちでフォローを取得する必要がある
+                                        if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend(); }
+                                        await Streamer.RestBlock();
                                         await db.StoreRestDonetoken(Streamer.Token.UserId);
                                     }
                                     break;
@@ -189,7 +193,7 @@ namespace twidownstream
 
         private void SetMaxConnections(bool Force = false, int basecount = 0)
         {
-            int MaxConnections = Math.Max(basecount, Streamers.Count) + config.crawl.DefaultConnections;
+            int MaxConnections = Math.Max(basecount, Streamers.Count) + config.crawl.DefaultConnectionThreads;
             if (Force || ServicePointManager.DefaultConnectionLimit < MaxConnections)
             {
                 ServicePointManager.DefaultConnectionLimit = MaxConnections;

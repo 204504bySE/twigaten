@@ -15,11 +15,11 @@ namespace twidownstream
             ServicePointManager.ReusePort = true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             ServicePointManager.EnableDnsRoundRobin = true;
-            ServicePointManager.UseNagleAlgorithm = false;
 
+            twitenlib.Config config = twitenlib.Config.Instance;
             ThreadPool.GetMaxThreads(out int _, out int CompletionThreads);
-            ThreadPool.SetMinThreads(10000, CompletionThreads);
-            ThreadPool.SetMaxThreads(65536, CompletionThreads);
+            ThreadPool.SetMinThreads(32000, CompletionThreads);
+            ThreadPool.SetMaxThreads(32000, CompletionThreads);
             await Task.Delay(10000);
 
             if (args.Length >= 1 && args[0] == "/REST")

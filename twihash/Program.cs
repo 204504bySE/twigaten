@@ -178,7 +178,7 @@ namespace twihash
                 for (int i = 0; i < Sorted.Length; i++)
                 {
                     bool NeedInsert(long IndexInSorted) => NewHash == null || NewHash.Contains(Sorted[IndexInSorted]);
-                    long maskedhash_i = Sorted[i] & FullMask;
+                    //long maskedhash_i = Sorted[i] & FullMask;
                     bool NeedInsert_i = NeedInsert(i);
                     for (int j = i + 1; j < Sorted.Length; j++)
                     {

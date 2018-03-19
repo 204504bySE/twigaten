@@ -52,13 +52,13 @@ namespace twidownstream
         public static async Task HandleTweetRest(Status x, Tokens t)   //REST用
         {
             if ((x.ExtendedEntities ?? x.Entities)?.Media == null) { return; }   //画像なしツイートを捨てる
-            await TweetDistinctBlock.SendAsync(new Tuple<Status, Tokens, bool>(x, t, false));
+            await TweetDistinctBlock.SendAsync((x, t, false));
         }
 
         public static async Task HandleStatusMessage(Status x, Tokens t)
         {
             if ((x.ExtendedEntities ?? x.Entities)?.Media != null)  //画像なしツイートを捨てる
-            { await TweetDistinctBlock.SendAsync(new Tuple<Status, Tokens, bool>(x, t, true)); }
+            { await TweetDistinctBlock.SendAsync((x, t, true)); }
         }
 
         public static async Task HandleDeleteMessage(DeleteMessage x)
@@ -107,22 +107,22 @@ namespace twidownstream
             */
         }
 
-        static TransformBlock<Tuple<Status, Tokens, bool>, Tuple<Status, Tokens, bool>> TweetDistinctBlock
-            = new TransformBlock<Tuple<Status, Tokens, bool>, Tuple<Status, Tokens, bool>>((x) =>
+        static TransformBlock<(Status, Tokens, bool), (Status, Tokens, bool)?> TweetDistinctBlock
+            = new TransformBlock<(Status x, Tokens t, bool stream),(Status, Tokens, bool)?>((m) =>
             {   //ここでLockする(1スレッドなのでHashSetでおｋ
-                if (LockTweet(x.Item1.Id)) { return x; }
+                if (LockTweet(m.x.Id)) { return m; }
                 else { return null; }
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = 1
             });
-        static ActionBlock<Tuple<Status, Tokens, bool>> HandleTweetBlock = new ActionBlock<Tuple<Status, Tokens, bool>>(async x =>
+        static ActionBlock<(Status, Tokens, bool)?> HandleTweetBlock = new ActionBlock<(Status x, Tokens t, bool stream)?>(async x =>
         {   //Tokenを渡すためだけにKeyValuePairにしている #ウンコード
             //画像なしツイートは先に捨ててるのでここでは確認しない
-            if (x != null) { await HandleTweet(x.Item1, x.Item2, x.Item3); }
+            if (x != null) { await HandleTweet(x.Value.x, x.Value.t, x.Value.stream); }
         }, new ExecutionDataflowBlockOptions()
         {
-            MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections), //一応これで
+            MaxDegreeOfParallelism = Math.Max(Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections), config.crawl.MediaDownloadThreads), //一応これで
             SingleProducerConstrained = true
         });
 

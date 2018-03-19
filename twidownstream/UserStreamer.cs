@@ -304,9 +304,9 @@ namespace twidownstream
                 foreach(Status s in Timeline)
                 {
                     await UserStreamerStatic.HandleTweetRest(s, Token);
-                    TweetTime.Add(s.CreatedAt);
                     if(s.Id > LastReceivedTweetId) { LastReceivedTweetId = s.Id; }
                 }
+                TweetTime.AddRange(Timeline.Select(s => s.CreatedAt).ToArray());
                 if (Timeline.Count == 0) { TweetTime.Add(DateTimeOffset.Now); }
                 //Console.WriteLine("{0} {1}: REST timeline success", DateTime.Now, Token.UserId);
                 return TokenStatus.Success;
@@ -371,35 +371,18 @@ namespace twidownstream
             }
         }
 
-        public async Task RestBlock()
+        public async ValueTask<int> RestBlock()
         {
-            long[] blocks = await RestCursored(RestCursorMode.Block);
-            if (blocks != null)
-            {
-                await db.StoreBlocks(blocks, Token.UserId);
-                //Console.WriteLine("{0} {1}: REST blocks success", DateTime.Now, Token.UserId);
-            }
-            else { Console.WriteLine("{0} {1}: REST blocks failed", DateTime.Now, Token.UserId); }
+            long[] blocks = (await Token.Blocks.IdsAsync(user_id => Token.UserId)).ToArray();
+            if (blocks != null) { await db.StoreBlocks(blocks, Token.UserId); }
+            return blocks.Length;
         }
 
-        enum RestCursorMode { Friend, Block }
-        async ValueTask<long[]> RestCursored(RestCursorMode Mode)
+        public async ValueTask<int> RestFriend()
         {
-            try
-            {
-                switch (Mode)
-                {
-                    case RestCursorMode.Block:
-                        return (await Token.Blocks.IdsAsync(user_id => Token.UserId)).ToArray();
-                    case RestCursorMode.Friend:
-                        return (await Token.Friends.IdsAsync(user_id => Token.UserId)).ToArray();
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("{0} {1}: REST {2}s failed: {3}", DateTime.Now, Token.UserId, Mode.ToString(), e.Message);
-            }
-            return null;
+            long[] friends = (await Token.Friends.IdsAsync(user_id => Token.UserId)).ToArray();
+            if (friends != null) { await db.StoreFriends(friends, Token.UserId); }
+            return friends.Length;
         }
 
         async Task HandleStreamingMessage(StreamingMessage x)
@@ -427,9 +410,7 @@ namespace twidownstream
                 case MessageType.Warning:
                     if ((x as WarningMessage).Code == "FOLLOWS_OVER_LIMIT")
                     {
-                        long[] friends = await RestCursored(RestCursorMode.Friend);
-                        if (friends != null) { await db.StoreFriends(friends, Token.UserId); }
-                        Console.WriteLine("{0} {1}: REST friends success", DateTime.Now, Token.UserId);
+                        if (await RestFriend() > 0) { Console.WriteLine("{0} {1}: REST friends success", DateTime.Now, Token.UserId); }
                         //Console.WriteLine("{0} {1}: Stream connected", DateTime.Now, Token.UserId);
                     }
                     break;

@@ -61,7 +61,7 @@ namespace twitenlib
             public string MountPointthumb { get; }
             public int StreamSpeedSeconds { get; }
             public int StreamSpeedTweets { get; }
-            public int DefaultConnections { get; }
+            public int DefaultConnectionThreads { get; }
             public int MaxDBConnections { get; }
             public int RestTweetThreads { get; }
             public int ReconnectThreads { get; }
@@ -80,7 +80,7 @@ namespace twitenlib
                 MountPointthumb = data["crawl"][nameof(MountPointthumb)] ?? PictPaththumb?.Substring(0,1) ?? "";
                 StreamSpeedSeconds = int.Parse(data["crawl"][nameof(StreamSpeedSeconds)] ?? "180");
                 StreamSpeedTweets = int.Parse(data["crawl"][nameof(StreamSpeedTweets)] ?? "50");
-                DefaultConnections = int.Parse(data["crawl"][nameof(DefaultConnections)] ?? "200");
+                DefaultConnectionThreads = int.Parse(data["crawl"][nameof(DefaultConnectionThreads)] ?? "200");
                 MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? "10");
                 RestTweetThreads = int.Parse(data["crawl"][nameof(RestTweetThreads)] ?? Environment.ProcessorCount.ToString());
                 ReconnectThreads = int.Parse(data["crawl"][nameof(ReconnectThreads)] ?? "1");

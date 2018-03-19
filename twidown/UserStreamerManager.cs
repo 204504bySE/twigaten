@@ -141,7 +141,7 @@ namespace twidown
 
         private void SetMaxConnections(bool Force = false, int basecount = 0)
         {
-            int MaxConnections = Math.Max(basecount, Streamers.Count) + config.crawl.DefaultConnections;
+            int MaxConnections = Math.Max(basecount, Streamers.Count) + config.crawl.DefaultConnectionThreads;
             if (Force || ServicePointManager.DefaultConnectionLimit < MaxConnections)
             {
                 ServicePointManager.DefaultConnectionLimit = MaxConnections;
