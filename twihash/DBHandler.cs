@@ -13,82 +13,54 @@ namespace twihash
 {
     class DBHandler : twitenlib.DBHandler
     {
-        public DBHandler() : base("hash", "", Config.Instance.database.Address, 300) { }
+        public DBHandler() : base("hash", "", Config.Instance.database.Address,20,(uint)Math.Min(Environment.ProcessorCount, 40)) { }
         
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpair VALUES";
         public const int StoreMediaPairsUnit = 1000;
-
-        ThreadLocal<MySqlCommand> StoreMediaPairsCmdFull = new ThreadLocal<MySqlCommand>(() => {
-            MySqlCommand Cmd = new MySqlCommand(BulkCmdStr(StoreMediaPairsUnit, 3, StoreMediaPairsHead));
-            for (int i = 0; i < StoreMediaPairsUnit; i++)
-            {
-                string numstr = i.ToString();
-                Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64);
-                Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64);
-                Cmd.Parameters.Add("@c" + numstr, MySqlDbType.Byte);
-            }
-            return Cmd;
-        });
+        static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 3, StoreMediaPairsHead);
+        static readonly MediaPair.OrderPri OrderPri = new MediaPair.OrderPri();
+        static readonly MediaPair.OrderSub OrderSub = new MediaPair.OrderSub();
 
         public async ValueTask<int> StoreMediaPairs(MediaPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
             if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentOutOfRangeException(); }
             else if (StorePairs.Length == 0) { return 0; }
-            else if (StorePairs.Length == StoreMediaPairsUnit)
-            {
-                return await StoreMediaPairsInner(StoreMediaPairsCmdFull.Value, StorePairs);
-            }
             else
             {
-                using (MySqlCommand Cmd = new MySqlCommand(BulkCmdStr(StorePairs.Length, 3, StoreMediaPairsHead)))
+                int ret;
+                //まず昇順
+                Array.Sort(StorePairs, OrderPri);   //deadlock防止
+                using (MySqlCommand Cmd =  new MySqlCommand(
+                    StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
+                        : BulkCmdStr(StorePairs.Length, 3, StoreMediaPairsHead)))
                 { 
                     for (int i = 0; i < StorePairs.Length; i++)
                     {
                         string numstr = i.ToString();
-                        Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64);
-                        Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64);
-                        Cmd.Parameters.Add("@c" + numstr, MySqlDbType.Byte);
+                        Cmd.Parameters.AddWithValue("@a" + numstr, StorePairs[i].media0);
+                        Cmd.Parameters.AddWithValue("@b" + numstr, StorePairs[i].media1);
+                        Cmd.Parameters.AddWithValue("@c" + numstr, StorePairs[i].hammingdistance);
                     }
-                    return await StoreMediaPairsInner(Cmd, StorePairs);
+                    ret = await ExecuteNonQuery(Cmd);
+                }
+                //次に降順
+                Array.Sort(StorePairs, OrderSub);   //deadlock防止
+                using (MySqlCommand Cmd = new MySqlCommand(
+                    StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
+                        : BulkCmdStr(StorePairs.Length, 3, StoreMediaPairsHead)))
+                {
+                    for (int i = 0; i < StorePairs.Length; i++)
+                    {
+                        string numstr = i.ToString();
+                        Cmd.Parameters.AddWithValue("@a" + numstr, StorePairs[i].media1);   //↑とは逆
+                        Cmd.Parameters.AddWithValue("@b" + numstr, StorePairs[i].media0);
+                        Cmd.Parameters.AddWithValue("@c" + numstr, StorePairs[i].hammingdistance);
+                    }
+                    return ret + await ExecuteNonQuery(Cmd);
                 }
             }
         }
-
-        MediaPair.OrderPri OrderPri = new MediaPair.OrderPri();
-        MediaPair.OrderSub OrderSub = new MediaPair.OrderSub();
-        async ValueTask<int> StoreMediaPairsInner(MySqlCommand Cmd, MediaPair[] StorePairs)
-        {
-            Array.Sort(StorePairs, OrderPri);   //deadlock防止
-            for (int i = 0; i < StorePairs.Length; i++)
-            {
-                string numstr = i.ToString();
-                Cmd.Parameters["@a" + numstr].Value = StorePairs[i].media0;
-                Cmd.Parameters["@b" + numstr].Value = StorePairs[i].media1;
-                Cmd.Parameters["@c" + numstr].Value = StorePairs[i].hammingdistance;
-            }
-            int ret = await ExecuteNonQuery(Cmd);
-
-            Array.Sort(StorePairs, OrderSub);   //deadlock防止
-            for (int i = 0; i < StorePairs.Length; i++)
-            {
-                string numstr = i.ToString(); 
-                Cmd.Parameters["@a" + numstr].Value = StorePairs[i].media1;   //↑とは逆
-                Cmd.Parameters["@b" + numstr].Value = StorePairs[i].media0;
-                Cmd.Parameters["@c" + numstr].Value = StorePairs[i].hammingdistance;
-            }
-            return ret + await ExecuteNonQuery(Cmd);
-        }
-
-        ThreadLocal<MySqlCommand> GetMediaHashCmd = new ThreadLocal<MySqlCommand>(() => {
-            MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
-FROM media
-WHERE dcthash BETWEEN @begin AND @end
-GROUP BY dcthash;");
-            Cmd.Parameters.Add("@begin", MySqlDbType.Int64);
-            Cmd.Parameters.Add("@end", MySqlDbType.Int64);
-            return Cmd;
-        });
 
         ///<summary>DBから読み込んだハッシュをそのままファイルに書き出す</summary>
         public async ValueTask<long> AllMediaHash()
@@ -98,7 +70,7 @@ GROUP BY dcthash;");
                 using (AllHashFileWriter writer = new AllHashFileWriter())
                 {
                     ActionBlock<DataTable> WriterBlock = new ActionBlock<DataTable>(
-                        async (table) => { await writer.Write(table.AsEnumerable().Select((row) => row.Field<long>(0))); },
+                        (table) => { writer.Write(table.AsEnumerable().Select((row) => row.Field<long>(0))); },
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
@@ -112,9 +84,15 @@ GROUP BY dcthash;");
                         DataTable Table;
                         do
                         {
-                            GetMediaHashCmd.Value.Parameters["@begin"].Value = i << HashUnitBits;
-                            GetMediaHashCmd.Value.Parameters["@end"].Value = unchecked(((i + 1) << HashUnitBits) - 1);
-                            Table = await SelectTable(GetMediaHashCmd.Value, IsolationLevel.ReadUncommitted);
+                            using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
+FROM media
+WHERE dcthash BETWEEN @begin AND @end
+GROUP BY dcthash;"))
+                            {
+                                Cmd.Parameters.AddWithValue("@begin", i << HashUnitBits);
+                                Cmd.Parameters.AddWithValue("@end", unchecked(((i + 1) << HashUnitBits) - 1));
+                                Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted);
+                            }
                         } while (Table == null);    //大変安易な対応
                         Interlocked.Add(ref TotalHashCOunt, Table.Rows.Count);
                         return Table;
@@ -143,16 +121,6 @@ GROUP BY dcthash;");
         //これが始まった後に追加されたハッシュは無視されるが
         //次回の実行で拾われるから問題ない
 
-        ThreadLocal<MySqlCommand> NewerMediaHashCmd = new ThreadLocal<MySqlCommand>(() => {
-            MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
-FROM media_downloaded_at
-NATURAL JOIN media
-WHERE downloaded_at BETWEEN @begin AND @end;");
-            Cmd.Parameters.Add("@begin", MySqlDbType.Int64);
-            Cmd.Parameters.Add("@end", MySqlDbType.Int64);
-            return Cmd;
-        });
-
         public async ValueTask<HashSet<long>> NewerMediaHash()
         {
             try
@@ -164,9 +132,15 @@ WHERE downloaded_at BETWEEN @begin AND @end;");
                     DataTable Table;
                     do
                     {
-                        NewerMediaHashCmd.Value.Parameters["@begin"].Value = config.hash.LastUpdate + QueryRangeSeconds * i;
-                        NewerMediaHashCmd.Value.Parameters["@end"].Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
-                        Table = await SelectTable(NewerMediaHashCmd.Value, IsolationLevel.ReadUncommitted);
+                        using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
+FROM media_downloaded_at
+NATURAL JOIN media
+WHERE downloaded_at BETWEEN @begin AND @end;"))
+                        {
+                            Cmd.Parameters.AddWithValue("@begin", config.hash.LastUpdate + QueryRangeSeconds * i);
+                            Cmd.Parameters.AddWithValue("@end", config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1);
+                            Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted);
+                        }
                     } while (Table == null);    //大変安易な対応
                     lock (ret)
                     {

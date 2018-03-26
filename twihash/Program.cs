@@ -51,40 +51,7 @@ namespace twihash
             Thread.Sleep(5000);
         }
     }
-    /*
-    //とても変なクラスになってしまっためう
-    public class MediaHashArray
-    {
-        public readonly long[] Hashes;
-        public readonly HashSet<long> NewHashes;
-        public MediaHashArray(int Length)
-        {
-            Hashes = new long[Length];
-            NewHashes = new HashSet<long>();
-            ForceInsert = Config.Instance.hash.LastUpdate <= 0;
-            if (Config.Instance.hash.KeepDataRAM) { AutoReadAll(); }
-        }
-        public int Count = 0;  //実際に使ってる個数
-        public readonly bool ForceInsert;
 
-        public bool NeedInsert(int Index)
-        {
-            return ForceInsert || NewHashes.Contains(Hashes[Index]);
-        }
-
-        void AutoReadAll()
-        {
-            Task.Run(() => {
-                Thread.CurrentThread.Priority = ThreadPriority.Lowest;
-                while (true)
-                {
-                    for(int i = 0; i < Hashes.Length; i++) { long a = Hashes[i]; }
-                    Thread.Sleep(60000);
-                }
-            });
-        }
-    }
-    */
     //ハミング距離が一定以下のハッシュ値のペア
     public struct MediaPair
     {
@@ -169,7 +136,12 @@ namespace twihash
 
             BatchBlock<MediaPair> PairBatchBlock = new BatchBlock<MediaPair>(DBHandler.StoreMediaPairsUnit);
             ActionBlock<MediaPair[]> PairStoreBlock = new ActionBlock<MediaPair[]>(
-                async (MediaPair[] p) => { Interlocked.Add(ref dbcount, await db.StoreMediaPairs(p)); },
+                async (MediaPair[] p) =>
+                {
+                int AddCount;
+                    do { AddCount = await db.StoreMediaPairs(p); } while (AddCount < 0);    //失敗したら無限に再試行
+                    Interlocked.Add(ref dbcount, AddCount); 
+                },
                 new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
             PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
@@ -177,42 +149,43 @@ namespace twihash
             {
                 for (int i = 0; i < Sorted.Length; i++)
                 {
-                    bool NeedInsert(long IndexInSorted) => NewHash == null || NewHash.Contains(Sorted[IndexInSorted]);
+                    bool NeedInsert_i = NewHash?.Contains(Sorted[i]) ?? true;
                     //long maskedhash_i = Sorted[i] & FullMask;
-                    bool NeedInsert_i = NeedInsert(i);
                     for (int j = i + 1; j < Sorted.Length; j++)
                     {
                         //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
-                        if (!NeedInsert_i && !NeedInsert(j)) { continue; }
-                        //ブロックソートで一致した組のハミング距離を測る
-                        int ham = HammingDistance((ulong)Sorted[i], (ulong)Sorted[j]);
-                        if (ham <= MaxHammingDistance)
+                        if (NeedInsert_i || NewHash.Contains(Sorted[j]))    //NewHashがnullなら後者は処理されないからセーフ
                         {
-                            //一致したペアが見つかる最初の組合せを調べる
-                            int matchblockindex = 0;
-                            int x;
-                            for (x = 0; x < StartBlock && matchblockindex < BaseBlocks.Length; x++)
+                            //ブロックソートで一致した組のハミング距離を測る
+                            int ham = HammingDistance(Sorted[i], Sorted[j]);
+                            if (ham <= MaxHammingDistance)
                             {
-                                if (BaseBlocks.Contains(x))
+                                //一致したペアが見つかる最初の組合せを調べる
+                                int matchblockindex = 0;
+                                int x;
+                                for (x = 0; x < StartBlock && matchblockindex < BaseBlocks.Length; x++)
                                 {
-                                    if (x < BaseBlocks[matchblockindex]) { break; }
-                                    matchblockindex++;
-                                }
-                                else
-                                {
-                                    long blockmask = UnMask(x, Combi.Count);
-                                    if ((Sorted[i] & blockmask) == (Sorted[j] & blockmask))
+                                    if (BaseBlocks.Contains(x))
                                     {
                                         if (x < BaseBlocks[matchblockindex]) { break; }
                                         matchblockindex++;
                                     }
+                                    else
+                                    {
+                                        long blockmask = UnMask(x, Combi.Count);
+                                        if ((Sorted[i] & blockmask) == (Sorted[j] & blockmask))
+                                        {
+                                            if (x < BaseBlocks[matchblockindex]) { break; }
+                                            matchblockindex++;
+                                        }
+                                    }
                                 }
-                            }
-                            //最初の組合せだったときだけ入れる
-                            if (x == StartBlock)
-                            {
-                                Interlocked.Increment(ref ret);
-                                PairBatchBlock.Post(new MediaPair(Sorted[i], Sorted[j], (sbyte)ham));
+                                //最初の組合せだったときだけ入れる
+                                if (x == StartBlock)
+                                {
+                                    Interlocked.Increment(ref ret);
+                                    PairBatchBlock.Post(new MediaPair(Sorted[i], Sorted[j], (sbyte)ham));
+                                }
                             }
                         }
                     }
@@ -225,10 +198,11 @@ namespace twihash
 
             using (SortedFileReader Reader = new SortedFileReader(SortedFilePath, FullMask))
             {
-                for (long[] Sorted = await Reader.ReadBlock(); Sorted != null; Sorted = await Reader.ReadBlock())
+                int MaxInputCount = Environment.ProcessorCount << 12;
+                for (long[] Sorted = Reader.ReadBlock(); Sorted != null; Sorted = Reader.ReadBlock())
                 {
-                    if (Sorted.Length < 2) { continue; }
-                    while (MultipleSortBlock.InputCount > Environment.ProcessorCount << 16) { await Task.Delay(1); }
+                    //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない
+                    while (MultipleSortBlock.InputCount > MaxInputCount) { await Task.Delay(1); }
                     MultipleSortBlock.Post(Sorted);
                 }
             }
@@ -256,83 +230,17 @@ namespace twihash
             }
             return ret;
         }
-        /*
-        void QuickSortAll(long SortMask, MediaHashArray SortList)
-        {
-            var QuickSortBlock = new TransformBlock<(int Begin, int End), (int Begin1, int End1, int Begin2, int End2)?>
-                (((int Begin, int End) SortRange) => {
-                    return QuickSortUnit(SortRange, SortMask, SortList);
-                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
-            QuickSortBlock.Post((0, SortList.Count - 1));
-            int ProcessingCount = 1;
-            do
-            {
-                (int Begin1, int End1, int Begin2, int End2)? NextSortRange = QuickSortBlock.Receive();
-                if (NextSortRange != null)
-                {
-                    QuickSortBlock.Post((NextSortRange.Value.Begin1, NextSortRange.Value.End1));
-                    QuickSortBlock.Post((NextSortRange.Value.Begin2, NextSortRange.Value.End2));
-                    ProcessingCount++;  //↑で1個終わって2個始めたから1個増える
-                }
-                else { ProcessingCount--; } 
-            } while (ProcessingCount > 0);
-        }
-
-        (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, MediaHashArray SortList)
-        {
-            if (SortRange.Begin >= SortRange.End) { return null; }
-            
-            //要素数が少なかったら挿入ソートしたい
-            if (SortRange.End - SortRange.Begin <= 16)
-            {
-                for (int k = SortRange.Begin + 1; k <= SortRange.End; k++)
-                {
-                    long TempHash = SortList.Hashes[k];
-                    long TempMasked = SortList.Hashes[k] & SortMask;
-                    if ((SortList.Hashes[k - 1] & SortMask) > TempMasked)
-                    {
-                        int m = k;
-                        do
-                        {
-                            SortList.Hashes[m] = SortList.Hashes[m - 1];
-                            m--;
-                        } while (m > SortRange.Begin
-                        && (SortList.Hashes[m - 1] & SortMask) > TempMasked);
-                        SortList.Hashes[m] = TempHash;
-                    }
-                }
-                return null;
-            }
-            
-            long PivotMasked = new long[] { SortList.Hashes[SortRange.Begin] & SortMask,
-                        SortList.Hashes[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask,
-                        SortList.Hashes[SortRange.End] & SortMask }
-                .OrderBy((long a) => a).Skip(1).First();
-            int i = SortRange.Begin; int j = SortRange.End;
-            while (true)
-            {
-                while ((SortList.Hashes[i] & SortMask) < PivotMasked) { i++; }
-                while ((SortList.Hashes[j] & SortMask) > PivotMasked) { j--; }
-                if (i >= j) { break; }
-                long SwapHash = SortList.Hashes[i];
-                SortList.Hashes[i] = SortList.Hashes[j];
-                SortList.Hashes[j] = SwapHash;
-                i++; j--;
-            }
-            return (SortRange.Begin, i - 1, j + 1, SortRange.End);
-        }
-        */
         //ハミング距離を計算する
-        int HammingDistance(ulong a, ulong b)
+        int HammingDistance(long a, long b)
         {
             //xorしてpopcnt
-            ulong value = a ^ b;
+            long value = a ^ b;
 
             //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
-            ulong result = value - ((value >> 1) & 0x5555555555555555UL);
-            result = (result & 0x3333333333333333UL) + ((result >> 2) & 0x3333333333333333UL);
-            return (int)(unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
+            long result = value - ((value >> 1) & 0x5555555555555555L);
+            result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
+            return (int)(unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56);
         }
     }
 }

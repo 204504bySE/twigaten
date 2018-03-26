@@ -18,7 +18,8 @@ namespace twitenlib
     public class Config
     {
         private static Config _config = new Config();
-        private Config()
+        private Config() { Reload(); }
+        public void Reload()
         {
             try
             {
@@ -61,6 +62,7 @@ namespace twitenlib
             public string MountPointthumb { get; }
             public int StreamSpeedSeconds { get; }
             public int StreamSpeedTweets { get; }
+            public int StreamSpeedHysteresis { get; }
             public int DefaultConnectionThreads { get; }
             public int MaxDBConnections { get; }
             public int RestTweetThreads { get; }
@@ -80,6 +82,7 @@ namespace twitenlib
                 MountPointthumb = data["crawl"][nameof(MountPointthumb)] ?? PictPaththumb?.Substring(0,1) ?? "";
                 StreamSpeedSeconds = int.Parse(data["crawl"][nameof(StreamSpeedSeconds)] ?? "180");
                 StreamSpeedTweets = int.Parse(data["crawl"][nameof(StreamSpeedTweets)] ?? "50");
+                StreamSpeedHysteresis = int.Parse(data["crawl"][nameof(StreamSpeedHysteresis)] ?? "16");
                 DefaultConnectionThreads = int.Parse(data["crawl"][nameof(DefaultConnectionThreads)] ?? "200");
                 MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? "10");
                 RestTweetThreads = int.Parse(data["crawl"][nameof(RestTweetThreads)] ?? Environment.ProcessorCount.ToString());
@@ -144,6 +147,7 @@ namespace twitenlib
             public int HashCountOffset { get; }
             public string TempDir { get; }
             public int InitialSortFileSize { get; }
+            public int FileSortThreads { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
@@ -154,6 +158,7 @@ namespace twitenlib
                 HashCountOffset = int.Parse(data["hash"][nameof(HashCountOffset)] ?? "5000000");
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "16777216");
+                FileSortThreads = int.Parse(data["hash"][nameof(FileSortThreads)] ?? Environment.ProcessorCount.ToString());
             }
             public void NewLastUpdate(long time)
             {
@@ -252,17 +257,18 @@ namespace twitenlib
                 DataTable ret;
                 using (MySqlConnection conn = NewConnection())
                 {
-                    conn.Open();
-                    using (MySqlTransaction tran = conn.BeginTransaction(IsolationLevel))
+                    await conn.OpenAsync();
+                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel))
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
+
                         using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
                         {
                             ret = new DataTable();
-                            await adapter.FillAsync(ret).ConfigureAwait(false);
+                            adapter.Fill(ret);
                         }
-                        tran.Commit();
+                        await tran.CommitAsync();
                     }
                 }
                 return ret;
@@ -278,13 +284,13 @@ namespace twitenlib
                 long? ret;
                 using (MySqlConnection conn = NewConnection())
                 {
-                    conn.Open();
-                    using (MySqlTransaction tran = conn.BeginTransaction(IsolationLevel))
+                    await conn.OpenAsync();
+                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel))
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
                         ret = (await cmd.ExecuteScalarAsync().ConfigureAwait(false)) as long?;
-                        tran.Commit();
+                        await tran.CommitAsync();
                     }
                 }
                 return ret ?? -1;
@@ -309,7 +315,7 @@ namespace twitenlib
                 int ret = 0;
                 using (MySqlConnection conn = NewConnection())
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
                     using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                     {
                         foreach (MySqlCommand c in cmd)
@@ -318,7 +324,7 @@ namespace twitenlib
                             c.Transaction = tran;
                             ret += await c.ExecuteNonQueryAsync().ConfigureAwait(false);
                         }
-                        tran.Commit();
+                        await tran.CommitAsync();
                     }
                 }
                 return ret;

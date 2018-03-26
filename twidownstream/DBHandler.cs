@@ -45,13 +45,13 @@ namespace twidownstream
 user_id, token, token_secret
 FROM token
 NATURAL JOIN crawlprocess
-WHERE ";
+";
             switch (Mode)
             {
                 case SelectTokenMode.CurrentProcess:
-                    cmdstr += "pid = @pid;"; break;
+                    cmdstr += "WHERE pid = @pid;"; break;
                 case SelectTokenMode.RestInStreamer:
-                    cmdstr += "rest_needed IS TRUE;"; break;
+                    cmdstr += "WHERE rest_needed IS TRUE;"; break;
                 case SelectTokenMode.All:
                     cmdstr += ";"; break;
             }

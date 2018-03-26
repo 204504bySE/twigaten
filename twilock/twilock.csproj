@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySql.Data" Version="8.0.10-rc" />
   </ItemGroup>
 
   <ItemGroup>

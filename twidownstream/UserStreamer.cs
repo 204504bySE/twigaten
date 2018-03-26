@@ -15,7 +15,6 @@ namespace twidownstream
     {
         // 各TokenのUserstreamを受信したり仕分けたりする
 
-        public Exception e { get; private set; }
         public bool StreamConnected { get; private set; }
         public Tokens Token { get; }
         public bool NeedRestMyTweet { get; set; }   //次のconnect時にRESTでツイートを取得する
@@ -40,7 +39,6 @@ namespace twidownstream
         public void Dispose()
         {
             DisconnectStream();
-            e = null;
             StreamConnected = false;
             GC.SuppressFinalize(this);
         }
@@ -131,7 +129,7 @@ namespace twidownstream
         {
             StreamConnected,         //Stream接続済み→不要(Postponedもこれ)
             JustNeeded,       //必要だけど↓の各処理は不要
-            Verify,       //VerifyCredentialsが必要
+            First,       //初回(VerifyCredentialsしような
             RestOnly,    //TLが遅いからRESTだけにして
             Postponed   //ロックされてるから何もしない
         }
@@ -139,30 +137,12 @@ namespace twidownstream
         //これを外部から叩いて再接続の必要性を確認
         public NeedConnectResult NeedConnect()
         {
+            if (StreamSubscriber != null) { return NeedConnectResult.StreamConnected; }
             if (IsPostponed()) { return NeedConnectResult.Postponed; }
-            else if (e != null)
-            {
-                if (e is TwitterException t)
-                {
-                    if (t.Status == HttpStatusCode.Unauthorized)
-                    {
-                        Console.WriteLine("{0} {1}: Unauthorized", DateTime.Now, Token.UserId);
-                        return NeedConnectResult.Verify;
-                    }
-                    else { return NeedConnectResult.JustNeeded; }
-                }
-                else if (e is ParsingException) { return NeedConnectResult.JustNeeded; }
-                else if (e is WebException ex
-                    && ex.Status == WebExceptionStatus.ProtocolError
-                    && ex.Response is HttpWebResponse wr
-                    && wr.StatusCode == HttpStatusCode.Unauthorized)
-                { return NeedConnectResult.Verify; }
-                else { return NeedConnectResult.JustNeeded; }
-            }
-            else if (StreamSubscriber == null)
+            else
             {
                 //一度もTLを取得してないときはVerifyCredentials()してプロフィールを取得させる
-                if (TweetTime.Count == 0) { return NeedConnectResult.Verify; }
+                if (TweetTime.Count == 0) { return NeedConnectResult.First; }
                 //TLが遅いアカウントはRESTだけでいいや
                 else if (NeedStreamSpeed() != NeedStreamResult.Stream) { return NeedConnectResult.RestOnly; }
                 else { return NeedConnectResult.JustNeeded; }
@@ -175,7 +155,6 @@ namespace twidownstream
                 return NeedRetryResult.JustNeeded;
             }
             */
-            return NeedConnectResult.StreamConnected;
         }
         public enum NeedStreamResult
         {
@@ -185,10 +164,11 @@ namespace twidownstream
         }
         public NeedStreamResult NeedStreamSpeed()
         {
+            if(TweetTime.Count < 2) { return NeedStreamResult.RestOnly; }
             int TotalSeconds = (int)((TweetTime.Max - TweetTime.Min).TotalSeconds);
             if (TotalSeconds < config.crawl.StreamSpeedSeconds) { return NeedStreamResult.Stream; }
             //ヒステリシスを用意する
-            else if (TotalSeconds < config.crawl.StreamSpeedSeconds << 1) { return NeedStreamResult.Hysteresis; }
+            else if (TotalSeconds < config.crawl.StreamSpeedSeconds * config.crawl.StreamSpeedHysteresis) { return NeedStreamResult.Hysteresis; }
             else { return NeedStreamResult.RestOnly; }
         }
 
@@ -242,8 +222,7 @@ namespace twidownstream
         
         public void RecieveStream()
         {
-            StreamSubscriber?.Dispose(); StreamSubscriber = null;
-            e = null;
+            DisconnectStream();
             LastStreamingMessageTime = DateTimeOffset.Now;
             TweetTime.Add(LastStreamingMessageTime);
             StreamConnected = true;
@@ -263,17 +242,10 @@ namespace twidownstream
                         }
                         await HandleStreamingMessage(m);
                     },
-                    (Exception ex) =>
+                    (Exception e) =>
                     {
-                        if (ex is TaskCanceledException)
-                        {
-                            //Console.WriteLine(ex);
-                            //Console.WriteLine(ex.InnerException);
-                            //Environment.Exit(1);    //つまり自殺
-                        }
-                        e = ex;
                         DisconnectStream();
-                        //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, ex.Message);
+                        //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e.Message);
                     },
                     () => { DisconnectStream(); } //接続中のRevokeはこれ
                 );
@@ -367,22 +339,30 @@ namespace twidownstream
             }
             catch (Exception e)
             {
-                Console.WriteLine("{0} {1}: REST tweets failed: {2}", DateTime.Now, Token.UserId, e.Message);
+                //Console.WriteLine("{0} {1}: REST tweets failed: {2}", DateTime.Now, Token.UserId, e.Message);
             }
         }
 
         public async ValueTask<int> RestBlock()
         {
-            long[] blocks = (await Token.Blocks.IdsAsync(user_id => Token.UserId)).ToArray();
-            if (blocks != null) { await db.StoreBlocks(blocks, Token.UserId); }
-            return blocks.Length;
+            try
+            {
+                long[] blocks = (await Token.Blocks.IdsAsync(user_id => Token.UserId)).ToArray();
+                if (blocks != null) { await db.StoreBlocks(blocks, Token.UserId); }
+                return blocks.Length;
+            }
+            catch { return -1; }
         }
 
         public async ValueTask<int> RestFriend()
         {
-            long[] friends = (await Token.Friends.IdsAsync(user_id => Token.UserId)).ToArray();
-            if (friends != null) { await db.StoreFriends(friends, Token.UserId); }
-            return friends.Length;
+            try
+            {
+                long[] friends = (await Token.Friends.IdsAsync(user_id => Token.UserId)).ToArray();
+                if (friends != null) { await db.StoreFriends(friends, Token.UserId); }
+                return friends.Length;
+            }
+            catch { return -1; }
         }
 
         async Task HandleStreamingMessage(StreamingMessage x)

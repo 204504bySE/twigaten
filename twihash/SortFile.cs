@@ -42,32 +42,32 @@ namespace twihash
             using (BufferedLongReader reader = new BufferedLongReader(AllHashFilePath))
             {
                 BlockSortComparer SortComp = new BlockSortComparer(SortMask);
-                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>(async (t) =>
+                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>((t) =>
                 {
                     Array.Sort(t.ToSort, SortComp);
                     using (BufferedLongWriter w = new BufferedLongWriter(t.FilePath))
                     {
-                        foreach (long h in t.ToSort) { await w.Write(h); }
+                        foreach (long h in t.ToSort) { w.Write(h); }
                     }
                 }, new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
-                    MaxDegreeOfParallelism = Environment.ProcessorCount,
-                    BoundedCapacity = Environment.ProcessorCount << 1
+                    MaxDegreeOfParallelism = config.hash.FileSortThreads,
+                    BoundedCapacity = config.hash.FileSortThreads << 1
                 });
 
                 int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
                 for (; reader.Length - reader.Position >= config.hash.InitialSortFileSize; FileCount++)
                 {
                     long[] ToSort = new long[InitialSortUnit];
-                    for (int i = 0; i < InitialSortUnit; i++) { ToSort[i] = await reader.Read(); }
+                    for (int i = 0; i < InitialSortUnit; i++) { ToSort[i] = reader.Read(); }
                     await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort));
                 }
                 int SortLastCount = (int)(reader.Length - reader.Position) / sizeof(long);
                 if (SortLastCount > 0)
                 {
                     long[] ToSortLast = new long[SortLastCount];
-                    for (int i = 0; i < SortLastCount; i++) { ToSortLast[i] = await reader.Read(); }
+                    for (int i = 0; i < SortLastCount; i++) { ToSortLast[i] = reader.Read(); }
                     await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast));
                     FileCount++;    //最後に作ったから足す
                 }
@@ -79,9 +79,9 @@ namespace twihash
             //ファイル単位でマージソートしていく
             for (; FileCount > 1; step++)
             {
-                ActionBlock<int> MergeSortBlock = new ActionBlock<int>(async (i) =>
+                ActionBlock<int> MergeSortBlock = new ActionBlock<int>((i) =>
                 {
-                    await MargeSortUnit(SortMask,
+                    MargeSortUnit(SortMask,
                         SortingFilePath(step, i << 1),
                         SortingFilePath(step, (i << 1) | 1),
                         SortingFilePath(step + 1, i));
@@ -91,12 +91,12 @@ namespace twihash
                         string NextFirstPath = SortingFilePath(step + 1, 0);
                         File.Delete(NextFirstPath + "_");
                         File.Move(NextFirstPath, NextFirstPath + "_");
-                        await MargeSortUnit(SortMask, SortingFilePath(step, FileCount - 1),
+                        MargeSortUnit(SortMask, SortingFilePath(step, FileCount - 1),
                             NextFirstPath + "_", NextFirstPath);
                     }
                 }, new ExecutionDataflowBlockOptions()
                 {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount
+                    MaxDegreeOfParallelism = config.hash.FileSortThreads
                 });
 
                 for(int i = 0; i < FileCount >> 1; i++) { MergeSortBlock.Post(i); }
@@ -108,7 +108,7 @@ namespace twihash
         }
 
         ///<summary>ファイル2個をマージするやつ</summary>
-        static async Task MargeSortUnit(long SortMask, string InputPathA, string InputPathB, string OutputPath)
+        static void MargeSortUnit(long SortMask, string InputPathA, string InputPathB, string OutputPath)
         {
             using (BufferedLongWriter writer = new BufferedLongWriter(OutputPath))
             using (BufferedLongReader readerA = new BufferedLongReader(InputPathA))
@@ -121,40 +121,38 @@ namespace twihash
                 long restA = readerA.Length / sizeof(long), restB = readerB.Length / sizeof(long);
 
                 long lastA = 0, lastB = 0, maskedA = 0, maskedB = 0;
-                async ValueTask<bool> ReadA()
+                void ReadA()
                 {
                     if (readerA.Readable())
                     {
-                        lastA = await readerA.Read();
+                        lastA = readerA.Read();
                         maskedA = lastA & SortMask;
-                        return true;
                     }
-                    else { maskedA = long.MaxValue; return false; }   //maskされてないMax→もう読めない
+                    else { maskedA = long.MaxValue; }   //maskされてないMax→もう読めない
                 }
-                async ValueTask<bool> ReadB()
+                void ReadB()
                 {
                     if (readerB.Readable())
                     {
-                        lastB = await readerB.Read();
+                        lastB = readerB.Read();
                         maskedB = lastB & SortMask;
-                        return true;
                     }
-                    else { maskedB = long.MaxValue; return false; }   //maskされてないMax→もう読めない
+                    else { maskedB = long.MaxValue; }   //maskされてないMax→もう読めない
                 }
 
-                await ReadA(); await ReadB();
+                ReadA(); ReadB();
                 do
                 {
                     if (maskedA < maskedB)
                     {
-                        await writer.Write(lastA);
-                        await ReadA();
+                        writer.Write(lastA);
+                        ReadA();
                         restA--;
                     }
                     else
                     {
-                        await writer.Write(lastB);
-                        await ReadB();
+                        writer.Write(lastB);
+                        ReadB();
                         restB--;
                     }
                 } while (restA > 0 || restB > 0);
@@ -168,42 +166,50 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongReader : IDisposable
     {
-        const int BufSize = 0x100000;
+        const int BufSize = 0x80000;
 
         FileStream file;
         public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
 
-        byte[] buf = new byte[BufSize];
-        int bufActualSize;    //bufに実際に入っているバイト数
-        int bufCursor;  //bufの読み込み位置
+        byte[] Buf = new byte[BufSize];
+        int ActualBufSize;
+        int BufCursor;  //bufの読み込み位置
+        byte[] NextBuf = new byte[BufSize];
+        Task<int> FillNextBufTask;
 
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
             Length = file.Length;
-            FillBuffer().Wait();
+            FillNextBuf();
         }
 
-        ///<summary>必要ならbufを更新する</summary>
-        async Task FillBuffer()
+        void FillNextBuf() { FillNextBufTask = file.ReadAsync(NextBuf, 0, NextBuf.Length); }
+        void ChangeBufAuto()
         {
-            if (bufActualSize <= bufCursor)
+            if (BufCursor >= ActualBufSize)
             {
-                bufActualSize = await file.ReadAsync(buf, 0, BufSize).ConfigureAwait(false);
-                bufCursor = 0;
+                //読み込みが終わってなかったらここで待機される
+                ActualBufSize = FillNextBufTask.Result;
+
+                byte[] swap = Buf;
+                Buf = NextBuf;
+                NextBuf = swap;
+                BufCursor = 0;
+                FillNextBuf();
             }
         }
 
         public bool Readable() => Position < Length;
-        public async ValueTask<long> Read()
+        public long Read()
         {
             if(!Readable()) { throw new InvalidOperationException("EOF"); }
-            long ret = BitConverter.ToInt64(buf, bufCursor);
+            long ret = BitConverter.ToInt64(Buf, BufCursor);
             Position += sizeof(long);
-            bufCursor += sizeof(long);
-            await FillBuffer();
+            BufCursor += sizeof(long);
+            ChangeBufAuto();
             return ret;
         }
 
@@ -211,49 +217,54 @@ namespace twihash
         {
             file.Dispose();
             Position = long.MaxValue;
-            bufCursor = int.MaxValue;
+            BufCursor = int.MaxValue;
         }
     }
 
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongWriter : IDisposable
     {
-        const int BufSize = 0x100000;
-        FileStream file;
-        byte[] buf = new byte[BufSize];
-        int Cursor;
+        const int BufSize = 0x80000;
+        readonly FileStream file;
+        byte[] Buf = new byte[BufSize];
+        int BufCursor;
+        byte[] WriteBuf = new byte[BufSize];
+        Task ActualWriteTask;
 
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
         }
 
-        public async ValueTask<int> Write(long Value)
+        public void Write(long Value)
         {
             LongToBytes Bytes = new LongToBytes() { Long = Value };
-            buf[Cursor] = Bytes.Byte0;
-            buf[Cursor + 1] = Bytes.Byte1;
-            buf[Cursor + 2] = Bytes.Byte2;
-            buf[Cursor + 3] = Bytes.Byte3;
-            buf[Cursor + 4] = Bytes.Byte4;
-            buf[Cursor + 5] = Bytes.Byte5;
-            buf[Cursor + 6] = Bytes.Byte6;
-            buf[Cursor + 7] = Bytes.Byte7;
-            Cursor += sizeof(long);
-            if (Cursor == BufSize) { await ActualWrite().ConfigureAwait(false); }
-            return Cursor;  //ValueTaskを使いたいだけ
+            Buf[BufCursor] = Bytes.Byte0;
+            Buf[BufCursor + 1] = Bytes.Byte1;
+            Buf[BufCursor + 2] = Bytes.Byte2;
+            Buf[BufCursor + 3] = Bytes.Byte3;
+            Buf[BufCursor + 4] = Bytes.Byte4;
+            Buf[BufCursor + 5] = Bytes.Byte5;
+            Buf[BufCursor + 6] = Bytes.Byte6;
+            Buf[BufCursor + 7] = Bytes.Byte7;
+            BufCursor += sizeof(long);
+            if(BufCursor >= BufSize) { ActualWrite(); }
         }
 
-        async Task ActualWrite()
+        void ActualWrite()
         {
-            int WriteSize = Cursor;
-            Cursor = 0;
-            await file.WriteAsync(buf, 0, WriteSize).ConfigureAwait(false);
+            ActualWriteTask?.Wait();
+            byte[] swap = Buf;
+            Buf = WriteBuf;
+            WriteBuf = swap;
+            ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
+            BufCursor = 0;
         }
-
+       
         public void Dispose()
         {
-            ActualWrite().Wait();
+            ActualWrite();
+            ActualWriteTask.Wait();
             file.Dispose();
         }
 
@@ -286,16 +297,16 @@ namespace twihash
     ///<summary>DBから読んだ全Hashをファイルに書くやつ</summary>
     class AllHashFileWriter : IDisposable
     {
-        BufferedLongWriter writer;
+        readonly BufferedLongWriter writer;
 
         public AllHashFileWriter()
         {
             writer = new BufferedLongWriter(SortFile.AllHashFilePath);
         }
         
-        public async Task Write(IEnumerable<long> Values)
+        public void Write(IEnumerable<long> Values)
         {
-            foreach(long v in Values) { await writer.Write(v); }
+            foreach(long v in Values) { writer.Write(v); }
         }
 
         public void Dispose()
@@ -307,7 +318,7 @@ namespace twihash
     ///<summary>ブロックソート済みのファイルを必要な単位で読み出すやつ</summary>
     class SortedFileReader : IDisposable
     {
-        BufferedLongReader reader;
+        readonly BufferedLongReader reader;
         long FullMask;
 
         public SortedFileReader(string FilePath, long FullMask)
@@ -318,30 +329,31 @@ namespace twihash
 
         long ExtraReadHash;
         bool HasExtraHash;
+        readonly List<long> TempList = new List<long>();
 
-        ///<summary>ブロックソートで一致する範囲だけ読み出す</summary>
-        public async ValueTask<long[]> ReadBlock()
+        ///<summary>ブロックソートで一致する範囲だけ読み出す
+        ///長さ2以上になるやつだけ返す</summary>
+        public long[] ReadBlock()
         {
-            if(!reader.Readable()) { return null; }
-            List<long> ret = new List<long>();
             long TempHash;
-            if (HasExtraHash) { TempHash = ExtraReadHash; HasExtraHash = false; } else { TempHash = await reader.Read(); }
-            ret.Add(TempHash);
-            //MaskしたやつがMaskedKeyと一致しなかったら終了
-            long MaskedKey = TempHash & FullMask;
-            
-            while((TempHash & FullMask) == MaskedKey && reader.Readable())
+            do
             {
-                TempHash = await reader.Read();
-                ret.Add(TempHash);
-            }
-            if((TempHash & FullMask) != MaskedKey)
-            {
-                ret.RemoveAt(ret.Count - 1);
-                //1個余計に読んだので記録しておく
-                ExtraReadHash = TempHash; HasExtraHash = true;
-            }
-            return ret.ToArray();
+                TempList.Clear();
+                if (HasExtraHash) { TempHash = ExtraReadHash; HasExtraHash = false; }
+                else if (reader.Readable()) { TempHash = reader.Read(); }
+                else { return null; }
+                TempList.Add(TempHash);
+                //MaskしたやつがMaskedKeyと一致しなかったら終了
+                long MaskedKey = TempHash & FullMask;
+                while (reader.Readable())
+                {
+                    TempHash = reader.Read();
+                    if ((TempHash & FullMask) == MaskedKey) { TempList.Add(TempHash); }
+                    //1個余計に読んだので記録しておく
+                    else { ExtraReadHash = TempHash; HasExtraHash = true; break; }
+                }
+            } while (TempList.Count < 2);
+            return TempList.ToArray();
         }
 
         public void Dispose()

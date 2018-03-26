@@ -18,6 +18,7 @@ namespace twidownstream
 
             twitenlib.Config config = twitenlib.Config.Instance;
             ThreadPool.GetMaxThreads(out int _, out int CompletionThreads);
+            //結局Minを超えると死ぬのでMinを大きくしておくしかない
             ThreadPool.SetMinThreads(32000, CompletionThreads);
             ThreadPool.SetMaxThreads(32000, CompletionThreads);
             await Task.Delay(10000);
@@ -41,6 +42,8 @@ namespace twidownstream
                 GC.Collect();
                 sw.Stop();
                 if (sw.ElapsedMilliseconds < 60000) { await Task.Delay((int)(60000 - sw.ElapsedMilliseconds)); }
+                //↓再読み込みしても一部しか反映されないけどね
+                config.Reload();
                 await manager.AddAll();
             }
         }
