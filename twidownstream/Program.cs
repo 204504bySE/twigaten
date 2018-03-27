@@ -17,10 +17,13 @@ namespace twidownstream
             ServicePointManager.EnableDnsRoundRobin = true;
 
             twitenlib.Config config = twitenlib.Config.Instance;
-            ThreadPool.GetMaxThreads(out int _, out int CompletionThreads);
             //結局Minを超えると死ぬのでMinを大きくしておくしかない
-            ThreadPool.SetMinThreads(32000, CompletionThreads);
-            ThreadPool.SetMaxThreads(32000, CompletionThreads);
+            {
+                ThreadPool.GetMaxThreads(out int MaxThreads, out int CompletionThreads);
+                ThreadPool.SetMinThreads(MaxThreads, CompletionThreads);
+                ThreadPool.SetMaxThreads(MaxThreads, CompletionThreads);
+                Console.WriteLine("{0} App: ThreadPool: {1}, {2}", DateTime.Now, MaxThreads, CompletionThreads);
+            }
             await Task.Delay(10000);
 
             if (args.Length >= 1 && args[0] == "/REST")

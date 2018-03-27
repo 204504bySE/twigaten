@@ -227,7 +227,7 @@ namespace twidownstream
             TweetTime.Add(LastStreamingMessageTime);
             StreamConnected = true;
             StreamSubscriber = Token.Streaming.UserAsObservable()
-                //.ObserveOn(Scheduler.Immediate)
+                .ObserveOn(Scheduler.Immediate)
                 //.SubscribeOn(Scheduler.CurrentThread)
                 .Subscribe(
                     async (StreamingMessage m) =>
