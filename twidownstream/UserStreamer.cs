@@ -14,15 +14,14 @@ namespace twidownstream
     class UserStreamer : IDisposable
     {
         // 各TokenのUserstreamを受信したり仕分けたりする
-
-        public bool StreamConnected { get; private set; }
+        
         public Tokens Token { get; }
         public bool NeedRestMyTweet { get; set; }   //次のconnect時にRESTでツイートを取得する
         public bool ConnectWaiting { get; set; }    //UserStreamerManager.ConnectBlockに入っているかどうか
         IDisposable StreamSubscriber;
-        DateTimeOffset LastStreamingMessageTime = DateTimeOffset.Now;
         long LastReceivedTweetId;
         readonly TweetTimeList TweetTime = new TweetTimeList();
+        DateTimeOffset LastStreamingMessageTime;
 
         //Singleton
         static readonly Config config = Config.Instance;
@@ -39,7 +38,6 @@ namespace twidownstream
         public void Dispose()
         {
             DisconnectStream();
-            StreamConnected = false;
             GC.SuppressFinalize(this);
         }
 
@@ -164,7 +162,12 @@ namespace twidownstream
         }
         public NeedStreamResult NeedStreamSpeed()
         {
-            if(TweetTime.Count < 2) { return NeedStreamResult.RestOnly; }
+            //User stream接続を失った可能性があるときもRestOnly→切断させる
+            if (StreamSubscriber != null 
+                && (DateTimeOffset.Now - LastStreamingMessageTime).TotalSeconds > config.crawl.StreamSpeedSeconds)
+            { return NeedStreamResult.RestOnly; }
+            //タイムラインを取得してない場合は必ずこれ
+            if (TweetTime.Count < 2) { return NeedStreamResult.RestOnly; }
             int TotalSeconds = (int)((TweetTime.Max - TweetTime.Min).TotalSeconds);
             if (TotalSeconds < config.crawl.StreamSpeedSeconds) { return NeedStreamResult.Stream; }
             //ヒステリシスを用意する
@@ -208,13 +211,13 @@ namespace twidownstream
                     }
                     else
                     {
-                        Console.WriteLine("{0} {1}: {2} {3}", DateTime.Now, Token.UserId, ex.Status, ex.Message);
+                        //Console.WriteLine("{0} {1}: {2} {3}", DateTime.Now, Token.UserId, ex.Status, ex.Message);
                         return TokenStatus.Failure;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e);
+                    //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e);
                     return TokenStatus.Failure;
                 }
             }
@@ -224,23 +227,20 @@ namespace twidownstream
         {
             DisconnectStream();
             LastStreamingMessageTime = DateTimeOffset.Now;
-            TweetTime.Add(LastStreamingMessageTime);
-            StreamConnected = true;
             StreamSubscriber = Token.Streaming.UserAsObservable()
                 .ObserveOn(Scheduler.Immediate)
-                //.SubscribeOn(Scheduler.CurrentThread)
+                //.SubscribeOn(Scheduler.Immediate)
                 .Subscribe(
                     async (StreamingMessage m) =>
                     {
-                        DateTimeOffset now = DateTimeOffset.Now;
-                        LastStreamingMessageTime = now;
+                        LastStreamingMessageTime = DateTimeOffset.Now;
                         if (m.Type == MessageType.Create)
                         {
-                            LastReceivedTweetId = (m as StatusMessage).Status.Id;
-                            TweetTime.Add(now);
-                        
+                            StatusMessage mm = m as StatusMessage;
+                            LastReceivedTweetId = mm.Status.Id;
+                            TweetTime.Add(mm.Timestamp);                        
                         }
-                        await HandleStreamingMessage(m);
+                        await HandleStreamingMessage(m).ConfigureAwait(false);
                     },
                     (Exception e) =>
                     {
@@ -275,7 +275,7 @@ namespace twidownstream
                 //Console.WriteLine("{0} {1}: Handling {2} RESTed timeline", DateTime.Now, Token.UserId, Timeline.Count);
                 foreach(Status s in Timeline)
                 {
-                    await UserStreamerStatic.HandleTweetRest(s, Token);
+                    UserStreamerStatic.HandleTweetRest(s, Token);
                     if(s.Id > LastReceivedTweetId) { LastReceivedTweetId = s.Id; }
                 }
                 TweetTime.AddRange(Timeline.Select(s => s.CreatedAt).ToArray());
@@ -311,13 +311,13 @@ namespace twidownstream
                     }
                     else
                     {
-                        Console.WriteLine("{0} {1}: {2} {3}", DateTime.Now, Token.UserId, ex.Status, ex.Message);
+                        //Console.WriteLine("{0} {1}: {2} {3}", DateTime.Now, Token.UserId, ex.Status, ex.Message);
                         return TokenStatus.Failure;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e);
+                    //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e);
                     return TokenStatus.Failure;
                 }
             }
@@ -333,7 +333,7 @@ namespace twidownstream
                 //Console.WriteLine("{0} {1}: Handling {2} RESTed tweets", DateTime.Now, Token.UserId, Tweets.Count);
                 foreach (Status s in Tweets)
                 {   //ここでRESTをDBに突っ込む
-                    await UserStreamerStatic.HandleTweetRest(s, Token);
+                    UserStreamerStatic.HandleTweetRest(s, Token);
                 }
                 //Console.WriteLine("{0} {1}: REST tweets success", DateTime.Now, Token.UserId);
             }
@@ -370,7 +370,7 @@ namespace twidownstream
             switch (x.Type)
             {
                 case MessageType.Create:
-                    await UserStreamerStatic.HandleStatusMessage((x as StatusMessage).Status, Token);
+                    UserStreamerStatic.HandleStatusMessage((x as StatusMessage).Status, Token);
                     break;
                 case MessageType.DeleteStatus:
                     await UserStreamerStatic.HandleDeleteMessage(x as DeleteMessage);
@@ -410,7 +410,7 @@ namespace twidownstream
                     if (x.Source.Id == Token.UserId || x.Target.Id == Token.UserId) { await db.StoreEvents(x); }
                     break;
                 case EventCode.UserUpdate:
-                    if (x.Source.Id == Token.UserId) { await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync()); }
+                    if (x.Source.Id == Token.UserId) { try { await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync()); } catch { } }
                     break;
             }
         }

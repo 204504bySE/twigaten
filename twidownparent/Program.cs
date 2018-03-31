@@ -68,7 +68,7 @@ namespace twidownparent
                 do
                 {
                     //LockerHandler.CheckAndStart();
-                    await Task.Delay(1000);
+                    await Task.Delay(10000);
                 } while (LoopWatch.ElapsedMilliseconds < 60000);
                 LoopWatch.Stop();
             }

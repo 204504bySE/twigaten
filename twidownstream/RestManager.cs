@@ -28,7 +28,6 @@ namespace twidownstream
             Thread.CurrentThread.Priority = ThreadPriority.Highest;
             while (true)
             {
-                StreamerLocker.Unlock();
                 Counter.PrintReset();
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                 GC.Collect();

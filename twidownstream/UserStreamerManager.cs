@@ -34,7 +34,6 @@ namespace twidownstream
         {
             Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess);
             Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer);
-            SetMaxConnections(false, token.Length);
             //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
             foreach (Tokens t in tokenRest)
             {            
@@ -44,7 +43,6 @@ namespace twidownstream
             {
                 Add(t);
             }
-            SetMaxConnections();
         }
 
         bool Add(Tokens t)
@@ -65,10 +63,25 @@ namespace twidownstream
 
         public int Count { get { return Streamers.Count; } }
 
-        ActionBlock<UserStreamer> ConnectBlock;
-        void InitConnectBlock()
+        async Task RevokeRetry(UserStreamer Streamer)
         {
-            ConnectBlock = new ActionBlock<UserStreamer>(
+            if (RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
+            {
+                await db.DeleteToken(Streamer.Token.UserId);
+                RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte z);
+                RemoveStreamer(Streamer);
+            }
+            else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
+        }
+
+        //これを定期的に呼んで再接続やFriendの取得をやらせる
+        //StreamerLockerのロック解除もここでやる
+        public async ValueTask<int> ConnectStreamers()
+        {
+            if (!await db.ExistThisPid()) { Environment.Exit(1); }
+
+            int ActiveStreamers = 0;  //再接続が不要だったやつの数
+            ActionBlock<UserStreamer> ConnectBlock = new ActionBlock<UserStreamer>(
             async (Streamer) =>
             {
                 try
@@ -96,8 +109,9 @@ namespace twidownstream
 
                     //Streamに接続したりRESTだけにしたり
                     if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
-                    {   
-                        if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); }
+                    {
+                        if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); return; }
+                        else { Interlocked.Increment(ref ActiveStreamers); }
                     }
                     else
                     {
@@ -110,7 +124,7 @@ namespace twidownstream
                                 await RevokeRetry(Streamer); break;
                             default:
                                 UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
-                                if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); }
+                                if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Interlocked.Increment(ref ActiveStreamers); }
                                 //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
                                 if (Streamer.NeedRestMyTweet)
                                 {
@@ -133,27 +147,8 @@ namespace twidownstream
                 SingleProducerConstrained = true,
             });
 
-            async Task RevokeRetry(UserStreamer Streamer)
-            {
-                if (RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
-                {
-                    await db.DeleteToken(Streamer.Token.UserId);
-                    RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte z);
-                    RemoveStreamer(Streamer);
-                }
-                else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
-            }
-        }
+            SetMaxConnections(0);
 
-        //これを定期的に呼んで再接続やFriendの取得をやらせる
-        //StreamerLockerのロック解除もここでやる
-        public async ValueTask<int> ConnectStreamers()
-        {
-            if (!await db.ExistThisPid()) { Environment.Exit(1); }
-
-            int ActiveStreamers = 0;  //再接続が不要だったやつの数
-            StreamerLocker.Unlock();
-            InitConnectBlock();
             Stopwatch sw = new Stopwatch();
             sw.Start();
             CountUnlock();
@@ -164,10 +159,9 @@ namespace twidownstream
                     s.Value.ConnectWaiting = true;
                     await ConnectBlock.SendAsync(s.Value);
                 }
-                if (s.Value.NeedConnect() == UserStreamer.NeedConnectResult.StreamConnected) { ActiveStreamers++; }
-
                 do
                 {
+                    SetMaxConnections(ActiveStreamers);
                     if (sw.ElapsedMilliseconds > 60000)
                     {   //ここでGCする #ウンコード
                         sw.Restart();
@@ -188,7 +182,6 @@ namespace twidownstream
             {
                 Counter.PrintReset();
                 UserStreamerStatic.ShowCount();
-                StreamerLocker.Unlock();
             }
         }
 
@@ -197,17 +190,22 @@ namespace twidownstream
         {
             Streamer.Dispose();
             Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);  //つまり死んだStreamerは除外される
-            SetMaxConnections(true);
             Console.WriteLine("{0} {1}: Streamer removed", DateTime.Now, Streamer.Token.UserId);
         }
 
-        private void SetMaxConnections(bool Force = false, int basecount = 0)
+        private void SetMaxConnections(int basecount, bool Force = false)
         {
-            int MaxConnections = Math.Max(basecount, Streamers.Count) + config.crawl.DefaultConnectionThreads;
-            if (Force || ServicePointManager.DefaultConnectionLimit < MaxConnections)
+            int max = basecount
+                + (config.crawl.MediaDownloadThreads << 1)
+                + (config.crawl.ReconnectThreads << 1)
+                + config.crawl.MaxDBConnections
+                + config.crawl.DefaultConnectionThreads;
+            if (Force || ServicePointManager.DefaultConnectionLimit < max)
             {
-                ServicePointManager.DefaultConnectionLimit = MaxConnections;
+                ServicePointManager.DefaultConnectionLimit = max;
             }
+            ThreadPool.GetMinThreads(out int w, out int c);
+            if (Force || w < max) { ThreadPool.SetMinThreads(max, c); }
         }
     }
 }

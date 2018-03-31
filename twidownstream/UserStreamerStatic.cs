@@ -27,7 +27,6 @@ namespace twidownstream
         static UserStreamerStatic()
         {
             DeleteTweetBatch.LinkTo(DeleteTweetBlock, new DataflowLinkOptions { PropagateCompletion = true });
-            TweetDistinctBlock.LinkTo(HandleTweetBlock, new DataflowLinkOptions { PropagateCompletion = true });
             Udp.Client.SendTimeout = 1000;
             Udp.Client.ReceiveTimeout = 1000;
         }
@@ -49,16 +48,16 @@ namespace twidownstream
 
         //ツイートをDBに保存したりRTを先に保存したりする
         //アイコンを適宜保存する
-        public static async Task HandleTweetRest(Status x, Tokens t)   //REST用
+        public static void HandleTweetRest(Status x, Tokens t)   //REST用
         {
             if ((x.ExtendedEntities ?? x.Entities)?.Media == null) { return; }   //画像なしツイートを捨てる
-            await TweetDistinctBlock.SendAsync((x, t, false));
+            TweetDistinctBlock.Post((x, t, false));
         }
 
-        public static async Task HandleStatusMessage(Status x, Tokens t)
+        public static void HandleStatusMessage(Status x, Tokens t)
         {
             if ((x.ExtendedEntities ?? x.Entities)?.Media != null)  //画像なしツイートを捨てる
-            { await TweetDistinctBlock.SendAsync((x, t, true)); }
+            { TweetDistinctBlock.Post((x, t, true)); }
         }
 
         public static async Task HandleDeleteMessage(DeleteMessage x)
@@ -67,9 +66,9 @@ namespace twidownstream
             await DeleteTweetBatch.SendAsync(x.Id);
         }
 
-
-
+        
         static readonly RemoveOldSet<long> TweetLock = new RemoveOldSet<long>(config.crawl.TweetLockSize);
+        static readonly RemoveOldSet<long> UserLock = new RemoveOldSet<long>(config.crawl.TweetLockSize);
         static readonly UdpClient Udp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.LockerUdpPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
         static readonly IPEndPoint LockerEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.LockerUdpPort);
         static readonly Stopwatch LastTweetSw = new Stopwatch();
@@ -78,23 +77,20 @@ namespace twidownstream
             UseCookies = false,
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12
         });
-
         //static IPEndPoint GomiEndPoint;
-        static bool LockTweet(long tweet_id)
-        {
-            return TweetLock.Add(tweet_id);
-            /*
+        static async Task<bool> LockTweet(long tweet_id)
+        {            
             //雑にプロセス内でもLockしておく
             if (!TweetLock.Add(tweet_id)) { return false; }
-            if (TweetLock.Count >= config.crawl.TweetLockSize) { TweetLock.Clear(); }
-
+            
             //twidownparentでもLockを確認する リトライあり
             LastTweetSw.Restart();
             do
             {
                 try
                 {
-                    await Udp.SendAsync(BitConverter.GetBytes(tweet_id), sizeof(long), LockerEndPoint);                    
+                    await Udp.SendAsync(BitConverter.GetBytes(tweet_id), sizeof(long), LockerEndPoint);
+                    IPEndPoint GomiEndPoint = null;
                     return BitConverter.ToBoolean(Udp.Receive(ref GomiEndPoint), 0);
                 }
                 catch (Exception e)
@@ -104,47 +100,46 @@ namespace twidownstream
                 }
             } while (LastTweetSw.ElapsedMilliseconds < 10000);
             return false;   //返事が来なかったらこれ
-            */
+            
         }
 
-        static TransformBlock<(Status, Tokens, bool), (Status, Tokens, bool)?> TweetDistinctBlock
-            = new TransformBlock<(Status x, Tokens t, bool stream),(Status, Tokens, bool)?>((m) =>
+        static ActionBlock<(Status, Tokens, bool)> TweetDistinctBlock
+            = new ActionBlock<(Status x, Tokens t, bool stream)>((m) =>
             {   //ここでLockする(1スレッドなのでHashSetでおｋ
-                if (LockTweet(m.x.Id)) { return m; }
-                else { return null; }
+                if (TweetLock.Add(m.x.Id) /*await LockTweet(m.x.Id)*/)
+                {
+                    HandleTweetBlock.Post((m.x, m.t, m.stream,
+                        (m.x.User.Id is long id && UserLock.Add(id)),
+                        (m.x.RetweetedStatus?.User.Id is long rtid && UserLock.Add(rtid))
+                    ));
+                }
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = 1
             });
-        static ActionBlock<(Status, Tokens, bool)?> HandleTweetBlock = new ActionBlock<(Status x, Tokens t, bool stream)?>(async x =>
-        {   //Tokenを渡すためだけにKeyValuePairにしている #ウンコード
+        static ActionBlock<(Status, Tokens, bool, bool, bool)> HandleTweetBlock = new ActionBlock<(Status x, Tokens t, bool stream, bool storeuser, bool storertuser)>(async m =>
+        {
             //画像なしツイートは先に捨ててるのでここでは確認しない
-            if (x != null) { await HandleTweet(x.Value.x, x.Value.t, x.Value.stream); }
+            { await HandleTweet(m.x, m.t, m.stream, m.storeuser, m.storertuser); }
         }, new ExecutionDataflowBlockOptions()
         {
             MaxDegreeOfParallelism = Math.Max(Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections), config.crawl.MediaDownloadThreads), //一応これで
             SingleProducerConstrained = true
         });
 
-        static async Task HandleTweet(Status x, Tokens t, bool stream)    //stream(=true)からのツイートならふぁぼRT数を上書きする
+        static async Task HandleTweet(Status x, Tokens t, bool stream, bool storeuser, bool storertuser)    //stream(=true)からのツイートならふぁぼRT数を上書きする
         {
             if ((x.ExtendedEntities ?? x.Entities)?.Media == null) { return; } //画像なしツイートを捨てる
             //RTを先にやる(キー制約)
-            if (x.RetweetedStatus != null) { await HandleTweet(x.RetweetedStatus, t, stream); }
-            if (StreamerLocker.LockUser(x.User.Id)) { await db.StoreUser(x, await DownloadStoreProfileImage(x), stream); }
-            if (stream) { Counter.TweetToStoreStream.Increment(); }
-            else { Counter.TweetToStoreRest.Increment(); }
+            if (x.RetweetedStatus != null) { await HandleTweet(x.RetweetedStatus, t, stream, storertuser, false); }
+            if (storeuser) { await db.StoreUser(x, await DownloadStoreProfileImage(x), stream); }
+            if (stream) { Counter.TweetToStoreStream.Increment(); } else { Counter.TweetToStoreRest.Increment(); }
             int r;
             if ((r = await db.StoreTweet(x, stream)) >= 0)
             {
-                if (r > 0)
-                {
-                    if (stream) { Counter.TweetStoredStream.Increment(); }
-                    else { Counter.TweetStoredRest.Increment(); }
-                }
-                if (x.RetweetedStatus == null) { await DownloadStoreMedia(x, t); }
+                if (r > 0) { if (stream) { Counter.TweetStoredStream.Increment(); } else { Counter.TweetStoredRest.Increment(); } }
+                if (x.RetweetedStatus == null) { DownloadStoreMedia(x, t); }
             }
-            //StreamerLocker.UnlockTweet(x.Id);  //Lockは事前にやっておくこと
         }
 
         static async ValueTask<bool> DownloadStoreProfileImage(Status x)
@@ -156,7 +151,7 @@ namespace twidownstream
             if (x.User.Id == null) { return false; }
             string ProfileImageUrl = x.User.ProfileImageUrlHttps ?? x.User.ProfileImageUrl;
             DBHandler.ProfileImageInfo d = await db.NeedtoDownloadProfileImage(x.User.Id.Value, ProfileImageUrl);
-            if (!d.NeedDownload || !StreamerLocker.LockProfileImage((long)x.User.Id)) { return false; }
+            if (!d.NeedDownload) { return false; }
 
             //新しいアイコンの保存先 卵アイコンは'_'をつけただけの名前で保存するお
             string LocalPath = x.User.IsDefaultProfileImage ?
@@ -204,30 +199,28 @@ namespace twidownstream
             return DownloadOK;
         }
 
-        static ActionBlock<KeyValuePair<Status, Tokens>> DownloadStoreMediaBlock = new ActionBlock<KeyValuePair<Status, Tokens>>(async a =>
+        static ActionBlock<(Status, Tokens)> DownloadStoreMediaBlock = new ActionBlock<(Status x, Tokens t)>(async a =>
         {
-            Status x = a.Key;
-            Tokens t = a.Value;
             Lazy<HashSet<long>> RestId = new Lazy<HashSet<long>>();   //同じツイートを何度も処理したくない
-            foreach (MediaEntity m in x.ExtendedEntities.Media ?? x.Entities.Media)
+            foreach (MediaEntity m in a.x.ExtendedEntities.Media ?? a.x.Entities.Media)
             {
                 Counter.MediaTotal.Increment();
 
                 //URLぶち抜き転載の場合はここでツイートをダウンロード(すでにあればキャンセルされる
                 //x.Idのツイートのダウンロード失敗については何もしない(成功したツイートのみPostするべき
-                bool OtherSourceTweet = m.SourceStatusId.HasValue && m.SourceStatusId.Value != x.Id;    //URLぶち抜きならtrue
+                bool OtherSourceTweet = m.SourceStatusId.HasValue && m.SourceStatusId.Value != a.x.Id;    //URLぶち抜きならtrue
                 switch (await db.ExistMedia_source_tweet_id(m.Id))
                 {
                     case true:
-                        if (OtherSourceTweet) { await db.Storetweet_media(x.Id, m.Id); }
+                        if (OtherSourceTweet) { await db.Storetweet_media(a.x.Id, m.Id); }
                         continue;
                     case null:
-                        if (OtherSourceTweet && RestId.Value.Add(x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, t); }
-                        await db.Storetweet_media(x.Id, m.Id);
-                        await db.UpdateMedia_source_tweet_id(m, x);
+                        if (OtherSourceTweet && RestId.Value.Add(a.x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, a.t); }
+                        await db.Storetweet_media(a.x.Id, m.Id);
+                        await db.UpdateMedia_source_tweet_id(m, a.x);
                         continue;
                     case false:
-                        if (OtherSourceTweet && RestId.Value.Add(x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, t); }    //コピペつらい
+                        if (OtherSourceTweet && RestId.Value.Add(a.x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, a.t); }    //コピペつらい
                         break;   //画像の情報がないときだけダウンロードする
                 }
                 string MediaUrl = m.MediaUrlHttps ?? m.MediaUrl;
@@ -240,14 +233,14 @@ namespace twidownstream
                     {
                         using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, uri))
                         {
-                            req.Headers.Referrer = new Uri(StatusUrl(x));
+                            req.Headers.Referrer = new Uri(StatusUrl(a.x));
                             using (HttpResponseMessage res = await Http.SendAsync(req))
                             {
                                 if (res.IsSuccessStatusCode)
                                 {
                                     byte[] mem = await res.Content.ReadAsByteArrayAsync();
                                     long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl));
-                                    if (dcthash != null && (await db.StoreMedia(m, x, (long)dcthash)) > 0)
+                                    if (dcthash != null && (await db.StoreMedia(m, a.x, (long)dcthash)) > 0)
                                     {
                                         using (FileStream file = File.Create(LocalPaththumb))
                                         {
@@ -275,13 +268,13 @@ namespace twidownstream
             MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads
         });
 
-        public static Task DownloadStoreMedia(Status x, Tokens t)
+        public static void DownloadStoreMedia(Status x, Tokens t)
         {
             if (x.RetweetedStatus != null)
             {   //そもそもRTに対してこれを呼ぶべきではない
-                return DownloadStoreMedia(x.RetweetedStatus, t);
+                DownloadStoreMedia(x.RetweetedStatus, t);
             }
-            return DownloadStoreMediaBlock.SendAsync(new KeyValuePair<Status, Tokens>(x, t));
+            else { DownloadStoreMediaBlock.Post((x, t)); }
         }
 
         //API制限対策用
@@ -297,7 +290,7 @@ namespace twidownstream
                 if (await db.ExistTweet(StatusId)) { return; }
                 var res = await Token.Statuses.LookupAsync(id => StatusId, include_entities => true, tweet_mode => TweetMode.Extended);
                 if (res.RateLimit.Remaining < 1) { OneTweetReset[Token] = res.RateLimit.Reset.AddMinutes(1); }  //とりあえず1分延長奴
-                await HandleTweet(res.First(), Token, true);
+                await HandleTweet(res.First(), Token, true, true, true);
             }
             catch { Console.WriteLine("{0} {1} REST Tweet failed: {2}", DateTime.Now, Token.UserId, StatusId); return; }
             //finally { StreamerLocker.UnlockTweet(StatusId); }
@@ -317,28 +310,6 @@ namespace twidownstream
         public static string StatusUrl(Status x)
         {
             return "https://twitter.com/" + x.User.ScreenName + "/status/" + x.Id;
-        }
-
-
-    }
-    //ツイートの処理を調停する感じの奴
-    public static class StreamerLocker
-    {
-        //storeuser用
-        //UnlockUser()はない Unlock()で処理する
-        static ConcurrentDictionary<long, byte> LockedUsers = new ConcurrentDictionary<long, byte>();
-        public static bool LockUser(long? Id) { return Id != null && LockedUsers.TryAdd((long)Id, 0); }
-
-        //DownloadProfileImage用
-        static ConcurrentDictionary<long, byte> LockedProfileImages = new ConcurrentDictionary<long, byte>();
-        public static bool LockProfileImage(long Id) { return LockedProfileImages.TryAdd(Id, 0); }
-
-        //これを外から呼び出してロックを解除する
-        public static void Unlock()
-        {
-            LockedUsers.Clear();
-            LockedProfileImages.Clear();
-            //LockedTweetsClearFlag = true;
         }
     }
 
