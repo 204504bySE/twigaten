@@ -256,10 +256,10 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_def
         }
 
         public async ValueTask<int> StoreTweet(Status x, bool update)
-        //<summary>
-        //DBにツイートを入れる 先ににstoreuserしないとキー制約が
-        //もちろんRT元→RTの順で呼ばないとキー制約が
-        //</summary>
+        ///<summary>
+        ///DBにツイートを入れる 先ににstoreuserしないとキー制約が
+        ///もちろんRT元→RTの順で呼ばないとキー制約が
+        ///</summary>
         {
             if (x.Entities.Media == null) { return 0; }    //画像なしツイートは捨てる
             using (MySqlCommand cmd = new MySqlCommand())

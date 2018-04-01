@@ -55,9 +55,9 @@ namespace twihash
     //ハミング距離が一定以下のハッシュ値のペア
     public struct MediaPair
     {
-        public readonly long media0;
-        public readonly long media1;
-        public readonly sbyte hammingdistance;
+        public long media0;
+        public long media1;
+        public sbyte hammingdistance;
         public MediaPair(long _media0, long _media1, sbyte _ham)
         {
             media0 = _media0;

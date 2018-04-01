@@ -74,8 +74,7 @@ namespace twidownstream
             else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
         }
 
-        //これを定期的に呼んで再接続やFriendの取得をやらせる
-        //StreamerLockerのロック解除もここでやる
+        ///<summary>これを定期的に呼んで再接続やFriendの取得をやらせる</summary>
         public async ValueTask<int> ConnectStreamers()
         {
             if (!await db.ExistThisPid()) { Environment.Exit(1); }
@@ -151,7 +150,7 @@ namespace twidownstream
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            CountUnlock();
+            ShowCount();
             foreach (KeyValuePair<long, UserStreamer> s in Streamers.ToArray())  //ここでスナップショットを作る
             {
                 if (!s.Value.ConnectWaiting)
@@ -165,7 +164,7 @@ namespace twidownstream
                     if (sw.ElapsedMilliseconds > 60000)
                     {   //ここでGCする #ウンコード
                         sw.Restart();
-                        CountUnlock();
+                        ShowCount();
                         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                         GC.Collect();
                     }
@@ -178,15 +177,15 @@ namespace twidownstream
             return ActiveStreamers;
 
             //カウンターを表示したりいろいろ
-            void CountUnlock()
+            void ShowCount()
             {
                 Counter.PrintReset();
                 UserStreamerStatic.ShowCount();
             }
         }
 
+        ///<summary>Revokeされた後の処理</summary>
         void RemoveStreamer(UserStreamer Streamer)
-        //Revokeされた後の処理
         {
             Streamer.Dispose();
             Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);  //つまり死んだStreamerは除外される

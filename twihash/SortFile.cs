@@ -7,6 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
 using System.Runtime.InteropServices;
+using System.IO.Compression;
 
 namespace twihash
 {
@@ -168,7 +169,8 @@ namespace twihash
     {
         const int BufSize = 0x80000;
 
-        FileStream file;
+        readonly FileStream file;
+        readonly GZipStream gzip;
         public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
@@ -182,11 +184,12 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
+            gzip = new GZipStream(file, CompressionMode.Decompress);
             Length = file.Length;
             FillNextBuf();
         }
 
-        void FillNextBuf() { FillNextBufTask = file.ReadAsync(NextBuf, 0, NextBuf.Length); }
+        void FillNextBuf() { FillNextBufTask = gzip.ReadAsync(NextBuf, 0, NextBuf.Length); }
         void ChangeBufAuto()
         {
             if (BufCursor >= ActualBufSize)
@@ -215,6 +218,7 @@ namespace twihash
 
         public void Dispose()
         {
+            gzip.Dispose();
             file.Dispose();
             Position = long.MaxValue;
             BufCursor = int.MaxValue;
@@ -226,6 +230,7 @@ namespace twihash
     {
         const int BufSize = 0x80000;
         readonly FileStream file;
+        readonly GZipStream gzip;
         byte[] Buf = new byte[BufSize];
         int BufCursor;
         byte[] WriteBuf = new byte[BufSize];
@@ -234,6 +239,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
+            gzip = new GZipStream(file, CompressionLevel.Fastest);
         }
 
         public void Write(long Value)
@@ -257,7 +263,7 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
+            ActualWriteTask = gzip.WriteAsync(WriteBuf, 0, BufCursor);
             BufCursor = 0;
         }
        
@@ -265,6 +271,7 @@ namespace twihash
         {
             ActualWrite();
             ActualWriteTask.Wait();
+            gzip.Dispose();
             file.Dispose();
         }
 

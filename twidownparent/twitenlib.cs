@@ -423,7 +423,7 @@ namespace twitenlib
         HashSet<T> OldSet;
         HashSet<T> NewSet;
 
-        int MaxSize;
+        int MaxSize { get; }
         public RemoveOldSet(int MaxSize)
         {
             //各Setあたりのサイズに変換する
