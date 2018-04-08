@@ -38,7 +38,7 @@ namespace twidownstream
         public async ValueTask<int> Proceed()
         {
             Tokens[] tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
-            if (tokens.Length > 0) { Console.WriteLine("{0} App: {1} Accounts to REST", DateTime.Now, tokens.Length); }
+            if (tokens.Length > 0) { Console.WriteLine("App: {0} Accounts to REST", tokens.Length); }
             ActionBlock<Tokens> RestProcess = new ActionBlock<Tokens>(async (t) => 
             {
                 UserStreamer s = new UserStreamer(t);

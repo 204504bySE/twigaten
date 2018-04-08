@@ -58,7 +58,7 @@ NATURAL JOIN crawlprocess
             using (MySqlCommand cmd = new MySqlCommand(cmdstr))
             {
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = Selfpid;
-                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted);
+                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
             if (Table == null) { return new Tokens[0]; }
             try
@@ -89,7 +89,7 @@ NATURAL JOIN crawlprocess
 WHERE pid = @pid;"))
             {
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value =  Selfpid;
-                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted);
+                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
             if (Table == null) { return new Tokens[0]; }
             try
@@ -113,7 +113,7 @@ WHERE pid = @pid;"))
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = TRUE WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id",MySqlDbType.Int64).Value =  user_id;
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -122,7 +122,7 @@ WHERE pid = @pid;"))
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = FALSE WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -132,7 +132,7 @@ WHERE pid = @pid;"))
             using (MySqlCommand cmd = new MySqlCommand(@"DELETE FROM token WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -173,7 +173,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
                 cmd.Parameters.Add("@location", MySqlDbType.TinyText).Value = ProfileResponse.Location;
                 cmd.Parameters.Add("@description", MySqlDbType.Text).Value = ProfileResponse.Description;
 
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -195,7 +195,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT profile_image_url, updated_at, is_default_profile_image FROM user WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.AddWithValue("@user_id", user_id);
-                using (DataTable Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted))
+                using (DataTable Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                 {
                     if (Table == null) { return new ProfileImageInfo { NeedDownload = false }; }
                     if (Table.Rows.Count < 1) { return new ProfileImageInfo { NeedDownload = true }; }
@@ -239,7 +239,7 @@ location=@location, description=@description;";
 INTO user (user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description)
 VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_default_profile_image, @location, @description);";
                 }
-                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = x.User.Id; ;
+                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = x.User.Id;
                 cmd.Parameters.Add("@name", MySqlDbType.VarChar).Value = x.User.Name;
                 cmd.Parameters.Add("@screen_name", MySqlDbType.VarChar).Value = x.User.ScreenName;
                 cmd.Parameters.Add("@isprotected", MySqlDbType.Byte).Value = x.User.IsProtected;
@@ -251,15 +251,15 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_def
                 cmd.Parameters.Add("@profile_image_url", MySqlDbType.Text).Value = x.User.ProfileImageUrlHttps ?? x.User.ProfileImageUrl;
                 cmd.Parameters.Add("@is_default_profile_image", MySqlDbType.Byte).Value = x.User.IsDefaultProfileImage;
 
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
-        public async ValueTask<int> StoreTweet(Status x, bool update)
         ///<summary>
         ///DBにツイートを入れる 先ににstoreuserしないとキー制約が
         ///もちろんRT元→RTの順で呼ばないとキー制約が
         ///</summary>
+        public async ValueTask<int> StoreTweet(Status x, bool update)
         {
             if (x.Entities.Media == null) { return 0; }    //画像なしツイートは捨てる
             using (MySqlCommand cmd = new MySqlCommand())
@@ -286,7 +286,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
                 cmd.Parameters.Add("@retweet_count", MySqlDbType.Int32).Value = x.RetweetCount;
                 cmd.Parameters.Add("@favorite_count", MySqlDbType.Int32).Value = x.FavoriteCount;
 
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
         ///<summary> 消されたツイートをDBから消す 戻り値は削除に失敗したツイート Counterもここで処理する</summary>
@@ -314,7 +314,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
                         {
                             cmd.Parameters["@" + j.ToString()].Value = DeleteID[BulkUnit * i + j];
                         }
-                        int DeletedCount = await ExecuteNonQuery(cmd);
+                        int DeletedCount = await ExecuteNonQuery(cmd).ConfigureAwait(false);
                         if (DeletedCount >= 0) { Counter.TweetDeleted.Add(DeletedCount); }
                         else { foreach (long f in DeleteID.Skip(BulkUnit * i).Take(BulkUnit)) { ret.Add(f); } }
                         
@@ -329,7 +329,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
                     {
                         cmd.Parameters.Add('@' + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
                     }
-                    int DeletedCount = await ExecuteNonQuery(cmd);
+                    int DeletedCount = await ExecuteNonQuery(cmd).ConfigureAwait(false);
                     if (DeletedCount >= 0) { Counter.TweetDeleted.Add(DeletedCount); }
                     else { foreach (long f in DeleteID.Skip(BulkUnit * i)) { ret.Add(f); } }
                 }
@@ -383,7 +383,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
                 }
                 cmdList.Add(cmdtmp);
             }
-            return await ExecuteNonQuery(cmdList);
+            return await ExecuteNonQuery(cmdList).ConfigureAwait(false);
         }
 
         public async ValueTask<int> StoreBlocks(long[] x, long UserID)
@@ -422,7 +422,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
                 }
                 cmdList.Add(cmdtmp);
             }
-            return await ExecuteNonQuery(cmdList);
+            return await ExecuteNonQuery(cmdList).ConfigureAwait(false);
         }
 
         public async ValueTask<bool> ExistTweet(long tweet_id)
@@ -430,7 +430,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT COUNT(tweet_id) FROM tweet WHERE tweet_id = @tweet_id;"))
             {
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
-                return await SelectCount(cmd, IsolationLevel.ReadUncommitted) >= 1;
+                return await SelectCount(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false) >= 1;
             }
         }
 
@@ -441,7 +441,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT source_tweet_id FROM media WHERE media_id = @media_id;"))
             {
                 cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
-                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted);
+                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
             if (Table == null) { return false; }
             try
@@ -462,7 +462,7 @@ WHERE media_id = @media_id;"))
             {
                 cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
                 cmd.Parameters.Add("@source_tweet_id", MySqlDbType.Int64).Value = m.SourceStatusId ?? x.Id;
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -486,8 +486,8 @@ VALUES(@media_id, @downloaded_at)") };
             cmd[1].Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmd[1].Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            int ret = await ExecuteNonQuery(cmd) >> 1;
-            return ret + await Storetweet_media(x.Id, m.Id);
+            int ret = await ExecuteNonQuery(cmd).ConfigureAwait(false) >> 1;
+            return ret + await Storetweet_media(x.Id, m.Id).ConfigureAwait(false);
         }
 
         public async ValueTask<int> Storetweet_media(long tweet_id, long media_id)
@@ -496,7 +496,7 @@ VALUES(@media_id, @downloaded_at)") };
             {
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -526,9 +526,9 @@ VALUES(@media_id, @downloaded_at)") };
             foreach (MySqlCommand cmd in cmdList)
             {
                 cmd.Parameters.Add("@source", MySqlDbType.Int64).Value = x.Source;
-                cmd.Parameters.Add("@target", MySqlDbType.Int64).Value =  x.Target;
+                cmd.Parameters.Add("@target", MySqlDbType.Int64).Value = x.Target;
             }
-            return await ExecuteNonQuery(cmdList);
+            return await ExecuteNonQuery(cmdList).ConfigureAwait(false);
         }
 
         //MySQLが落ちてpidが消えてたら自殺したい
@@ -537,7 +537,7 @@ VALUES(@media_id, @downloaded_at)") };
             using(MySqlCommand cmd = new MySqlCommand("SELECT COUNT(*) FROM pid WHERE pid = @pid;"))
             {
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value =  Process.GetCurrentProcess().Id;
-                return await SelectCount(cmd) != 0;   //DBにアクセスできなかったときは存在することにする
+                return await SelectCount(cmd).ConfigureAwait(false) != 0;   //DBにアクセスできなかったときは存在することにする
             }
         }
     }

@@ -257,8 +257,8 @@ namespace twitenlib
                 DataTable ret;
                 using (MySqlConnection conn = NewConnection())
                 {
-                    await conn.OpenAsync();
-                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel))
+                    await conn.OpenAsync().ConfigureAwait(false);
+                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
@@ -268,7 +268,7 @@ namespace twitenlib
                             ret = new DataTable();
                             adapter.Fill(ret);
                         }
-                        await tran.CommitAsync();
+                        await tran.CommitAsync().ConfigureAwait(false);
                     }
                 }
                 return ret;
@@ -284,13 +284,13 @@ namespace twitenlib
                 long? ret;
                 using (MySqlConnection conn = NewConnection())
                 {
-                    await conn.OpenAsync();
-                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel))
+                    await conn.OpenAsync().ConfigureAwait(false);
+                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
                         ret = (await cmd.ExecuteScalarAsync().ConfigureAwait(false)) as long?;
-                        await tran.CommitAsync();
+                        await tran.CommitAsync().ConfigureAwait(false);
                     }
                 }
                 return ret ?? -1;
@@ -315,7 +315,7 @@ namespace twitenlib
                 int ret = 0;
                 using (MySqlConnection conn = NewConnection())
                 {
-                    await conn.OpenAsync();
+                    await conn.OpenAsync().ConfigureAwait(false);
                     using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                     {
                         foreach (MySqlCommand c in cmd)
@@ -324,7 +324,7 @@ namespace twitenlib
                             c.Transaction = tran;
                             ret += await c.ExecuteNonQueryAsync().ConfigureAwait(false);
                         }
-                        await tran.CommitAsync();
+                        await tran.CommitAsync().ConfigureAwait(false);
                     }
                 }
                 return ret;
@@ -473,7 +473,7 @@ namespace twitenlib
             {
                 if (p.Id != CurrentProc.Id)
                 {
-                    Console.WriteLine("{0} Another Instance of {1} is Running.", DateTime.Now, CurrentProc.ProcessName);
+                    Console.WriteLine("Another Instance of {0} is Running.", CurrentProc.ProcessName);
                     Thread.Sleep(5000);
                     Environment.Exit(1);
                 }

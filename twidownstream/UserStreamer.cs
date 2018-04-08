@@ -8,6 +8,7 @@ using System.Reactive.Concurrency;
 using CoreTweet;
 using CoreTweet.Streaming;
 using twitenlib;
+using System.Threading;
 
 namespace twidownstream
 {
@@ -51,16 +52,21 @@ namespace twidownstream
         class TweetTimeList
         {
             readonly SortedSet<DateTimeOffset> TweetTime = new SortedSet<DateTimeOffset>();
+            readonly ReaderWriterLockSlim TweetTimeLock = new ReaderWriterLockSlim();
             static readonly Config config = Config.Instance;
             int AddCount;
+
             public void Add(DateTimeOffset Time)
             {
+                TweetTimeLock.EnterWriteLock();
                 TweetTime.Add(Time);
                 AddCount++;
                 RemoveOldAndRefresh();
+                TweetTimeLock.ExitWriteLock();
             }
             public void AddRange(DateTimeOffset[] Time)
             {
+                TweetTimeLock.EnterWriteLock();
                 if (Time.Length >= config.crawl.StreamSpeedTweets)
                 {
                     TweetTime.Clear();
@@ -72,6 +78,7 @@ namespace twidownstream
                     AddCount++;
                 }
                 RemoveOldAndRefresh();
+                TweetTimeLock.ExitWriteLock();
             }
 
             void RemoveOldAndRefresh()
@@ -99,19 +106,29 @@ namespace twidownstream
             {
                 get
                 {
-                    if (TweetTime.Count > 0) { return TweetTime.Min; }
-                    else { return DateTimeOffset.Now; }
+                    TweetTimeLock.EnterReadLock();
+                    try
+                    {
+                        if (TweetTime.Count > 0) { return TweetTime.Min; }
+                        else { return DateTimeOffset.Now; }
+                    }
+                    finally { TweetTimeLock.ExitReadLock(); }
                 }
             }
             public DateTimeOffset Max
             {
                 get
                 {
-                    if (TweetTime.Count > 0) { return TweetTime.Max; }
-                    else { return DateTimeOffset.Now; }
+                    TweetTimeLock.EnterReadLock();
+                    try
+                    {
+                        if (TweetTime.Count > 0) { return TweetTime.Max; }
+                        else { return DateTimeOffset.Now; }
+                    }
+                    finally { TweetTimeLock.ExitReadLock(); }
                 }
             }
-            public int Count { get { return TweetTime.Count; } }
+            public int Count { get { TweetTimeLock.EnterReadLock(); try { return TweetTime.Count; } finally { TweetTimeLock.ExitReadLock(); } } }
         }
 
         DateTimeOffset? PostponedTime;    //ロックされたアカウントが再試行する時刻
@@ -184,7 +201,7 @@ namespace twidownstream
             try
             {
                 //Console.WriteLine("{0} {1}: Verifying token", DateTime.Now, Token.UserId);
-                await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync());
+                await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false));
                 //Console.WriteLine("{0} {1}: Token verification success", DateTime.Now, Token.UserId);
                 return TokenStatus.Success;
             }
@@ -194,7 +211,7 @@ namespace twidownstream
                 {
                     if (t.Status == HttpStatusCode.Unauthorized)
                     {
-                        Console.WriteLine("{0} {1}: VerifyCredentials Unauthorized", DateTime.Now, Token.UserId);
+                        Console.WriteLine("{0}: VerifyCredentials Unauthorized", Token.UserId);
                         return TokenStatus.Revoked;
                     }
                     else { return TokenStatus.Failure; }
@@ -206,18 +223,18 @@ namespace twidownstream
                 {
                     if (wr.StatusCode == HttpStatusCode.Unauthorized)
                     {
-                        Console.WriteLine("{0} {1}: VerifyCredentials Unauthorized", DateTime.Now, Token.UserId);
+                        Console.WriteLine("{0}: VerifyCredentials Unauthorized", Token.UserId);
                         return TokenStatus.Revoked;
                     }
                     else
                     {
-                        //Console.WriteLine("{0} {1}: {2} {3}", DateTime.Now, Token.UserId, ex.Status, ex.Message);
+                        Console.WriteLine("{0}: VerifyCredentials {1} {2}", Token.UserId, ex.Status, ex.Message);
                         return TokenStatus.Failure;
                     }
                 }
                 else
                 {
-                    //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e);
+                    Console.WriteLine("{0}: VerifyCredentials {1}",Token.UserId, e.Message);
                     return TokenStatus.Failure;
                 }
             }
@@ -228,8 +245,8 @@ namespace twidownstream
             DisconnectStream();
             LastStreamingMessageTime = DateTimeOffset.Now;
             StreamSubscriber = Token.Streaming.UserAsObservable()
+                .SubscribeOn(TaskPoolScheduler.Default)
                 .ObserveOn(Scheduler.Immediate)
-                //.SubscribeOn(Scheduler.Immediate)
                 .Subscribe(
                     async (StreamingMessage m) =>
                     {
@@ -245,7 +262,7 @@ namespace twidownstream
                     (Exception e) =>
                     {
                         DisconnectStream();
-                        //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e.Message);
+                        //Console.WriteLine("{0} {1}: RecieveStream {2}", DateTime.Now, Token.UserId, e.Message);
                     },
                     () => { DisconnectStream(); } //接続中のRevokeはこれ
                 );
@@ -264,12 +281,12 @@ namespace twidownstream
                 CoreTweet.Core.ListedResponse<Status> Timeline;
                 if (LastReceivedTweetId != 0) {
                      Timeline = await Token.Statuses.HomeTimelineAsync
-                        (count => 200, tweet_mode => TweetMode.Extended, since_id => LastReceivedTweetId);
+                        (count => 200, tweet_mode => TweetMode.Extended, since_id => LastReceivedTweetId).ConfigureAwait(false);
                 }
                 else
                 {
                     Timeline = await Token.Statuses.HomeTimelineAsync
-                        (count => 200, tweet_mode => TweetMode.Extended);
+                        (count => 200, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
                 }
 
                 //Console.WriteLine("{0} {1}: Handling {2} RESTed timeline", DateTime.Now, Token.UserId, Timeline.Count);
@@ -277,8 +294,8 @@ namespace twidownstream
                 {
                     UserStreamerStatic.HandleTweetRest(s, Token);
                     if(s.Id > LastReceivedTweetId) { LastReceivedTweetId = s.Id; }
+                    TweetTime.Add(s.CreatedAt);
                 }
-                TweetTime.AddRange(Timeline.Select(s => s.CreatedAt).ToArray());
                 if (Timeline.Count == 0) { TweetTime.Add(DateTimeOffset.Now); }
                 //Console.WriteLine("{0} {1}: REST timeline success", DateTime.Now, Token.UserId);
                 return TokenStatus.Success;
@@ -289,7 +306,7 @@ namespace twidownstream
                 {
                     if (t.Status == HttpStatusCode.Unauthorized)
                     {
-                        Console.WriteLine("{0} {1}: Unauthorized", DateTime.Now, Token.UserId);
+                        Console.WriteLine("{0}: Unauthorized", Token.UserId);
                         return TokenStatus.Revoked;
                     }
                     else { return TokenStatus.Failure; }
@@ -301,23 +318,23 @@ namespace twidownstream
                 {
                     if (wr.StatusCode == HttpStatusCode.Unauthorized)
                     {
-                        Console.WriteLine("{0} {1}: Unauthorized", DateTime.Now, Token.UserId);
+                        Console.WriteLine("{0}: Unauthorized", Token.UserId);
                         return TokenStatus.Revoked;
                     }
                     else if (wr.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        Console.WriteLine("{0} {1}: Locked", DateTime.Now, Token.UserId);
+                        Console.WriteLine("{0}: Locked", Token.UserId);
                         return TokenStatus.Locked;
                     }
                     else
                     {
-                        //Console.WriteLine("{0} {1}: {2} {3}", DateTime.Now, Token.UserId, ex.Status, ex.Message);
+                        Console.WriteLine("{0}: {1} {2}", Token.UserId, ex.Status, ex.Message);
                         return TokenStatus.Failure;
                     }
                 }
                 else
                 {
-                    //Console.WriteLine("{0} {1}: {2}", DateTime.Now, Token.UserId, e);
+                    Console.WriteLine("{0}: RecieveRestTimelineAuto {1}", Token.UserId, e.Message);
                     return TokenStatus.Failure;
                 }
             }
@@ -328,7 +345,7 @@ namespace twidownstream
             //RESTで取得してツイートをDBに突っ込む
             try
             {
-                CoreTweet.Core.ListedResponse<Status> Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, tweet_mode => TweetMode.Extended);
+                CoreTweet.Core.ListedResponse<Status> Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
 
                 //Console.WriteLine("{0} {1}: Handling {2} RESTed tweets", DateTime.Now, Token.UserId, Tweets.Count);
                 foreach (Status s in Tweets)
@@ -347,8 +364,8 @@ namespace twidownstream
         {
             try
             {
-                long[] blocks = (await Token.Blocks.IdsAsync(user_id => Token.UserId)).ToArray();
-                if (blocks != null) { await db.StoreBlocks(blocks, Token.UserId); }
+                long[] blocks = (await Token.Blocks.IdsAsync(user_id => Token.UserId).ConfigureAwait(false)).ToArray();
+                if (blocks != null) { await db.StoreBlocks(blocks, Token.UserId).ConfigureAwait(false); }
                 return blocks.Length;
             }
             catch { return -1; }
@@ -358,8 +375,8 @@ namespace twidownstream
         {
             try
             {
-                long[] friends = (await Token.Friends.IdsAsync(user_id => Token.UserId)).ToArray();
-                if (friends != null) { await db.StoreFriends(friends, Token.UserId); }
+                long[] friends = (await Token.Friends.IdsAsync(user_id => Token.UserId).ConfigureAwait(false)).ToArray();
+                if (friends != null) { await db.StoreFriends(friends, Token.UserId).ConfigureAwait(false); }
                 return friends.Length;
             }
             catch { return -1; }
@@ -373,24 +390,24 @@ namespace twidownstream
                     UserStreamerStatic.HandleStatusMessage((x as StatusMessage).Status, Token);
                     break;
                 case MessageType.DeleteStatus:
-                    await UserStreamerStatic.HandleDeleteMessage(x as DeleteMessage);
+                    UserStreamerStatic.HandleDeleteMessage(x as DeleteMessage);
                     break;
                 case MessageType.Friends:
                     //UserStream接続時に届く(10000フォロー超だと届かない)
-                    await db.StoreFriends(x as FriendsMessage, Token.UserId);
+                    await db.StoreFriends(x as FriendsMessage, Token.UserId).ConfigureAwait(false);
                     //Console.WriteLine("{0} {1}: Stream connected", DateTime.Now, Token.UserId);
                     break;
                 case MessageType.Disconnect:
                     //届かないことの方が多い
-                    Console.WriteLine("{0} {1}: DisconnectMessage({2})", DateTime.Now, Token.UserId, (x as DisconnectMessage).Code);
+                    Console.WriteLine("{0}: DisconnectMessage({1})", Token.UserId, (x as DisconnectMessage).Code);
                     break;
                 case MessageType.Event:
-                    await HandleEventMessage(x as EventMessage);
+                    await HandleEventMessage(x as EventMessage).ConfigureAwait(false);
                     break;
                 case MessageType.Warning:
                     if ((x as WarningMessage).Code == "FOLLOWS_OVER_LIMIT")
                     {
-                        if (await RestFriend() > 0) { Console.WriteLine("{0} {1}: REST friends success", DateTime.Now, Token.UserId); }
+                        if (await RestFriend().ConfigureAwait(false) > 0) { Console.WriteLine("{0}: REST friends success", Token.UserId); }
                         //Console.WriteLine("{0} {1}: Stream connected", DateTime.Now, Token.UserId);
                     }
                     break;
@@ -404,13 +421,13 @@ namespace twidownstream
                 case EventCode.Follow:
                 case EventCode.Unfollow:
                 case EventCode.Unblock:
-                    if (x.Source.Id == Token.UserId) { await db.StoreEvents(x); }
+                    if (x.Source.Id == Token.UserId) { await db.StoreEvents(x).ConfigureAwait(false); }
                     break;
                 case EventCode.Block:
-                    if (x.Source.Id == Token.UserId || x.Target.Id == Token.UserId) { await db.StoreEvents(x); }
+                    if (x.Source.Id == Token.UserId || x.Target.Id == Token.UserId) { await db.StoreEvents(x).ConfigureAwait(false); }
                     break;
                 case EventCode.UserUpdate:
-                    if (x.Source.Id == Token.UserId) { try { await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync()); } catch { } }
+                    if (x.Source.Id == Token.UserId) { try { await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false)).ConfigureAwait(false); } catch { } }
                     break;
             }
         }

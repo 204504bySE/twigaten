@@ -25,10 +25,10 @@ namespace twidown
                     };
                     Form.Add(File);
                     using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ServerUrl) { Content = Form })
-                    using (HttpResponseMessage res = await Http.SendAsync(req))
+                    using (HttpResponseMessage res = await Http.SendAsync(req).ConfigureAwait(false))
                     {
                         if (!res.IsSuccessStatusCode) { Console.WriteLine(res.StatusCode); return null; }
-                        if (long.TryParse(await res.Content.ReadAsStringAsync(), out long ret)) { return ret; }
+                        if (long.TryParse(await res.Content.ReadAsStringAsync().ConfigureAwait(false), out long ret)) { return ret; }
                         else { return null; }
                     }
                 }

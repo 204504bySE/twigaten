@@ -20,7 +20,7 @@ namespace twidownparent
             DataTable Table;
             using (MySqlCommand cmd = new MySqlCommand("SELECT user_id FROM token;"))
             {
-                Table = await SelectTable(cmd);
+                Table = await SelectTable(cmd).ConfigureAwait(false);
             }
             long[] ret = new long[Table.Rows.Count];
             for (int i = 0; i < Table.Rows.Count; i++)
@@ -34,7 +34,7 @@ namespace twidownparent
         {
             using(MySqlCommand cmd = new MySqlCommand("SELECT COUNT(user_id) FROM token;"))
             {
-                return await SelectCount(cmd, IsolationLevel.ReadUncommitted);
+                return await SelectCount(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
         }
 
@@ -45,7 +45,7 @@ namespace twidownparent
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT user_id FROM token
 WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             {
-                Table = await SelectTable(cmd);
+                Table = await SelectTable(cmd).ConfigureAwait(false);
             }
             if (Table == null) { return new long[0]; }
             long[] ret = new long[Table.Rows.Count];
@@ -63,7 +63,7 @@ WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
             cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = pid;
             cmd.Parameters.Add("@rest_needed", MySqlDbType.Byte).Value = RestMyTweet ? 2 : 0;
-            return await ExecuteNonQuery(cmd);
+            return await ExecuteNonQuery(cmd).ConfigureAwait(false);
         }
 
 
@@ -77,7 +77,7 @@ pid LEFT JOIN (SELECT pid, COUNT(user_id) as c FROM crawlprocess
 GROUP BY pid HAVING COUNT(user_id)) cp ON pid.pid = cp.pid
 ORDER BY c LIMIT 1;"))
             {
-                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted);
+                Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
             if (Table == null || Table.Rows.Count < 1
                 || (Table.Rows[0].Field<long?>(1) ?? 0) > config.crawlparent.AccountLimit) { return -1; }
@@ -90,7 +90,7 @@ ORDER BY c LIMIT 1;"))
             using (MySqlCommand cmd = new MySqlCommand(@"INSERT IGNORE INTO pid VALUES(@pid)"))
             {
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = pid;
-                return await ExecuteNonQuery(cmd);
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -99,7 +99,7 @@ ORDER BY c LIMIT 1;"))
             DataTable Table;
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT pid FROM pid;"))
             {
-                Table = await SelectTable(cmd);
+                Table = await SelectTable(cmd).ConfigureAwait(false);
             }
             if (Table == null) { return null; }
             int[] ret = new int[Table.Rows.Count];
@@ -114,14 +114,14 @@ ORDER BY c LIMIT 1;"))
         {
             using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(pid) FROM pid;"))
             {
-                return await SelectCount(cmd);
+                return await SelectCount(cmd).ConfigureAwait(false);
             }
         }
 
         public async ValueTask<int> DeleteDeadpid()
         {
             int DeadCount = 0;
-            int[] pids = await Selectpid();
+            int[] pids = await Selectpid().ConfigureAwait(false);
             if(pids == null) { return 0; }
             List<MySqlCommand> CmdList = new List<MySqlCommand>();
             foreach (int pid in pids)
@@ -135,13 +135,13 @@ ORDER BY c LIMIT 1;"))
                     CmdList.Add(Cmd);
                 }
             }
-            if (CmdList.Count > 0) { await ExecuteNonQuery(CmdList); }
+            if (CmdList.Count > 0) { await ExecuteNonQuery(CmdList).ConfigureAwait(false); }
             return DeadCount;
         }
 
         public async ValueTask<int> InitTruncate()
         {
-           return await ExecuteNonQuery(new MySqlCommand(@"DELETE FROM pid;"));
+           return await ExecuteNonQuery(new MySqlCommand(@"DELETE FROM pid;")).ConfigureAwait(false);
         }
     }
 }

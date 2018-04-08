@@ -62,14 +62,14 @@ namespace twihash
                 {
                     long[] ToSort = new long[InitialSortUnit];
                     for (int i = 0; i < InitialSortUnit; i++) { ToSort[i] = reader.Read(); }
-                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort));
+                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort)).ConfigureAwait(false);
                 }
                 int SortLastCount = (int)(reader.Length - reader.Position) / sizeof(long);
                 if (SortLastCount > 0)
                 {
                     long[] ToSortLast = new long[SortLastCount];
                     for (int i = 0; i < SortLastCount; i++) { ToSortLast[i] = reader.Read(); }
-                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast));
+                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast)).ConfigureAwait(false);
                     FileCount++;    //最後に作ったから足す
                 }
                 FirstSortBlock.Complete(); FirstSortBlock.Completion.Wait();
@@ -102,7 +102,7 @@ namespace twihash
 
                 for(int i = 0; i < FileCount >> 1; i++) { MergeSortBlock.Post(i); }
                 MergeSortBlock.Complete();
-                await MergeSortBlock.Completion;
+                await MergeSortBlock.Completion.ConfigureAwait(false);
                 FileCount >>= 1;    //ソート後のファイル数はこうなる
             }
             return SortingFilePath(step, 0);
@@ -170,7 +170,7 @@ namespace twihash
         const int BufSize = 0x80000;
 
         readonly FileStream file;
-        readonly GZipStream gzip;
+        //readonly DeflateStream gzip;
         public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
@@ -184,12 +184,12 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            gzip = new GZipStream(file, CompressionMode.Decompress);
+            //gzip = new DeflateStream(file, CompressionMode.Decompress);
             Length = file.Length;
             FillNextBuf();
         }
 
-        void FillNextBuf() { FillNextBufTask = gzip.ReadAsync(NextBuf, 0, NextBuf.Length); }
+        void FillNextBuf() { FillNextBufTask = file.ReadAsync(NextBuf, 0, NextBuf.Length); }
         void ChangeBufAuto()
         {
             if (BufCursor >= ActualBufSize)
@@ -218,7 +218,7 @@ namespace twihash
 
         public void Dispose()
         {
-            gzip.Dispose();
+            //gzip.Dispose();
             file.Dispose();
             Position = long.MaxValue;
             BufCursor = int.MaxValue;
@@ -230,7 +230,7 @@ namespace twihash
     {
         const int BufSize = 0x80000;
         readonly FileStream file;
-        readonly GZipStream gzip;
+        //readonly DeflateStream gzip;
         byte[] Buf = new byte[BufSize];
         int BufCursor;
         byte[] WriteBuf = new byte[BufSize];
@@ -239,7 +239,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            gzip = new GZipStream(file, CompressionLevel.Fastest);
+            //gzip = new DeflateStream(file, CompressionLevel.Fastest);
         }
 
         public void Write(long Value)
@@ -263,7 +263,7 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            ActualWriteTask = gzip.WriteAsync(WriteBuf, 0, BufCursor);
+            ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
             BufCursor = 0;
         }
        
@@ -271,7 +271,7 @@ namespace twihash
         {
             ActualWrite();
             ActualWriteTask.Wait();
-            gzip.Dispose();
+            //gzip.Dispose();
             file.Dispose();
         }
 

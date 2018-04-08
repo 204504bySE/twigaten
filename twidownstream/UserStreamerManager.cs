@@ -26,14 +26,14 @@ namespace twidownstream
         public static async ValueTask<UserStreamerManager> Create()
         {
             UserStreamerManager ret = new UserStreamerManager();
-            await ret.AddAll();
+            await ret.AddAll().ConfigureAwait(false);
             return ret;
         }
 
         public async Task AddAll()
         {
-            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess);
-            Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer);
+            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess).ConfigureAwait(false);
+            Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer).ConfigureAwait(false);
             //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
             foreach (Tokens t in tokenRest)
             {            
@@ -67,17 +67,17 @@ namespace twidownstream
         {
             if (RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
             {
-                await db.DeleteToken(Streamer.Token.UserId);
+                await db.DeleteToken(Streamer.Token.UserId).ConfigureAwait(false);
                 RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte z);
                 RemoveStreamer(Streamer);
             }
             else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
         }
-
+        
         ///<summary>これを定期的に呼んで再接続やFriendの取得をやらせる</summary>
         public async ValueTask<int> ConnectStreamers()
         {
-            if (!await db.ExistThisPid()) { Environment.Exit(1); }
+            if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); }
 
             int ActiveStreamers = 0;  //再接続が不要だったやつの数
             ActionBlock<UserStreamer> ConnectBlock = new ActionBlock<UserStreamer>(
@@ -91,12 +91,12 @@ namespace twidownstream
                     if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { }    //何もしない
                     else if (NeedConnect == UserStreamer.NeedConnectResult.First)
                     {
-                        switch (await Streamer.VerifyCredentials())
+                        switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
                         {
                             case UserStreamer.TokenStatus.Locked:
                                 Streamer.PostponeConnect(); return;
                             case UserStreamer.TokenStatus.Revoked:
-                                await RevokeRetry(Streamer); return;
+                                await RevokeRetry(Streamer).ConfigureAwait(false); return;
                             case UserStreamer.TokenStatus.Failure:
                                 return;
                             case UserStreamer.TokenStatus.Success:
@@ -114,13 +114,13 @@ namespace twidownstream
                     }
                     else
                     {
-                        //TLはREST→Streamの順にしてTweetTimeのスレッドセーフ化を不要にする
-                        switch (await Streamer.RecieveRestTimelineAuto())
+                        //TLの速度を測定して必要ならStreamに接続
+                        switch (await Streamer.RecieveRestTimelineAuto().ConfigureAwait(false))
                         {
                             case UserStreamer.TokenStatus.Locked:
                                 Streamer.PostponeConnect(); break;
                             case UserStreamer.TokenStatus.Revoked:
-                                await RevokeRetry(Streamer); break;
+                                await RevokeRetry(Streamer).ConfigureAwait(false); break;
                             default:
                                 UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
                                 if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Interlocked.Increment(ref ActiveStreamers); }
@@ -128,11 +128,11 @@ namespace twidownstream
                                 if (Streamer.NeedRestMyTweet)
                                 {
                                     Streamer.NeedRestMyTweet = false;
-                                    await Streamer.RestMyTweet();
+                                    await Streamer.RestMyTweet().ConfigureAwait(false);
                                     //User streamに繋がない場合はこっちでフォローを取得する必要がある
-                                    if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend(); }
-                                    await Streamer.RestBlock();
-                                    await db.StoreRestDonetoken(Streamer.Token.UserId);
+                                    if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend().ConfigureAwait(false); }
+                                    await Streamer.RestBlock().ConfigureAwait(false);
+                                    await db.StoreRestDonetoken(Streamer.Token.UserId).ConfigureAwait(false);
                                 }
                                 break;
                         }
@@ -156,7 +156,7 @@ namespace twidownstream
                 if (!s.Value.ConnectWaiting)
                 {
                     s.Value.ConnectWaiting = true;
-                    await ConnectBlock.SendAsync(s.Value);
+                    await ConnectBlock.SendAsync(s.Value).ConfigureAwait(false);
                 }
                 do
                 {
@@ -165,15 +165,15 @@ namespace twidownstream
                     {   //ここでGCする #ウンコード
                         sw.Restart();
                         ShowCount();
-                        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
-                        GC.Collect();
+                        //GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
+                        //GC.Collect();
                     }
                     //ツイートが詰まってたら休む
-                    if (UserStreamerStatic.NeedConnectPostpone()) { await Task.Delay(1000); }
+                    if (UserStreamerStatic.NeedConnectPostpone()) { await Task.Delay(1000).ConfigureAwait(false); }
                 } while (UserStreamerStatic.NeedConnectPostpone());
             }
             ConnectBlock.Complete();
-            await ConnectBlock.Completion;
+            await ConnectBlock.Completion.ConfigureAwait(false);
             return ActiveStreamers;
 
             //カウンターを表示したりいろいろ
@@ -189,7 +189,7 @@ namespace twidownstream
         {
             Streamer.Dispose();
             Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);  //つまり死んだStreamerは除外される
-            Console.WriteLine("{0} {1}: Streamer removed", DateTime.Now, Streamer.Token.UserId);
+            Console.WriteLine("{0}: Streamer removed", Streamer.Token.UserId);
         }
 
         private void SetMaxConnections(int basecount, bool Force = false)

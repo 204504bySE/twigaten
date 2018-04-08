@@ -14,7 +14,7 @@
   <ItemGroup>
     <PackageReference Include="CoreTweet" Version="0.8.2.404" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySqlConnector" Version="0.38.0" />
+    <PackageReference Include="MySqlConnector" Version="0.39.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
   </ItemGroup>

@@ -21,7 +21,7 @@ namespace twihash
             DBHandler db = new DBHandler();
             Stopwatch sw = new Stopwatch();
 
-            Console.WriteLine("{0} Loading hash", DateTime.Now);
+            Console.WriteLine("Loading hash");
             sw.Restart();
             long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
             long Count = await db.AllMediaHash();
@@ -29,15 +29,15 @@ namespace twihash
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {
                 NewHash = await db.NewerMediaHash();
-                if (NewHash == null) { Console.WriteLine("{0} New hash load failed.", DateTime.Now); Thread.Sleep(5000); Environment.Exit(1); }
-                Console.WriteLine("{0} {1} New hash", DateTime.Now, NewHash.Count);
+                if (NewHash == null) { Console.WriteLine("New hash load failed."); Thread.Sleep(5000); Environment.Exit(1); }
+                Console.WriteLine("{0} New hash", NewHash.Count);
             }
             GC.Collect();
             sw.Stop();
-            if (Count < 0) { Console.WriteLine("{0} Hash load failed.", DateTime.Now); Thread.Sleep(5000); Environment.Exit(1); }
+            if (Count < 0) { Console.WriteLine("Hash load failed."); Thread.Sleep(5000); Environment.Exit(1); }
             else
             {
-                Console.WriteLine("{0} {1} Hash loaded in {2} ms", DateTime.Now, Count, sw.ElapsedMilliseconds);
+                Console.WriteLine("{0} Hash loaded in {1} ms", Count, sw.ElapsedMilliseconds);
                 config.hash.NewLastHashCount(Count);
             }
             GC.Collect();
@@ -45,7 +45,7 @@ namespace twihash
             MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks);
             await media.Proceed();
             sw.Stop();
-            Console.WriteLine("{0} Multiple Sort, Store: {1}ms", DateTime.Now, sw.ElapsedMilliseconds);
+            Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
             File.Delete(SortFile.AllHashFilePath);
             config.hash.NewLastUpdate(NewLastUpdate);
             Thread.Sleep(5000);
@@ -118,7 +118,7 @@ namespace twihash
                 GC.Collect();
                 (int db, int sort) = await MultipleSortUnit(i);
                 sw.Stop();
-                Console.WriteLine("{0} {1}\t{2} / {3}\t{4}\t{5}ms ", DateTime.Now, i, db, sort, Combi.CombiString(i), sw.ElapsedMilliseconds);
+                Console.WriteLine("{0}\t{1} / {2}\t{3}\t{4}ms ", i, db, sort, Combi.CombiString(i), sw.ElapsedMilliseconds);
             }
         }
 
@@ -198,7 +198,7 @@ namespace twihash
 
             using (SortedFileReader Reader = new SortedFileReader(SortedFilePath, FullMask))
             {
-                int MaxInputCount = Environment.ProcessorCount << 12;
+                int MaxInputCount = Environment.ProcessorCount << 10;
                 for (long[] Sorted = Reader.ReadBlock(); Sorted != null; Sorted = Reader.ReadBlock())
                 {
                     //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない

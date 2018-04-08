@@ -38,26 +38,21 @@ namespace twihash
                     for (int i = 0; i < StorePairs.Length; i++)
                     {
                         string numstr = i.ToString();
-                        Cmd.Parameters.AddWithValue("@a" + numstr, StorePairs[i].media0);
-                        Cmd.Parameters.AddWithValue("@b" + numstr, StorePairs[i].media1);
-                        Cmd.Parameters.AddWithValue("@c" + numstr, StorePairs[i].hammingdistance);
+                        Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = StorePairs[i].media0;
+                        Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = StorePairs[i].media1;
+                        Cmd.Parameters.Add("@c" + numstr, MySqlDbType.Int64).Value = StorePairs[i].hammingdistance;
                     }
-                    ret = await ExecuteNonQuery(Cmd);
-                }
-                //次に降順
-                Array.Sort(StorePairs, OrderSub);   //deadlock防止
-                using (MySqlCommand Cmd = new MySqlCommand(
-                    StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
-                        : BulkCmdStr(StorePairs.Length, 3, StoreMediaPairsHead)))
-                {
+                    ret = await ExecuteNonQuery(Cmd).ConfigureAwait(false);
+                    //次に降順
+                    Array.Sort(StorePairs, OrderSub);   //deadlock防止
                     for (int i = 0; i < StorePairs.Length; i++)
                     {
                         string numstr = i.ToString();
-                        Cmd.Parameters.AddWithValue("@a" + numstr, StorePairs[i].media1);   //↑とは逆
-                        Cmd.Parameters.AddWithValue("@b" + numstr, StorePairs[i].media0);
-                        Cmd.Parameters.AddWithValue("@c" + numstr, StorePairs[i].hammingdistance);
+                        Cmd.Parameters["@a" + numstr].Value = StorePairs[i].media1;   //↑とは逆
+                        Cmd.Parameters["@b" + numstr].Value = StorePairs[i].media0;
+                        Cmd.Parameters["@c" + numstr].Value = StorePairs[i].hammingdistance;
                     }
-                    return ret + await ExecuteNonQuery(Cmd);
+                    return ret + await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                 }
             }
         }
@@ -89,9 +84,9 @@ FROM media
 WHERE dcthash BETWEEN @begin AND @end
 GROUP BY dcthash;"))
                             {
-                                Cmd.Parameters.AddWithValue("@begin", i << HashUnitBits);
-                                Cmd.Parameters.AddWithValue("@end", unchecked(((i + 1) << HashUnitBits) - 1));
-                                Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted);
+                                Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
+                                Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = unchecked(((i + 1) << HashUnitBits) - 1);
+                                Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
                             }
                         } while (Table == null);    //大変安易な対応
                         Interlocked.Add(ref TotalHashCOunt, Table.Rows.Count);
@@ -107,10 +102,10 @@ GROUP BY dcthash;"))
 
                     for(int i = 0; i < 1 << (64 - HashUnitBits); i++)
                     {
-                        await LoadHashBlock.SendAsync(i);
+                        await LoadHashBlock.SendAsync(i).ConfigureAwait(false);
                     }
                     LoadHashBlock.Complete();
-                    await WriterBlock.Completion;
+                    await WriterBlock.Completion.ConfigureAwait(false);
                     return TotalHashCOunt;
                 }
             }
@@ -137,9 +132,9 @@ FROM media_downloaded_at
 NATURAL JOIN media
 WHERE downloaded_at BETWEEN @begin AND @end;"))
                         {
-                            Cmd.Parameters.AddWithValue("@begin", config.hash.LastUpdate + QueryRangeSeconds * i);
-                            Cmd.Parameters.AddWithValue("@end", config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1);
-                            Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted);
+                            Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * i;
+                            Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
+                            Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
                         }
                     } while (Table == null);    //大変安易な対応
                     lock (ret)
@@ -155,7 +150,7 @@ WHERE downloaded_at BETWEEN @begin AND @end;"))
                     LoadHashBlock.Post(i);
                 }
                 LoadHashBlock.Complete();
-                await LoadHashBlock.Completion;
+                await LoadHashBlock.Completion.ConfigureAwait(false);
                 return ret;
             }catch(Exception e) { Console.WriteLine(e); return null; }
         }

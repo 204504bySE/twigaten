@@ -44,14 +44,14 @@ namespace twidownparent
                 if (LockerProcess?.HasExited == false)
                 {
                     try { LockerProcess.Kill(); } catch { } //すでに死んでたときは握りつぶす
-                    Console.WriteLine("{0} Locker Killed {1}", DateTime.Now, LockerProcess.Id);
+                    Console.WriteLine("Locker Killed {0}", LockerProcess.Id);
                 }
                 do { Thread.Sleep(1000); } //てきとー
                 while (LockerProcess?.HasExited == false);
                 LockerProcess = Start();
                 Thread.Sleep(1000);
-                if (LockerProcess == null || LockerProcess.HasExited) { Console.WriteLine("{0} Locker Start Failed"); }
-                else { Console.WriteLine("{0} Locker Started {1}", DateTime.Now, LockerProcess.Id); }
+                if (LockerProcess == null || LockerProcess.HasExited) { Console.WriteLine("Locker Start Failed"); }
+                else { Console.WriteLine("Locker Started {0}", LockerProcess.Id); }
             }
             /*
             else if(LockerProcess?.HasExited != false)

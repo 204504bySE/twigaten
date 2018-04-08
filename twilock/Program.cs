@@ -36,10 +36,10 @@ namespace twilock
                     long tweet_id = BitConverter.ToInt64(Received.Buffer, 0);
                     if (LockedTweets.Add(tweet_id))
                     {
-                        await Udp.SendAsync(TrueByte, sizeof(bool), Received.RemoteEndPoint); //Lockできたらtrue
+                        await Udp.SendAsync(TrueByte, sizeof(bool), Received.RemoteEndPoint).ConfigureAwait(false); //Lockできたらtrue
                         SuccessCount++;
                     }
-                    else { await Udp.SendAsync(FalseByte, sizeof(bool), Received.RemoteEndPoint); }//Lockできなかったらfalse
+                    else { await Udp.SendAsync(FalseByte, sizeof(bool), Received.RemoteEndPoint).ConfigureAwait(false); }//Lockできなかったらfalse
                 }, new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
@@ -49,7 +49,7 @@ namespace twilock
                 sw.Start();
                 while (true)
                 {
-                    await TweetLockBlock.SendAsync(await Udp.ReceiveAsync()); 
+                    await TweetLockBlock.SendAsync(await Udp.ReceiveAsync().ConfigureAwait(false)).ConfigureAwait(false); 
                     ReceiveCount++;
                     if (sw.ElapsedMilliseconds >= 60000)
                     {
