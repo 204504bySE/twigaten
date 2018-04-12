@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using twitenlib;
 using System.Runtime;
 using System.Threading.Tasks.Dataflow;
+using System.Diagnostics;
 
 namespace twidownstream
 {
@@ -20,19 +21,6 @@ namespace twidownstream
         public RestManager()
         {
             ServicePointManager.DefaultConnectionLimit = Math.Max(config.crawl.DefaultConnectionThreads, config.crawl.RestTweetThreads * 3);
-            Task.Run(async () => { await IntervalProcess(); });
-        }
-
-        async Task IntervalProcess()
-        {
-            Thread.CurrentThread.Priority = ThreadPriority.Highest;
-            while (true)
-            {
-                Counter.PrintReset();
-                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
-                GC.Collect();
-                await Task.Delay(60000);
-            }
         }
 
         public async ValueTask<int> Proceed()
@@ -50,7 +38,18 @@ namespace twidownstream
                 MaxDegreeOfParallelism = config.crawl.RestTweetThreads,
                 BoundedCapacity = config.crawl.RestTweetThreads << 1
             });
-            foreach(Tokens t in tokens) { await RestProcess.SendAsync(t); }
+            Stopwatch sw = Stopwatch.StartNew();
+            foreach(Tokens t in tokens)
+            {
+                await RestProcess.SendAsync(t);
+                if(sw.ElapsedMilliseconds > 60000)
+                {
+                    Counter.PrintReset();
+                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
+                    GC.Collect();
+                    sw.Restart();
+                }
+            }
             RestProcess.Complete();
             await RestProcess.Completion;
             return tokens.Length;

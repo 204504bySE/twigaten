@@ -245,8 +245,8 @@ namespace twidownstream
             DisconnectStream();
             LastStreamingMessageTime = DateTimeOffset.Now;
             StreamSubscriber = Token.Streaming.UserAsObservable()
-                .SubscribeOn(TaskPoolScheduler.Default)
-                .ObserveOn(Scheduler.Immediate)
+                //.SubscribeOn(TaskPoolScheduler.Default)
+                //.ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(
                     async (StreamingMessage m) =>
                     {
