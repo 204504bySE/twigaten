@@ -127,11 +127,11 @@ LIMIT @limit;"))
                         }
                         RemovedCount += await ExecuteNonQuery(delcmd);
                     }
-                    //Console.WriteLine("{0}: {1} Media removed", DateTime.Now, RemovedCount);
+                    //Console.WriteLine("{0} Media removed", RemovedCount);
                 } while (Table.Rows.Count >= BulkUnit);
             }
             catch (Exception e) { Console.WriteLine(e); return; }
-            Console.WriteLine("{0}: {1} Orphan Media removed.", DateTime.Now, RemovedCount);
+            Console.WriteLine("{0} Orphan Media removed.", RemovedCount);
         }
 
         public async Task RemoveOldMedia()
@@ -139,7 +139,7 @@ LIMIT @limit;"))
             DriveInfo drive = new DriveInfo(config.crawl.MountPointthumb);
             int RemovedCountFile = 0;
             const int BulkUnit = 1000;
-            //Console.WriteLine("{0}: {1} / {2} MB Free.", DateTime.Now, drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
+            //Console.WriteLine("{0} / {0} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
             try
             {
                 while (drive.TotalFreeSpace < drive.TotalSize / 25 << 2)
@@ -178,12 +178,12 @@ ORDER BY media_id;"))
                     await ExecuteNonQuery(Cmd);
                     foreach(MySqlCommand c in Cmd) { c.Dispose(); }
                     RemovedCountFile += Table.Rows.Count;
-                    //Console.WriteLine("{0}: {1} Media removed", DateTime.Now, RemovedCountFile);
-                    //Console.WriteLine("{0}: {1} / {2} MB Free.", DateTime.Now, drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
+                    //Console.WriteLine("{0} Media removed", RemovedCountFile);
+                    //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return; }
-            Console.WriteLine("{0}: {1} Old Media removed.", DateTime.Now, RemovedCountFile);
+            Console.WriteLine("{0} Old Media removed.", RemovedCountFile);
         }
 
         //しばらくツイートがないアカウントのprofile_imageを消す
@@ -194,7 +194,7 @@ ORDER BY media_id;"))
             const int BulkUnit = 1000;
             const string head = @"UPDATE user SET updated_at = NULL WHERE user_id IN";
             string BulkUpdateCmd = BulkCmdStrIn(BulkUnit, head);
-            //Console.WriteLine("{0}: {1} / {2} MB Free.", DateTime.Now, drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
+            //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
             try
             {
                 while (drive.TotalFreeSpace < drive.TotalSize / 25 << 2)
@@ -225,13 +225,13 @@ ORDER BY updated_at LIMIT @limit;"))
                         }
                         RemovedCount += await ExecuteNonQuery(upcmd);
                     }
-                    //Console.WriteLine("{0}: {1} Icons removed", DateTime.Now, RemovedCount);
-                    //Console.WriteLine("{0}: {1} / {2} MB Free.", DateTime.Now, drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
+                    //Console.WriteLine("{0} Icons removed", RemovedCount);
+                    //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
                     if (Table.Rows.Count < BulkUnit) { break; }
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return; }
-            Console.WriteLine("{0}: {1} Icons removed.", DateTime.Now, RemovedCount);
+            Console.WriteLine("{0} Icons removed.", RemovedCount);
         }
 
 

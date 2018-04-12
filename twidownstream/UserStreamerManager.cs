@@ -88,7 +88,7 @@ namespace twidownstream
                     UserStreamer.NeedConnectResult NeedConnect = Streamer.NeedConnect();
                     //初回とRevoke疑いのときだけVerifyCredentials()する
                     //プロフィールを取得したい
-                    if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { }    //何もしない
+                    if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
                     else if (NeedConnect == UserStreamer.NeedConnectResult.First)
                     {
                         switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
