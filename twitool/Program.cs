@@ -111,8 +111,7 @@ LIMIT @limit;"))
 
                     foreach (DataRow row in Table.Rows)
                     {
-                        File.Delete(config.crawl.PictPaththumb
-                            + row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1)));
+                        File.Delete(Path.Combine(config.crawl.PictPaththumb, row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1))));
                     }
 
                     if (Table.Rows.Count < BulkUnit)
@@ -160,8 +159,7 @@ ORDER BY media_id;"))
 
                     foreach (DataRow row in Table.Rows)
                     {
-                        File.Delete(config.crawl.PictPaththumb
-                            + row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1)));
+                        File.Delete(Path.Combine(config.crawl.PictPaththumb, (row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1)))));
                     }
 
                     MySqlCommand[] Cmd = new MySqlCommand[] {
@@ -170,9 +168,9 @@ ORDER BY media_id;"))
                     for (int n = 0; n < Table.Rows.Count; n++)
                     {
                         string atNum = '@' + n.ToString();
-                        for (int i = 0; i < 2; i++)
+                        for (int i = 0; i < Cmd.Length; i++)
                         {
-                            Cmd[i].Parameters.AddWithValue(atNum, Table.Rows[n][0]);
+                            Cmd[i].Parameters.Add(atNum, DbType.Int64).Value = Table.Rows[n][0];
                         }
                     }
                     await ExecuteNonQuery(Cmd);
@@ -212,8 +210,7 @@ ORDER BY updated_at LIMIT @limit;"))
                     {
                         if (!row.Field<bool>(2))
                         {
-                            File.Delete(config.crawl.PictPathProfileImage
-                                + row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1)));
+                            File.Delete(Path.Combine(config.crawl.PictPathProfileImage, row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1))));
                         }
                     }
                     if (Table.Rows.Count < BulkUnit) { BulkUpdateCmd = BulkCmdStrIn(Table.Rows.Count, head); }
@@ -221,7 +218,7 @@ ORDER BY updated_at LIMIT @limit;"))
                     {
                         for (int n = 0; n < Table.Rows.Count; n++)
                         {
-                            upcmd.Parameters.AddWithValue('@' + n.ToString(), Table.Rows[n][0]);
+                            upcmd.Parameters.Add('@' + n.ToString(), DbType.Int64).Value = Table.Rows[n][0];
                         }
                         RemovedCount += await ExecuteNonQuery(upcmd);
                     }
@@ -319,7 +316,7 @@ AND NOT EXISTS (SELECT user_id FROM token WHERE token.user_id = user.user_id);")
                             cmd.Parameters.AddWithValue("@user_id", (long)row[0]);
                             if (await ExecuteNonQuery(cmd) >= 1)
                             {
-                                if (!row.Field<bool>(2) && row.Field<string>(1) != null) { File.Delete(config.crawl.PictPathProfileImage + (row.Field<long>(0)).ToString() + Path.GetExtension(row.Field<string>(1))); }
+                                if (!row.Field<bool>(2) && row.Field<string>(1) != null) { File.Delete(Path.Combine(config.crawl.PictPathProfileImage, (row.Field<long>(0)).ToString() + Path.GetExtension(row.Field<string>(1)))); }
                                 Interlocked.Increment(ref RemovedCount);
                                 if (RemovedCount % 1000 == 0) { Console.WriteLine("{0} {1} Users Removed", DateTime.Now, RemovedCount); }
                             }
