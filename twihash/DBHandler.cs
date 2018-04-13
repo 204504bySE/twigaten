@@ -73,7 +73,7 @@ namespace twihash
                         });
 
                     long TotalHashCOunt = 0;
-                    int HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(config.hash.LastHashCount, 2)); //TableがLarge Heapに載らない程度に調整
+                    int HashUnitBits = Math.Min(63, 64 + 10 - (int)Math.Log(config.hash.LastHashCount, 2)); //TableがLarge Heapに載らない程度に調整
                     TransformBlock<long, DataTable> LoadHashBlock = new TransformBlock<long, DataTable>(async (i) =>
                     {
                         DataTable Table;

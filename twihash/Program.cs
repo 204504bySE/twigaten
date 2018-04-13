@@ -29,12 +29,12 @@ namespace twihash
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {
                 NewHash = await db.NewerMediaHash();
-                if (NewHash == null) { Console.WriteLine("New hash load failed."); Thread.Sleep(5000); Environment.Exit(1); }
+                if (NewHash == null) { Console.WriteLine("New hash load failed."); Environment.Exit(1); }
                 Console.WriteLine("{0} New hash", NewHash.Count);
             }
             GC.Collect();
             sw.Stop();
-            if (Count < 0) { Console.WriteLine("Hash load failed."); Thread.Sleep(5000); Environment.Exit(1); }
+            if (Count < 0) { Console.WriteLine("Hash load failed."); Environment.Exit(1); }
             else
             {
                 Console.WriteLine("{0} Hash loaded in {1} ms", Count, sw.ElapsedMilliseconds);
@@ -48,7 +48,6 @@ namespace twihash
             Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
             File.Delete(SortFile.AllHashFilePath);
             config.hash.NewLastUpdate(NewLastUpdate);
-            Thread.Sleep(5000);
         }
     }
 

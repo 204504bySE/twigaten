@@ -108,26 +108,25 @@ namespace twidownstream
                 if (TweetLock.Add(m.x.Id)/*await LockTweet(m.x.Id).ConfigureAwait(false)*/)
                 {
                     HandleTweetBlock.Post((m.x, m.t, m.stream,
-                        m.x.RetweetedStatus?.Id is long rtid && TweetLock.Add(rtid),
                         UserLock.Add(m.x.Id),
                         m.x.RetweetedStatus?.User?.Id is long rtuser && UserLock.Add(rtuser)));
                 }
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
-        static readonly ActionBlock<(Status, Tokens, bool, bool, bool, bool)> HandleTweetBlock = new ActionBlock<(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)>(async m =>
+        static readonly ActionBlock<(Status, Tokens, bool, bool, bool)> HandleTweetBlock = new ActionBlock<(Status x, Tokens t, bool stream, bool storeuser, bool storertuser)>(async m =>
         {
             //画像なしツイートは先に捨ててるのでここでは確認しない
-             await HandleTweet(m.x, m.t, m.stream, m.rtlocked, m.storeuser, m.storertuser).ConfigureAwait(false); 
+             await HandleTweet(m.x, m.t, m.stream, m.storeuser, m.storertuser).ConfigureAwait(false); 
         }, new ExecutionDataflowBlockOptions()
         {
             MaxDegreeOfParallelism = Math.Max(Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections), config.crawl.MediaDownloadThreads), //一応これで
             SingleProducerConstrained = true
         });
 
-        static async Task HandleTweet(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)    //stream(=true)からのツイートならふぁぼRT数を上書きする
+        static async Task HandleTweet(Status x, Tokens t, bool stream, bool storeuser, bool storertuser)    //stream(=true)からのツイートならふぁぼRT数を上書きする
         {
             //画像なしツイートは先に捨ててるのでここでは確認しない(n回目
             //RTを先にやる(キー制約)
-            if (rtlocked && x.RetweetedStatus != null) { await HandleTweet(x.RetweetedStatus, t, stream, false, storertuser, false).ConfigureAwait(false); }
+            if (x.RetweetedStatus != null) { await HandleTweet(x.RetweetedStatus, t, stream, storertuser, false).ConfigureAwait(false); }
             if (storeuser) { await db.StoreUser(x, await DownloadStoreProfileImage(x).ConfigureAwait(false), stream).ConfigureAwait(false); }
             if (stream) { Counter.TweetToStoreStream.Increment(); } else { Counter.TweetToStoreRest.Increment(); }
             for (int RetryCount = 0; RetryCount < 2; RetryCount++)
@@ -136,11 +135,10 @@ namespace twidownstream
                 if ((r = await db.StoreTweet(x, stream).ConfigureAwait(false)) >= 0)
                 {
                     if (x.RetweetedStatus == null) { DownloadStoreMediaBlock.Post((x, t)); }
-                     if (stream) { Counter.TweetStoredStream.Increment(); } else { Counter.TweetStoredRest.Increment(); } 
+                    if (r > 0) { if (stream) { Counter.TweetStoredStream.Increment(); } else { Counter.TweetStoredRest.Increment(); } }
                     break;
                 }
-                //ツイートが入らなかったらRTとuserの外部キー制約を仮定してとりあえず書き込む
-                if (x.RetweetedStatus != null) { await HandleTweet(x.RetweetedStatus, t, stream, false, storertuser, false).ConfigureAwait(false); }
+                //ツイートが入らなかったらuserの外部キー制約を仮定してとりあえず書き込む
                 else if (!storeuser) { await db.StoreUser(x, false, false).ConfigureAwait(false); }
             }
         }
@@ -269,7 +267,7 @@ namespace twidownstream
                     if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }
                 }
             }
-            catch (Exception e) { Console.WriteLine("DownloadStoreMediaBlock Faulted: {0}", e); }
+            catch { }   //MediaEntityがnullの時があるっぽい
         }, new ExecutionDataflowBlockOptions()
         {
             MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads,
@@ -287,7 +285,7 @@ namespace twidownstream
                 if (await db.ExistTweet(StatusId).ConfigureAwait(false)) { return; }
                 var res = await Token.Statuses.LookupAsync(id => StatusId, include_entities => true, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
                 if (res.RateLimit.Remaining < 1) { OneTweetReset[Token] = res.RateLimit.Reset.AddMinutes(1); }  //とりあえず1分延長奴
-                await HandleTweet(res.First(), Token, true, false, false, false).ConfigureAwait(false);
+                await HandleTweet(res.First(), Token, true, false, false).ConfigureAwait(false);
             }
             catch { Console.WriteLine("{0} REST Tweet failed: {1}", Token.UserId, StatusId); return; }
         }

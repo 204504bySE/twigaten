@@ -7,7 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
 using System.Runtime.InteropServices;
-using System.IO.Compression;
+using LZ4;
 
 namespace twihash
 {
@@ -167,10 +167,10 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongReader : IDisposable
     {
-        const int BufSize = 0x80000;
+        const int BufSize = 0x1000;
 
         readonly FileStream file;
-        //readonly DeflateStream gzip;
+        readonly LZ4Stream lz4;
         public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
@@ -184,7 +184,7 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            //gzip = new DeflateStream(file, CompressionMode.Decompress);
+            lz4 = new LZ4Stream(file, LZ4StreamMode.Decompress);
             Length = file.Length;
             FillNextBuf();
         }
@@ -218,8 +218,8 @@ namespace twihash
 
         public void Dispose()
         {
-            //gzip.Dispose();
-            file.Dispose();
+            lz4.Dispose();
+            //file.Dispose();
             Position = long.MaxValue;
             BufCursor = int.MaxValue;
         }
@@ -228,9 +228,9 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongWriter : IDisposable
     {
-        const int BufSize = 0x80000;
+        const int BufSize = 0x1000;
         readonly FileStream file;
-        //readonly DeflateStream gzip;
+        readonly LZ4Stream lz4;
         byte[] Buf = new byte[BufSize];
         int BufCursor;
         byte[] WriteBuf = new byte[BufSize];
@@ -239,7 +239,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            //gzip = new DeflateStream(file, CompressionLevel.Fastest);
+            lz4 = new LZ4Stream(file, LZ4StreamMode.Compress);
         }
 
         public void Write(long Value)
@@ -263,7 +263,8 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
+            ActualWriteTask = lz4.WriteAsync(WriteBuf, 0, BufCursor);
+            //ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
             BufCursor = 0;
         }
        
@@ -271,8 +272,8 @@ namespace twihash
         {
             ActualWrite();
             ActualWriteTask.Wait();
-            //gzip.Dispose();
-            file.Dispose();
+            lz4.Dispose();
+            //file.Dispose();
         }
 
         //https://stackoverflow.com/questions/8827649/fastest-way-to-convert-int-to-4-bytes-in-c-sharp
