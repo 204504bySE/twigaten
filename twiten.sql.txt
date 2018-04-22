@@ -13,17 +13,12 @@ create table viewlogin(
 	foreign key (user_id) references token(user_id) on delete cascade
 );
 
-create table pid(
-	pid int primary key
-);
-
 create table crawlprocess(
 	user_id bigint primary key,
 	pid int not null,
-	rest_needed bool not null default 0,
-	foreign key (user_id) references token(user_id) on delete cascade,
-	foreign key (pid) references pid(pid) on delete cascade
-);
+	rest_needed bool not null default 0
+)engine=MEMORY;
+	create index pid_index on crawlprocess(pid);
 
 create table friend(
 	user_id bigint not null,
@@ -107,7 +102,6 @@ grant select, insert, update on twiten.viewlogin to token;
 
 grant select, delete on twiten.token to crawl;
 grant select, insert, update, delete, drop on twiten.crawlprocess to crawl;
-grant select, insert, delete, drop on twiten.pid to crawl;
 grant select, insert, delete on twiten.friend to crawl;
 grant select, insert, delete on twiten.block to crawl;
 grant select, insert, update on twiten.user to crawl;

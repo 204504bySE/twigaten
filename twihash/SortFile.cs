@@ -167,10 +167,9 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongReader : IDisposable
     {
-        const int BufSize = 0x1000;
-
+        static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
         readonly FileStream file;
-        readonly LZ4Stream lz4;
+        readonly LZ4Stream zip;
         public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
@@ -184,12 +183,17 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            lz4 = new LZ4Stream(file, LZ4StreamMode.Decompress);
+            zip = new LZ4Stream(file, LZ4StreamMode.Decompress, LZ4StreamFlags.Default, BufSize);
             Length = file.Length;
             FillNextBuf();
         }
 
-        void FillNextBuf() { FillNextBufTask = file.ReadAsync(NextBuf, 0, NextBuf.Length); }
+        void FillNextBuf()
+        {
+            //FillNextBufTask = file.ReadAsync(NextBuf, 0, NextBuf.Length);
+            FillNextBufTask = zip.ReadAsync(NextBuf, 0, NextBuf.Length);
+        }
+
         void ChangeBufAuto()
         {
             if (BufCursor >= ActualBufSize)
@@ -218,8 +222,8 @@ namespace twihash
 
         public void Dispose()
         {
-            lz4.Dispose();
-            //file.Dispose();
+            zip.Dispose();
+            file.Dispose();
             Position = long.MaxValue;
             BufCursor = int.MaxValue;
         }
@@ -228,9 +232,9 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongWriter : IDisposable
     {
-        const int BufSize = 0x1000;
+        static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
         readonly FileStream file;
-        readonly LZ4Stream lz4;
+        readonly LZ4Stream zip;
         byte[] Buf = new byte[BufSize];
         int BufCursor;
         byte[] WriteBuf = new byte[BufSize];
@@ -239,7 +243,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            lz4 = new LZ4Stream(file, LZ4StreamMode.Compress);
+            zip = new LZ4Stream(file, LZ4StreamMode.Compress, LZ4StreamFlags.Default, BufSize);
         }
 
         public void Write(long Value)
@@ -254,7 +258,7 @@ namespace twihash
             Buf[BufCursor + 6] = Bytes.Byte6;
             Buf[BufCursor + 7] = Bytes.Byte7;
             BufCursor += sizeof(long);
-            if(BufCursor >= BufSize) { ActualWrite(); }
+            if (BufCursor >= BufSize) { ActualWrite(); }
         }
 
         void ActualWrite()
@@ -263,8 +267,8 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            ActualWriteTask = lz4.WriteAsync(WriteBuf, 0, BufCursor);
             //ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
+            ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor);
             BufCursor = 0;
         }
        
@@ -272,8 +276,9 @@ namespace twihash
         {
             ActualWrite();
             ActualWriteTask.Wait();
-            lz4.Dispose();
-            //file.Dispose();
+            zip.Flush();
+            zip.Dispose();
+            file.Dispose();
         }
 
         //https://stackoverflow.com/questions/8827649/fastest-way-to-convert-int-to-4-bytes-in-c-sharp

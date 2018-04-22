@@ -10,6 +10,7 @@ using twitenlib;
 using System.Threading.Tasks.Dataflow;
 using System.Diagnostics;
 using System.Runtime;
+using System.Net.Sockets;
 
 namespace twidownstream
 {
@@ -73,7 +74,11 @@ namespace twidownstream
             }
             else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
         }
-        
+
+        static readonly UdpClient WatchDogUdp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.WatchDogPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
+        static readonly IPEndPoint WatchDogEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.WatchDogPort);
+        static readonly int ThisPid = Process.GetCurrentProcess().Id;
+
         ///<summary>これを定期的に呼んで再接続やFriendの取得をやらせる</summary>
         public async ValueTask<int> ConnectStreamers()
         {
@@ -138,6 +143,7 @@ namespace twidownstream
                         }
                     }
                 }
+                catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
                 finally { Streamer.ConnectWaiting = false; }
             }, new ExecutionDataflowBlockOptions()
             {
@@ -150,7 +156,7 @@ namespace twidownstream
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            ShowCount();
+            await ShowCount();
             foreach (KeyValuePair<long, UserStreamer> s in Streamers.ToArray())  //ここでスナップショットを作る
             {
                 if (!s.Value.ConnectWaiting)
@@ -164,7 +170,7 @@ namespace twidownstream
                     if (sw.ElapsedMilliseconds > 60000)
                     {   //ここでGCする #ウンコード
                         sw.Restart();
-                        ShowCount();
+                        await ShowCount();
                         //GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                         //GC.Collect();
                     }
@@ -177,10 +183,10 @@ namespace twidownstream
             return ActiveStreamers;
 
             //カウンターを表示したりいろいろ
-            void ShowCount()
+            async Task ShowCount()
             {
                 Counter.PrintReset();
-                UserStreamerStatic.ShowCount();
+                await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
             }
         }
 

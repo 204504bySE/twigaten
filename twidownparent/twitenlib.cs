@@ -11,6 +11,7 @@ using System.Diagnostics;
 using IniParser;
 using IniParser.Model;
 using System.Threading.Tasks;
+using System.Data.Common;
 
 namespace twitenlib
 {
@@ -71,6 +72,7 @@ namespace twitenlib
             public int DeleteTweetBufferSize { get; }
             public int LockedTokenPostpone { get; }
             public int LockerUdpPort { get; }
+            public int WatchDogPort { get; }
             public int TweetLockSize { get; }
             public int ConnectPostponeSize { get; }
             public string HashServerUrl { get; }
@@ -91,6 +93,7 @@ namespace twitenlib
                 DeleteTweetBufferSize = int.Parse(data["crawl"][nameof(DeleteTweetBufferSize)] ?? "1000");
                 LockedTokenPostpone = int.Parse(data["crawl"][nameof(LockedTokenPostpone)] ?? "86400");
                 LockerUdpPort = int.Parse(data["crawl"][nameof(LockerUdpPort)] ?? "48250");
+                WatchDogPort = int.Parse(data["crawlparent"][nameof(WatchDogPort)] ?? "58250");
                 TweetLockSize = int.Parse(data["crawl"][nameof(TweetLockSize)] ?? "10000");
                 ConnectPostponeSize = int.Parse(data["crawl"][nameof(ConnectPostponeSize)] ?? "10000");
                 HashServerUrl = data["crawl"][nameof(HashServerUrl)];
@@ -107,6 +110,8 @@ namespace twitenlib
             public string LockerPath { get; }
             public string DotNetChild { get; }
             public string DotNetLock { get; }
+            public int WatchDogPort { get; }
+            public int WatchDogTimeout { get; }
 
             public _crawlparent(IniData data)
             {
@@ -115,6 +120,8 @@ namespace twitenlib
                 LockerPath = data["crawlparent"][nameof(LockerPath)] ?? "";
                 DotNetChild = data["crawlparent"][nameof(DotNetChild)] ?? "";
                 DotNetLock = data["crawlparent"][nameof(DotNetLock)] ?? "";
+                WatchDogPort = int.Parse(data["crawlparent"][nameof(WatchDogPort)] ?? "58250");
+                WatchDogTimeout = int.Parse(data["crawlparent"][nameof(WatchDogTimeout)] ?? "300");
 
                 //http://absg.hatenablog.com/entry/2014/07/03/195043
                 //フォロー6000程度でピークは60ツイート/分程度らしい
@@ -148,6 +155,7 @@ namespace twitenlib
             public string TempDir { get; }
             public int InitialSortFileSize { get; }
             public int FileSortThreads { get; }
+            public int FileSortBufferSize { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
@@ -159,6 +167,7 @@ namespace twitenlib
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "16777216");
                 FileSortThreads = int.Parse(data["hash"][nameof(FileSortThreads)] ?? Environment.ProcessorCount.ToString());
+                FileSortBufferSize = int.Parse(data["hash"][nameof(FileSortBufferSize)] ?? "262144");
             }
             public void NewLastUpdate(long time)
             {
@@ -276,12 +285,10 @@ namespace twitenlib
             catch { return null; }
         }
 
-        protected async ValueTask<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        protected async Task ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
-            //SELECT COUNT() 用
             try
             {
-                long? ret;
                 using (MySqlConnection conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
@@ -289,11 +296,33 @@ namespace twitenlib
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
-                        ret = (await cmd.ExecuteScalarAsync().ConfigureAwait(false)) as long?;
+
+                        ReadAction.Invoke(await cmd.ExecuteReaderAsync());
                         await tran.CommitAsync().ConfigureAwait(false);
                     }
                 }
-                return ret ?? -1;
+            }
+            catch { throw; }
+        }
+
+        protected async ValueTask<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        {
+            //SELECT COUNT() 用
+            try
+            {
+                long ret;
+                using (MySqlConnection conn = NewConnection())
+                {
+                    await conn.OpenAsync().ConfigureAwait(false);
+                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
+                    {
+                        cmd.Connection = conn;
+                        cmd.Transaction = tran;
+                        ret = Convert.ToInt64(await cmd.ExecuteScalarAsync().ConfigureAwait(false));
+                        await tran.CommitAsync().ConfigureAwait(false);
+                    }
+                }
+                return ret;
             }
             catch { return -1; }
         }
@@ -437,6 +466,11 @@ namespace twitenlib
         {
             RemoveOld();
             return !OldSet.Contains(Value) && NewSet.Add(Value);
+        }
+
+        public bool Contains(T Value)
+        {
+            return OldSet.Contains(Value) || NewSet.Contains(Value);
         }
 
         void RemoveOld()

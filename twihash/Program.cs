@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Data;
 using twitenlib;
 using System.IO;
+using System.Runtime;
 
 namespace twihash
 {
@@ -20,7 +21,7 @@ namespace twihash
             Config config = Config.Instance;
             DBHandler db = new DBHandler();
             Stopwatch sw = new Stopwatch();
-
+            
             Console.WriteLine("Loading hash");
             sw.Restart();
             long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
@@ -192,6 +193,7 @@ namespace twihash
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
+                BoundedCapacity = Environment.ProcessorCount << 2,
                 SingleProducerConstrained = true
             });
 
@@ -201,8 +203,7 @@ namespace twihash
                 for (long[] Sorted = Reader.ReadBlock(); Sorted != null; Sorted = Reader.ReadBlock())
                 {
                     //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない
-                    while (MultipleSortBlock.InputCount > MaxInputCount) { await Task.Delay(1); }
-                    MultipleSortBlock.Post(Sorted);
+                    await MultipleSortBlock.SendAsync(Sorted);
                 }
             }
             File.Delete(SortedFilePath);

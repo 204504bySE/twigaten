@@ -72,10 +72,7 @@ WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             //一番空いてる子プロセスってわけ 全滅なら負数を返すからつまり新プロセスが必要
 
             DataTable Table;
-            using (MySqlCommand cmd = new MySqlCommand(@"SELECT pid.pid, c FROM
-pid LEFT JOIN (SELECT pid, COUNT(user_id) as c FROM crawlprocess
-GROUP BY pid HAVING COUNT(user_id)) cp ON pid.pid = cp.pid
-ORDER BY c LIMIT 1;"))
+            using (MySqlCommand cmd = new MySqlCommand(@"SELECT pid, COUNT(*) FROM crawlprocess GROUP BY pid ORDER BY COUNT(*) LIMIT 1;"))
             {
                 Table = await SelectTable(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
@@ -97,7 +94,7 @@ ORDER BY c LIMIT 1;"))
         public async ValueTask<int[]> Selectpid()
         {
             DataTable Table;
-            using (MySqlCommand cmd = new MySqlCommand(@"SELECT pid FROM pid;"))
+            using (MySqlCommand cmd = new MySqlCommand(@"SELECT DISTINCT pid FROM crawlprocess;"))
             {
                 Table = await SelectTable(cmd).ConfigureAwait(false);
             }
@@ -110,38 +107,20 @@ ORDER BY c LIMIT 1;"))
             return ret;
         }
 
-        public async ValueTask<long> CountPid()
+        public async ValueTask<int> Deletepid(int pid)
         {
-            using (MySqlCommand cmd = new MySqlCommand("SELECT COUNT(pid) FROM pid;"))
+            using (MySqlCommand Cmd = new MySqlCommand(@"DELETE FROM crawlprocess WHERE pid = @pid;"))
             {
-                return await SelectCount(cmd).ConfigureAwait(false);
+                Cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = pid;
+                int ret = await ExecuteNonQuery(Cmd).ConfigureAwait(false);
+                if (ret > 0) { Console.WriteLine("{0} Dead PID: {1}", DateTime.Now, pid); }
+                return ret;
             }
-        }
-
-        public async ValueTask<int> DeleteDeadpid()
-        {
-            int DeadCount = 0;
-            int[] pids = await Selectpid().ConfigureAwait(false);
-            if(pids == null) { return 0; }
-            List<MySqlCommand> CmdList = new List<MySqlCommand>();
-            foreach (int pid in pids)
-            {
-                if (!ChildProcessHandler.Alive(pid))
-                {
-                    DeadCount++;
-                    Console.WriteLine("{0} Dead PID: {1}", DateTime.Now, pid);
-                    MySqlCommand Cmd = new MySqlCommand(@"DELETE FROM pid WHERE pid = @pid;");
-                    Cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = pid;
-                    CmdList.Add(Cmd);
-                }
-            }
-            if (CmdList.Count > 0) { await ExecuteNonQuery(CmdList).ConfigureAwait(false); }
-            return DeadCount;
         }
 
         public async ValueTask<int> InitTruncate()
         {
-           return await ExecuteNonQuery(new MySqlCommand(@"DELETE FROM pid;")).ConfigureAwait(false);
+           return await ExecuteNonQuery(new MySqlCommand(@"TRUNCATE TABLE crawlprocess;")).ConfigureAwait(false);
         }
     }
 }

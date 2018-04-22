@@ -69,12 +69,12 @@ namespace twihash
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
-                            SingleProducerConstrained = true
+                            BoundedCapacity = Environment.ProcessorCount << 1
                         });
 
-                    long TotalHashCOunt = 0;
-                    int HashUnitBits = Math.Min(63, 64 + 10 - (int)Math.Log(config.hash.LastHashCount, 2)); //TableがLarge Heapに載らない程度に調整
-                    TransformBlock<long, DataTable> LoadHashBlock = new TransformBlock<long, DataTable>(async (i) =>
+                    long TotalHashCount = 0;
+                    int HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(config.hash.LastHashCount, 2)); //TableがLarge Heapに載らない程度に調整
+                    ActionBlock<long> LoadHashBlock = new ActionBlock<long>(async (i) =>
                     {
                         DataTable Table;
                         do
@@ -89,8 +89,8 @@ GROUP BY dcthash;"))
                                 Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
                             }
                         } while (Table == null);    //大変安易な対応
-                        Interlocked.Add(ref TotalHashCOunt, Table.Rows.Count);
-                        return Table;
+                        Interlocked.Add(ref TotalHashCount, Table.Rows.Count);
+                        await WriterBlock.SendAsync(Table);
                     }, new ExecutionDataflowBlockOptions()
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,
@@ -98,15 +98,15 @@ GROUP BY dcthash;"))
                         SingleProducerConstrained = true
                     });
 
-                    LoadHashBlock.LinkTo(WriterBlock, new DataflowLinkOptions() { PropagateCompletion = true });
-
                     for(int i = 0; i < 1 << (64 - HashUnitBits); i++)
-                    {
+                    { 
                         await LoadHashBlock.SendAsync(i).ConfigureAwait(false);
                     }
                     LoadHashBlock.Complete();
+                    await LoadHashBlock.Completion.ConfigureAwait(false);
+                    WriterBlock.Complete();
                     await WriterBlock.Completion.ConfigureAwait(false);
-                    return TotalHashCOunt;
+                    return TotalHashCount;
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return -1; }

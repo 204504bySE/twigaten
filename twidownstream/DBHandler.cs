@@ -129,6 +129,11 @@ WHERE pid = @pid;"))
         ///<summary>無効化されたっぽいTokenを消す</summary>
         public async ValueTask<int> DeleteToken(long user_id)
         {
+            using (MySqlCommand cmd = new MySqlCommand(@"DELETE FROM crawlprocess WHERE user_id = @user_id;"))
+            {
+                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
+                await ExecuteNonQuery(cmd).ConfigureAwait(false);
+            }
             using (MySqlCommand cmd = new MySqlCommand(@"DELETE FROM token WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
@@ -531,12 +536,13 @@ VALUES(@media_id, @downloaded_at)") };
             return await ExecuteNonQuery(cmdList).ConfigureAwait(false);
         }
 
+        static readonly int ThisPid = Process.GetCurrentProcess().Id;
         //MySQLが落ちてpidが消えてたら自殺したい
         public async ValueTask<bool> ExistThisPid()
         {
-            using(MySqlCommand cmd = new MySqlCommand("SELECT COUNT(*) FROM pid WHERE pid = @pid;"))
+            using(MySqlCommand cmd = new MySqlCommand("SELECT EXISTS(SELECT * FROM crawlprocess WHERE pid = @pid);"))
             {
-                cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value =  Process.GetCurrentProcess().Id;
+                cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = ThisPid;
                 return await SelectCount(cmd).ConfigureAwait(false) != 0;   //DBにアクセスできなかったときは存在することにする
             }
         }

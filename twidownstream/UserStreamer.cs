@@ -52,33 +52,34 @@ namespace twidownstream
         class TweetTimeList
         {
             readonly SortedSet<DateTimeOffset> TweetTime = new SortedSet<DateTimeOffset>();
-            readonly ReaderWriterLockSlim TweetTimeLock = new ReaderWriterLockSlim();
             static readonly Config config = Config.Instance;
             int AddCount;
 
             public void Add(DateTimeOffset Time)
             {
-                TweetTimeLock.EnterWriteLock();
-                TweetTime.Add(Time);
-                AddCount++;
-                RemoveOldAndRefresh();
-                TweetTimeLock.ExitWriteLock();
+                lock (this)
+                {
+                    TweetTime.Add(Time);
+                    AddCount++;
+                    RemoveOldAndRefresh();
+                }
             }
             public void AddRange(DateTimeOffset[] Time)
             {
-                TweetTimeLock.EnterWriteLock();
-                if (Time.Length >= config.crawl.StreamSpeedTweets)
+                lock (this)
                 {
-                    TweetTime.Clear();
-                    AddCount = 0;
+                    if (Time.Length >= config.crawl.StreamSpeedTweets)
+                    {
+                        TweetTime.Clear();
+                        AddCount = 0;
+                    }
+                    foreach (DateTimeOffset t in Time)
+                    {
+                        TweetTime.Add(t);
+                        AddCount++;
+                    }
+                    RemoveOldAndRefresh();
                 }
-                foreach(DateTimeOffset t in Time)
-                {
-                    TweetTime.Add(t);
-                    AddCount++;
-                }
-                RemoveOldAndRefresh();
-                TweetTimeLock.ExitWriteLock();
             }
 
             void RemoveOldAndRefresh()
@@ -106,29 +107,36 @@ namespace twidownstream
             {
                 get
                 {
-                    TweetTimeLock.EnterReadLock();
-                    try
+                    lock (this)
                     {
                         if (TweetTime.Count > 0) { return TweetTime.Min; }
                         else { return DateTimeOffset.Now; }
                     }
-                    finally { TweetTimeLock.ExitReadLock(); }
                 }
             }
             public DateTimeOffset Max
             {
                 get
                 {
-                    TweetTimeLock.EnterReadLock();
-                    try
+                    lock (this)
                     {
                         if (TweetTime.Count > 0) { return TweetTime.Max; }
                         else { return DateTimeOffset.Now; }
                     }
-                    finally { TweetTimeLock.ExitReadLock(); }
                 }
             }
-            public int Count { get { TweetTimeLock.EnterReadLock(); try { return TweetTime.Count; } finally { TweetTimeLock.ExitReadLock(); } } }
+            public TimeSpan Span
+            {
+                get
+                {
+                    lock (this)
+                    {
+                        if (TweetTime.Count < 2) { return new TimeSpan(0); }
+                        else { return TweetTime.Max - TweetTime.Min; }
+                    }
+                }
+            }
+            public int Count { get { lock(this) {return TweetTime.Count; } } }
         }
 
         DateTimeOffset? PostponedTime;    //ロックされたアカウントが再試行する時刻
@@ -181,7 +189,7 @@ namespace twidownstream
         {
             //User stream接続を失った可能性があるときもRestOnly→切断させる
             if (StreamSubscriber != null 
-                && (DateTimeOffset.Now - LastStreamingMessageTime).TotalSeconds > config.crawl.StreamSpeedSeconds)
+                && (DateTimeOffset.Now - LastStreamingMessageTime) > TweetTime.Span)
             { return NeedStreamResult.RestOnly; }
             //タイムラインを取得してない場合は必ずこれ
             if (TweetTime.Count < 2) { return NeedStreamResult.RestOnly; }
