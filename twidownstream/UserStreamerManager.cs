@@ -144,7 +144,6 @@ namespace twidownstream
                     }
                 }
                 catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
-                finally { Streamer.ConnectWaiting = false; }
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
@@ -156,38 +155,28 @@ namespace twidownstream
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            await ShowCount();
-            foreach (KeyValuePair<long, UserStreamer> s in Streamers.ToArray())  //ここでスナップショットを作る
+            Counter.PrintReset();
+            foreach (KeyValuePair<long, UserStreamer> s in Streamers)
             {
-                if (!s.Value.ConnectWaiting)
+                if (!await ConnectBlock.SendAsync(s.Value).ConfigureAwait(false)) { break; }    //そんなバナナ
+                SetMaxConnections(ActiveStreamers);
+                while (true)
                 {
-                    s.Value.ConnectWaiting = true;
-                    await ConnectBlock.SendAsync(s.Value).ConfigureAwait(false);
-                }
-                do
-                {
-                    SetMaxConnections(ActiveStreamers);
                     if (sw.ElapsedMilliseconds > 60000)
                     {   //ここでGCする #ウンコード
                         sw.Restart();
-                        await ShowCount();
-                        //GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
-                        //GC.Collect();
+                        Counter.PrintReset();
+                        await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
                     }
-                    //ツイートが詰まってたら休む
+                    //ツイートが詰まってたら休む                    
                     if (UserStreamerStatic.NeedConnectPostpone()) { await Task.Delay(1000).ConfigureAwait(false); }
-                } while (UserStreamerStatic.NeedConnectPostpone());
+                    else { break; }
+                } 
             }
             ConnectBlock.Complete();
             await ConnectBlock.Completion.ConfigureAwait(false);
+            await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
             return ActiveStreamers;
-
-            //カウンターを表示したりいろいろ
-            async Task ShowCount()
-            {
-                Counter.PrintReset();
-                await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
-            }
         }
 
         ///<summary>Revokeされた後の処理</summary>
@@ -209,8 +198,15 @@ namespace twidownstream
             {
                 ServicePointManager.DefaultConnectionLimit = max;
             }
+            /*
             ThreadPool.GetMinThreads(out int w, out int c);
-            if (Force || w < max) { ThreadPool.SetMinThreads(max, c); }
+            if (Force || w < max)
+            {
+                ThreadPool.SetMinThreads(max, c);
+                ThreadPool.GetMaxThreads(out int wm, out int cm);
+                ThreadPool.SetMaxThreads(max, cm);
+            }
+            */
         }
     }
 }

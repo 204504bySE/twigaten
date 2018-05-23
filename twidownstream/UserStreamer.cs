@@ -18,7 +18,6 @@ namespace twidownstream
         
         public Tokens Token { get; }
         public bool NeedRestMyTweet { get; set; }   //次のconnect時にRESTでツイートを取得する
-        public bool ConnectWaiting { get; set; }    //UserStreamerManager.ConnectBlockに入っているかどうか
         IDisposable StreamSubscriber;
         long LastReceivedTweetId;
         readonly TweetTimeList TweetTime = new TweetTimeList();
@@ -160,8 +159,18 @@ namespace twidownstream
         //これを外部から叩いて再接続の必要性を確認
         public NeedConnectResult NeedConnect()
         {
-            if (StreamSubscriber != null) { return NeedConnectResult.StreamConnected; }
-            if (IsPostponed()) { return NeedConnectResult.Postponed; }
+            if (StreamSubscriber != null)
+            {
+                //User streamへの接続が切れてそうならここで明示的に切断する
+                if ((DateTimeOffset.Now - LastStreamingMessageTime).TotalSeconds
+                > Math.Max(config.crawl.StreamSpeedSeconds, (LastStreamingMessageTime - TweetTime.Min).TotalSeconds))
+                {
+                    DisconnectStream();
+                    return NeedConnectResult.JustNeeded;
+                }
+                else { return NeedConnectResult.StreamConnected; }
+            }
+            else if (IsPostponed()) { return NeedConnectResult.Postponed; }
             else
             {
                 //一度もTLを取得してないときはVerifyCredentials()してプロフィールを取得させる
@@ -170,14 +179,6 @@ namespace twidownstream
                 else if (NeedStreamSpeed() != NeedStreamResult.Stream) { return NeedConnectResult.RestOnly; }
                 else { return NeedConnectResult.JustNeeded; }
             }
-            /*
-            else if ((DateTimeOffset.Now - LastStreamingMessageTime).TotalSeconds
-                > Math.Max(config.crawl.UserStreamTimeout, (LastStreamingMessageTime - TweetTime.Min).TotalSeconds))
-            {
-                //Console.WriteLine("{0} {1}: No streaming message for {2} sec.", DateTime.Now, Token.UserId, (DateTimeOffset.Now - LastStreamingMessageTime).TotalSeconds.ToString("#"));
-                return NeedRetryResult.JustNeeded;
-            }
-            */
         }
         public enum NeedStreamResult
         {
