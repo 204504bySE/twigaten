@@ -1,8 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <LangVersion>latest</LangVersion>
@@ -14,9 +14,9 @@
 
   <ItemGroup>
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySqlConnector" Version="0.40.3" />
+    <PackageReference Include="MySqlConnector" Version="0.40.4" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
+    <PackageReference Include="System.Reactive" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="Microsoft.NETCore.App" Version="2.0.6" />
+    <PackageReference Update="Microsoft.NETCore.App" Version="2.1.0" />
   </ItemGroup>
 
 </Project>

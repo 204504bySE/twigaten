@@ -125,7 +125,7 @@ grant select on twiten.media_downloaded_at to hash;
 grant insert on twiten.dcthashpair to hash;
 
 grant select, delete on tweet to tool;
-grant select, delete on user to tool;
+grant select, update, delete on user to tool;
 grant select, delete on twiten.media_downloaded_at to tool;
 grant select, insert, delete on tweet_media to tool;
 grant select, delete on media to tool;

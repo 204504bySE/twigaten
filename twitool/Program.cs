@@ -27,7 +27,6 @@ namespace twitool
             await db.RemoveOldMedia();
             await db.RemoveOrphanMedia();
             await db.RemoveOldProfileImage();
-            Thread.Sleep(3000);
         }
         /*
         static void CompareHash()

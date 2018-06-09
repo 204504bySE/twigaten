@@ -220,7 +220,7 @@ namespace twitenlib
             return new MySqlConnection(ConnectionStr);
         }
 
-        //"(@a1,@b1),(@a2,@b2)…;" という文字列を出すだけ
+        //"(@a0,@b0),(@a1,@b1),(@a2,@b2)…;" という文字列を出すだけ
         //bulk insertとかこれ使おうな
         protected static string BulkCmdStr(int count, int unit, string head)
         {
@@ -244,7 +244,7 @@ namespace twitenlib
             return BulkCmd.ToString();
         }
 
-        //(@1,@2,@3…);  という文字列
+        //(@0,@1,@2,@3…);  という文字列
         protected static string BulkCmdStrIn(int count, string head)
         {
             StringBuilder BulkCmd = new StringBuilder(head);
