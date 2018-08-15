@@ -57,7 +57,7 @@ namespace twidownparent
                         || (DateTimeOffset.Now - watch.Value).TotalSeconds > config.crawlparent.WatchDogTimeout
                         || !p.Value.Responding)
                     {
-                        try { p.Value.Kill(); } catch { }
+                        //try { p.Value.Kill(); } catch(Exception e) { Console.WriteLine(e); }
                         count += await db.Deletepid(p.Key);
                         WatchDog.Remove(p.Key);
                     }

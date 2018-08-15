@@ -137,7 +137,8 @@ namespace twidownstream
             for (int RetryCount = 0; RetryCount < 2; RetryCount++)
             {
                 int r;
-                if ((r = await db.StoreTweet(x, stream).ConfigureAwait(false)) >= 0)
+                //User Stream滅びるし無条件でふぁぼRT数を更新するよ
+                if ((r = await db.StoreTweet(x, true/*stream*/).ConfigureAwait(false)) >= 0)
                 {
                     if (x.RetweetedStatus == null) { DownloadStoreMediaBlock.Post((x, t)); }
                     if (r > 0) { if (stream) { Counter.TweetStoredStream.Increment(); } else { Counter.TweetStoredRest.Increment(); } }
@@ -266,7 +267,7 @@ namespace twidownstream
                                 }
                             }
                         }
-                        catch (Exception e) { /*Console.WriteLine("{0} Dowload/Store Media failed: {1}", DateTime.Now, e.Message);*/ continue; }
+                        catch (Exception e) { /*Console.WriteLine(e);*/ continue; }
                     }
                     //URL転載元もペアを記録する
                     if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }

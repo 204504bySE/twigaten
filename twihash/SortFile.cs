@@ -7,7 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
 using System.Runtime.InteropServices;
-using LZ4;
+using System.IO.Compression;
 
 namespace twihash
 {
@@ -169,7 +169,7 @@ namespace twihash
     {
         static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
         readonly FileStream file;
-        readonly LZ4Stream zip;
+        readonly BrotliStream zip;
         public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
@@ -183,7 +183,7 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            zip = new LZ4Stream(file, LZ4StreamMode.Decompress, LZ4StreamFlags.Default, BufSize);
+            zip = new BrotliStream(file, CompressionMode.Decompress);
             Length = file.Length;
             FillNextBuf();
         }
@@ -234,7 +234,7 @@ namespace twihash
     {
         static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
         readonly FileStream file;
-        readonly LZ4Stream zip;
+        readonly BrotliStream zip;
         byte[] Buf = new byte[BufSize];
         int BufCursor;
         byte[] WriteBuf = new byte[BufSize];
@@ -243,7 +243,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            zip = new LZ4Stream(file, LZ4StreamMode.Compress, LZ4StreamFlags.Default, BufSize);
+            zip = new BrotliStream(file, CompressionLevel.Fastest);
         }
 
         public void Write(long Value)

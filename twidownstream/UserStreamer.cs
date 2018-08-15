@@ -188,11 +188,11 @@ namespace twidownstream
         }
         public NeedStreamResult NeedStreamSpeed()
         {
+            if (config.crawl.StreamSpeedSeconds <= 0) { return NeedStreamResult.RestOnly; }
             //User stream接続を失った可能性があるときもRestOnly→切断させる
             if (StreamSubscriber != null 
                 && (DateTimeOffset.Now - LastStreamingMessageTime) > TweetTime.Span)
             { return NeedStreamResult.RestOnly; }
-            if(config.crawl.StreamSpeedSeconds <= 0) { return NeedStreamResult.RestOnly; }
             //タイムラインを取得してない場合は必ずこれ
             if (TweetTime.Count < 2) { return NeedStreamResult.RestOnly; }
             int TotalSeconds = (int)((TweetTime.Max - TweetTime.Min).TotalSeconds);

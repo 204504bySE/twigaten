@@ -82,8 +82,10 @@ namespace twidownstream
         ///<summary>これを定期的に呼んで再接続やFriendの取得をやらせる</summary>
         public async ValueTask<int> ConnectStreamers()
         {
-            if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); }
+            //アカウントが1個も割り当てられなくなってたら自殺する
+            async Task ExistThisPid() { if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); } }
 
+            await ExistThisPid().ConfigureAwait(false);
             int ActiveStreamers = 0;  //再接続が不要だったやつの数
             ActionBlock<UserStreamer> ConnectBlock = new ActionBlock<UserStreamer>(
             async (Streamer) =>
@@ -151,7 +153,7 @@ namespace twidownstream
                 SingleProducerConstrained = true,
             });
 
-            SetMaxConnections(0);
+            //SetMaxConnections(0);
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -167,9 +169,14 @@ namespace twidownstream
                         sw.Restart();
                         Counter.PrintReset();
                         await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
+                        await ExistThisPid().ConfigureAwait(false);
                     }
                     //ツイートが詰まってたら休む                    
-                    if (UserStreamerStatic.NeedConnectPostpone()) { await Task.Delay(1000).ConfigureAwait(false); }
+                    if (UserStreamerStatic.NeedConnectPostpone())
+                    {
+                        await ExistThisPid().ConfigureAwait(false);
+                        await Task.Delay(1000).ConfigureAwait(false);
+                    }
                     else { break; }
                 } 
             }
@@ -198,15 +205,6 @@ namespace twidownstream
             {
                 ServicePointManager.DefaultConnectionLimit = max;
             }
-            /*
-            ThreadPool.GetMinThreads(out int w, out int c);
-            if (Force || w < max)
-            {
-                ThreadPool.SetMinThreads(max, c);
-                ThreadPool.GetMaxThreads(out int wm, out int cm);
-                ThreadPool.SetMaxThreads(max, cm);
-            }
-            */
         }
     }
 }

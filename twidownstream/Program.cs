@@ -19,11 +19,11 @@ namespace twidownstream
             twitenlib.Config config = twitenlib.Config.Instance;
             //結局Minを超えると死ぬのでMinを大きくしておくしかない
             {
-                //ThreadPool.GetMinThreads(out int MinThreads, out int _);
+                //ThreadPool.GetMinThreads(out int MinThreads, out int CompletionThreads);
                 ThreadPool.GetMaxThreads(out int MaxThreads, out int CompletionThreads);
                 ThreadPool.SetMinThreads(MaxThreads, CompletionThreads);
                 //ThreadPool.SetMaxThreads(MaxThreads, CompletionThreads);
-                //Console.WriteLine("{0} App: ThreadPool: {1}, {2}", DateTime.Now, MaxThreads, CompletionThreads);
+                //Console.WriteLine("App: ThreadPool: {0}, {1}", MinThreads, CompletionThreads);
             }
             await Task.Delay(10000).ConfigureAwait(false);
 
