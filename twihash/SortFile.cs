@@ -7,7 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
 using System.Runtime.InteropServices;
-using System.IO.Compression;
+using BrotliSharpLib;
 
 namespace twihash
 {
@@ -183,7 +183,7 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            zip = new BrotliStream(file, CompressionMode.Decompress);
+            zip = new BrotliStream(file, System.IO.Compression.CompressionMode.Decompress);
             Length = file.Length;
             FillNextBuf();
         }
@@ -232,6 +232,7 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongWriter : IDisposable
     {
+        static readonly Config config = Config.Instance;
         static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
         readonly FileStream file;
         readonly BrotliStream zip;
@@ -243,7 +244,8 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            zip = new BrotliStream(file, CompressionLevel.Fastest);
+            zip = new BrotliStream(file, System.IO.Compression.CompressionMode.Compress);
+            zip.SetQuality(2);
         }
 
         public void Write(long Value)

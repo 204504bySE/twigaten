@@ -45,7 +45,8 @@ namespace twidownstream
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                 GC.Collect();
                 sw.Stop();
-                await Task.Delay(60000 - (int)sw.ElapsedMilliseconds % 60000).ConfigureAwait(false);
+                long Elapsed = sw.ElapsedMilliseconds;
+                if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
                 //↓再読み込みしても一部しか反映されないけどね
                 config.Reload();
                 await manager.AddAll().ConfigureAwait(false);
