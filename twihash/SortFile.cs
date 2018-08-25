@@ -7,7 +7,8 @@ using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
 using System.Runtime.InteropServices;
-using BrotliSharpLib;
+using System.IO.Compression;
+using System.Collections.Concurrent;
 
 namespace twihash
 {
@@ -42,6 +43,9 @@ namespace twihash
             //最初はAllHashから読み出しながら個別のファイルを作る
             using (BufferedLongReader reader = new BufferedLongReader(AllHashFilePath))
             {
+                int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
+                //これにソート用の配列を入れてメモリ割り当てを減らしてみる
+                ConcurrentQueue<long[]> LongPool = new ConcurrentQueue<long[]>();
                 BlockSortComparer SortComp = new BlockSortComparer(SortMask);
                 var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>((t) =>
                 {
@@ -50,29 +54,28 @@ namespace twihash
                     {
                         foreach (long h in t.ToSort) { w.Write(h); }
                     }
+                    if (t.ToSort.Length == InitialSortUnit) { LongPool.Enqueue(t.ToSort); }
                 }, new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
-                    MaxDegreeOfParallelism = config.hash.FileSortThreads,
-                    BoundedCapacity = config.hash.FileSortThreads << 1
+                    MaxDegreeOfParallelism = config.hash.FileSortThreads
                 });
 
-                int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
                 for (; reader.Length - reader.Position >= config.hash.InitialSortFileSize; FileCount++)
                 {
-                    long[] ToSort = new long[InitialSortUnit];
+                    if(!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
                     for (int i = 0; i < InitialSortUnit; i++) { ToSort[i] = reader.Read(); }
-                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort)).ConfigureAwait(false);
+                    FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSort));
                 }
                 int SortLastCount = (int)(reader.Length - reader.Position) / sizeof(long);
                 if (SortLastCount > 0)
                 {
                     long[] ToSortLast = new long[SortLastCount];
                     for (int i = 0; i < SortLastCount; i++) { ToSortLast[i] = reader.Read(); }
-                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast)).ConfigureAwait(false);
+                    FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSortLast));
                     FileCount++;    //最後に作ったから足す
                 }
-                FirstSortBlock.Complete(); FirstSortBlock.Completion.Wait();
+                FirstSortBlock.Complete(); await FirstSortBlock.Completion.ConfigureAwait(false);
             }
             GC.Collect();
             Random rand = new Random();
@@ -183,14 +186,13 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            zip = new BrotliStream(file, System.IO.Compression.CompressionMode.Decompress);
+            zip = new BrotliStream(file, CompressionMode.Decompress);
             Length = file.Length;
             FillNextBuf();
         }
 
         void FillNextBuf()
         {
-            //FillNextBufTask = file.ReadAsync(NextBuf, 0, NextBuf.Length);
             FillNextBufTask = zip.ReadAsync(NextBuf, 0, NextBuf.Length);
         }
 
@@ -241,11 +243,11 @@ namespace twihash
         byte[] WriteBuf = new byte[BufSize];
         Task ActualWriteTask;
 
-        public BufferedLongWriter(string FilePath)
+        public BufferedLongWriter(string FilePath, CompressionLevel Level = CompressionLevel.Fastest)
         {
             file = File.OpenWrite(FilePath);
-            zip = new BrotliStream(file, System.IO.Compression.CompressionMode.Compress);
-            zip.SetQuality(2);
+            //圧縮レベル2を指定する方法は存在しないorz
+            zip = new BrotliStream(file, Level);
         }
 
         public void Write(long Value)
@@ -269,7 +271,6 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            //ActualWriteTask = file.WriteAsync(WriteBuf, 0, BufCursor);
             ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor);
             BufCursor = 0;
         }
@@ -316,7 +317,7 @@ namespace twihash
 
         public AllHashFileWriter()
         {
-            writer = new BufferedLongWriter(SortFile.AllHashFilePath);
+            writer = new BufferedLongWriter(SortFile.AllHashFilePath, (CompressionLevel)3);
         }
         
         public void Write(IEnumerable<long> Values)
