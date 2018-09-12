@@ -17,11 +17,11 @@ namespace twidownparent
             //多重起動防止
             //CheckOldProcess.CheckandExit();
 
-            Config config = Config.Instance;
-            DBHandler db = new DBHandler();
+            var config = Config.Instance;
+            var db = new DBHandler();
 
             await db.InitTruncate();
-            ChildProcessHandler child = new ChildProcessHandler();
+            var child = new ChildProcessHandler();
             //LockerHandler.CheckAndStart();
 
             bool GetMyTweet = false;    //後から追加されたアカウントはstreamer側で自分のツイートを取得させる

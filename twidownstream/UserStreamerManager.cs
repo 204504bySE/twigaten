@@ -24,23 +24,23 @@ namespace twidownstream
         static readonly DBHandler db = DBHandler.Instance;
 
         private UserStreamerManager() { }
-        public static async ValueTask<UserStreamerManager> Create()
+        public static async Task<UserStreamerManager> Create()
         {
-            UserStreamerManager ret = new UserStreamerManager();
+            var ret = new UserStreamerManager();
             await ret.AddAll().ConfigureAwait(false);
             return ret;
         }
 
         public async Task AddAll()
         {
-            Tokens[] token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess).ConfigureAwait(false);
-            Tokens[] tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer).ConfigureAwait(false);
+            var token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess).ConfigureAwait(false);
+            var tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer).ConfigureAwait(false);
             //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
-            foreach (Tokens t in tokenRest)
+            foreach (var t in tokenRest)
             {            
                 if (Add(t) && Streamers.TryGetValue(t.UserId, out UserStreamer s)) { s.NeedRestMyTweet = true; }
             }
-            foreach (Tokens t in token)
+            foreach (var t in token)
             {
                 Add(t);
             }
@@ -80,19 +80,19 @@ namespace twidownstream
         static readonly int ThisPid = Process.GetCurrentProcess().Id;
 
         ///<summary>これを定期的に呼んで再接続やFriendの取得をやらせる</summary>
-        public async ValueTask<int> ConnectStreamers()
+        public async Task<int> ConnectStreamers()
         {
             //アカウントが1個も割り当てられなくなってたら自殺する
             async Task ExistThisPid() { if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); } }
 
             await ExistThisPid().ConfigureAwait(false);
             int ActiveStreamers = 0;  //再接続が不要だったやつの数
-            ActionBlock<UserStreamer> ConnectBlock = new ActionBlock<UserStreamer>(
+            var ConnectBlock = new ActionBlock<UserStreamer>(
             async (Streamer) =>
             {
                 try
                 {
-                    UserStreamer.NeedConnectResult NeedConnect = Streamer.NeedConnect();
+                    var NeedConnect = Streamer.NeedConnect();
                     //初回とRevoke疑いのときだけVerifyCredentials()する
                     //プロフィールを取得したい
                     if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
@@ -158,7 +158,7 @@ namespace twidownstream
             Stopwatch sw = new Stopwatch();
             sw.Start();
             Counter.PrintReset();
-            foreach (KeyValuePair<long, UserStreamer> s in Streamers)
+            foreach (var s in Streamers)
             {
                 if (!await ConnectBlock.SendAsync(s.Value).ConfigureAwait(false)) { break; }    //そんなバナナ
                 SetMaxConnections(ActiveStreamers);

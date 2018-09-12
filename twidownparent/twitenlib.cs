@@ -18,15 +18,15 @@ namespace twitenlib
     ///<summary>iniファイル読むやつ</summary>
     public class Config
     {
-        private static Config _config = new Config();
+        private static readonly Config _config = new Config();
         private Config() { Reload(); }
         public void Reload()
         {
             try
             {
                 string iniPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twiten.ini");
-                FileIniDataParser ini = new FileIniDataParser();
-                IniData data = ini.ReadFile(iniPath);
+                var ini = new FileIniDataParser();
+                var data = ini.ReadFile(iniPath);
                 token = new _token(data);
                 crawl = new _crawl(data);
                 crawlparent = new _crawlparent(data);
@@ -200,7 +200,7 @@ namespace twitenlib
         public DBHandler(string user, string pass, string server ="localhost", uint timeout = 20, uint poolsize = 40, uint lifetime = 3600)
         {
             if(lifetime < timeout) { throw new ArgumentException("lifetime < timeout"); }
-            MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder()
+            var builder = new MySqlConnectionStringBuilder()
             {
                 Server = server,
                 Database = "twiten",
@@ -225,7 +225,7 @@ namespace twitenlib
         protected static string BulkCmdStr(int count, int unit, string head)
         {
             if(26 < unit) { throw new ArgumentOutOfRangeException("26 < unit"); }
-            StringBuilder BulkCmd = new StringBuilder(head);
+            var BulkCmd = new StringBuilder(head);
             for (int i = 0; i < count; i++)
             {
                 BulkCmd.Append("(@");
@@ -247,7 +247,7 @@ namespace twitenlib
         //(@0,@1,@2,@3…);  という文字列
         protected static string BulkCmdStrIn(int count, string head)
         {
-            StringBuilder BulkCmd = new StringBuilder(head);
+            var BulkCmd = new StringBuilder(head);
             BulkCmd.Append("(@");
             for (int i = 0; i < count; i++)
             {
@@ -259,15 +259,15 @@ namespace twitenlib
             return BulkCmd.ToString();
         }
 
-        protected async ValueTask<DataTable> SelectTable(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        protected async Task<DataTable> SelectTable(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
             try
             {
                 DataTable ret;
-                using (MySqlConnection conn = NewConnection())
+                using (var conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
-                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
+                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
@@ -289,21 +289,21 @@ namespace twitenlib
             return null;
         }
 
+        ///<summary>ReadActionには1行読む毎にやる処理を書く 最後まで成功したらTrue</summary>
         protected async Task<bool> ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
             try
             {
-                using (MySqlConnection conn = NewConnection())
+                using (var conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
-                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
+                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
                         DbDataReader reader = null;
                         try
                         {
-                            //FuncにしたゆえにここでCommit投げられないけどこうしないと例外をCatchできないのだ
                             reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
                             while (await reader.ReadAsync().ConfigureAwait(false)) { ReadAction.Invoke(reader); }
                             reader.Close();
@@ -314,23 +314,20 @@ namespace twitenlib
                     }
                 }
             }
-            //ReadFuncをasyncにするとそれ自体がTaskになる
-            //何も考えずにawait await ExecuteReader()するとnullをawaitできなくて死ぬ
-            //nullチェックしてからawaitでおｋ #ウンコード
             catch { }
             return false;
         }
 
-        protected async ValueTask<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        ///<summary>SELECT COUNT() 用</summary>
+        protected async Task<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
-            //SELECT COUNT() 用
             try
             {
                 long ret;
-                using (MySqlConnection conn = NewConnection())
+                using (var conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
-                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
+                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
                     {
                         try
                         {
@@ -348,7 +345,7 @@ namespace twitenlib
             return -1;
         }
 
-        protected ValueTask<int> ExecuteNonQuery(MySqlCommand cmd)
+        protected Task<int> ExecuteNonQuery(MySqlCommand cmd)
         {
             return ExecuteNonQuery(new MySqlCommand[] { cmd });
         }
@@ -358,15 +355,15 @@ namespace twitenlib
         ///戻り値はDBの変更された行数
         ///失敗したら-1
         ///</summary>
-        protected async ValueTask<int> ExecuteNonQuery(IEnumerable<MySqlCommand> cmd)
+        protected async Task<int> ExecuteNonQuery(IEnumerable<MySqlCommand> cmd)
         {
             try
             {
                 int ret = 0;
-                using (MySqlConnection conn = NewConnection())
+                using (var conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
-                    using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false))
+                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                     {
                         try
                         {

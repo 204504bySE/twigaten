@@ -149,7 +149,7 @@ namespace twidownstream
             }
         }
 
-        static async ValueTask<bool> DownloadStoreProfileImage(Status x)
+        static async Task<bool> DownloadStoreProfileImage(Status x)
         {
             //アイコンが更新または未保存ならダウンロードする
             //RTは自動でやらない
@@ -172,14 +172,14 @@ namespace twidownstream
                 {
                     try
                     {
-                        using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, ProfileImageUrl))
+                        using (var req = new HttpRequestMessage(HttpMethod.Get, ProfileImageUrl))
                         {
                             req.Headers.Referrer = new Uri(StatusUrl(x));
-                            using (HttpResponseMessage res = await Http.SendAsync(req).ConfigureAwait(false))
+                            using (var res = await Http.SendAsync(req).ConfigureAwait(false))
                             {
                                 if (res.IsSuccessStatusCode)
                                 {
-                                    using (FileStream file = File.Create(LocalPath))
+                                    using (var file = File.Create(LocalPath))
                                     {
                                         await res.Content.CopyToAsync(file).ConfigureAwait(false);
                                         await file.FlushAsync().ConfigureAwait(false);
@@ -211,8 +211,8 @@ namespace twidownstream
         {
             try
             {
-                Lazy<HashSet<long>> RestId = new Lazy<HashSet<long>>();   //同じツイートを何度も処理したくない
-                foreach (MediaEntity m in a.x.ExtendedEntities.Media ?? a.x.Entities.Media)
+                var RestId = new Lazy<HashSet<long>>();   //同じツイートを何度も処理したくない
+                foreach (var m in a.x.ExtendedEntities.Media ?? a.x.Entities.Media)
                 {
                     Counter.MediaTotal.Increment();
 
@@ -241,10 +241,10 @@ namespace twidownstream
                     {
                         try
                         {
-                            using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, uri))
+                            using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
                             {
                                 req.Headers.Referrer = new Uri(StatusUrl(a.x));
-                                using (HttpResponseMessage res = await Http.SendAsync(req).ConfigureAwait(false))
+                                using (var res = await Http.SendAsync(req).ConfigureAwait(false))
                                 {
                                     if (res.IsSuccessStatusCode)
                                     {
@@ -252,7 +252,7 @@ namespace twidownstream
                                         long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
                                         if (dcthash != null && (await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false)) > 0)
                                         {
-                                            using (FileStream file = File.Create(LocalPaththumb))
+                                            using (var file = File.Create(LocalPaththumb))
                                             {
                                                 await file.WriteAsync(mem, 0, mem.Length).ConfigureAwait(false);
                                                 await file.FlushAsync().ConfigureAwait(false);

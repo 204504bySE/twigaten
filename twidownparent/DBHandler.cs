@@ -15,14 +15,14 @@ namespace twidownparent
         public DBHandler() : base("crawl", "", Config.Instance.database.Address) { }
 
         //全tokenを返す 失敗したらnull
-        public async ValueTask<long[]> SelectAlltoken()
+        public async Task<long[]> SelectAlltoken()
         {
             DataTable Table;
-            using (MySqlCommand cmd = new MySqlCommand("SELECT user_id FROM token;"))
+            using (var cmd = new MySqlCommand("SELECT user_id FROM token;"))
             {
                 Table = await SelectTable(cmd).ConfigureAwait(false);
             }
-            long[] ret = new long[Table.Rows.Count];
+            var ret = new long[Table.Rows.Count];
             for (int i = 0; i < Table.Rows.Count; i++)
             {
                 ret[i] = Table.Rows[i].Field<long>(0);
@@ -30,25 +30,25 @@ namespace twidownparent
             return ret;
         }
 
-        public async ValueTask<long> CountToken()
+        public async Task<long> CountToken()
         {
-            using(MySqlCommand cmd = new MySqlCommand("SELECT COUNT(user_id) FROM token;"))
+            using(var cmd = new MySqlCommand("SELECT COUNT(user_id) FROM token;"))
             {
                 return await SelectCount(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
         }
 
-        public async ValueTask<long[]> SelectNewToken()
+        public async Task<long[]> SelectNewToken()
         {
             //Newというより割り当てがないToken
             DataTable Table;
-            using (MySqlCommand cmd = new MySqlCommand(@"SELECT user_id FROM token
+            using (var cmd = new MySqlCommand(@"SELECT user_id FROM token
 WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             {
                 Table = await SelectTable(cmd).ConfigureAwait(false);
             }
             if (Table == null) { return new long[0]; }
-            long[] ret = new long[Table.Rows.Count];
+            var ret = new long[Table.Rows.Count];
             for (int i = 0; i < Table.Rows.Count; i++)
             {
                 ret[i] = Table.Rows[i].Field<long>(0);
@@ -56,10 +56,10 @@ WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             return ret;
         }
 
-        public async ValueTask<int> Assigntoken(long user_id, int pid, bool RestMyTweet)
+        public async Task<int> Assigntoken(long user_id, int pid, bool RestMyTweet)
         {
             //Console.WriteLine("{0} Assign: {1} to {2}", DateTime.Now, user_id, pid);
-            MySqlCommand cmd = new MySqlCommand(@"INSERT IGNORE INTO crawlprocess (user_id, pid, rest_needed) VALUES(@user_id, @pid, @rest_needed)");
+            var cmd = new MySqlCommand(@"INSERT IGNORE INTO crawlprocess (user_id, pid, rest_needed) VALUES(@user_id, @pid, @rest_needed)");
             cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
             cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = pid;
             cmd.Parameters.Add("@rest_needed", MySqlDbType.Byte).Value = RestMyTweet ? 2 : 0;

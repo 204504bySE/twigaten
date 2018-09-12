@@ -23,12 +23,12 @@ namespace twidownparent
         {
             try
             {
-                ProcessStartInfo info = string.IsNullOrWhiteSpace(config.crawlparent.DotNetChild) ?
+                var info = string.IsNullOrWhiteSpace(config.crawlparent.DotNetChild) ?
                     new ProcessStartInfo(config.crawlparent.ChildPath) :
                     new ProcessStartInfo(config.crawlparent.DotNetChild, config.crawlparent.ChildPath);
                 info.WorkingDirectory = Path.GetDirectoryName(config.crawlparent.ChildPath);
                 info.WindowStyle = ProcessWindowStyle.Minimized;
-                using (Process retProcess = new Process()
+                using (var retProcess = new Process()
                 {
                     StartInfo = info,
                     EnableRaisingEvents = true
@@ -83,7 +83,7 @@ namespace twidownparent
             {
                 while (!Cancel.Token.IsCancellationRequested)
                 {
-                    UdpReceiveResult Received = await Udp.ReceiveAsync();
+                    var Received = await Udp.ReceiveAsync();
                     if (Received.Buffer.Length < sizeof(int)) { continue; }
                     int pid = BitConverter.ToInt32(Received.Buffer, 0);
                     LastWatchTime[pid] = DateTimeOffset.UtcNow;

@@ -20,7 +20,7 @@ namespace twidownstream
         readonly int pid = Process.GetCurrentProcess().Id;
 
         private DBHandler() : base("crawl", "", Config.Instance.database.Address, 10, (uint)Config.Instance.crawl.MaxDBConnections) { }
-        private static DBHandler _db = new DBHandler();
+        private static readonly DBHandler _db = new DBHandler();
         //singletonはこれでインスタンスを取得して使う
         public static DBHandler Instance
         {
@@ -36,7 +36,7 @@ namespace twidownstream
             RestInStreamer
         }
 
-        public async ValueTask<Tokens[]> Selecttoken(SelectTokenMode Mode)
+        public async Task<Tokens[]> Selecttoken(SelectTokenMode Mode)
         {
             DataTable Table;
             Tokens[] ret;
@@ -77,7 +77,7 @@ NATURAL JOIN crawlprocess
             finally { Table.Clear(); Table.Dispose(); }
         }
 
-        public async ValueTask<Tokens[]> SelectAlltoken()
+        public async Task<Tokens[]> SelectAlltoken()
         //全tokenを返す
         {
             DataTable Table;
@@ -108,7 +108,7 @@ WHERE pid = @pid;"))
             finally { Table.Clear(); Table.Dispose(); }
         }
 
-        public async ValueTask<int> StoreRestNeedtoken(long user_id)
+        public async Task<int> StoreRestNeedtoken(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = TRUE WHERE user_id = @user_id;"))
             {
@@ -117,7 +117,7 @@ WHERE pid = @pid;"))
             }
         }
 
-        public async ValueTask<int> StoreRestDonetoken(long user_id)
+        public async Task<int> StoreRestDonetoken(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = FALSE WHERE user_id = @user_id;"))
             {
@@ -127,7 +127,7 @@ WHERE pid = @pid;"))
         }
 
         ///<summary>無効化されたっぽいTokenを消す</summary>
-        public async ValueTask<int> DeleteToken(long user_id)
+        public async Task<int> DeleteToken(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"DELETE FROM crawlprocess WHERE user_id = @user_id;"))
             {
