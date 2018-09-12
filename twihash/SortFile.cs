@@ -41,12 +41,12 @@ namespace twihash
         {
             long FileCount = 0;
             //最初はAllHashから読み出しながら個別のファイルを作る
-            using (BufferedLongReader reader = new BufferedLongReader(AllHashFilePath))
+            using (var reader = new BufferedLongReader(AllHashFilePath))
             {
                 int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
                 //これにソート用の配列を入れてメモリ割り当てを減らしてみる
-                ConcurrentQueue<long[]> LongPool = new ConcurrentQueue<long[]>();
-                BlockSortComparer SortComp = new BlockSortComparer(SortMask);
+                var LongPool = new ConcurrentQueue<long[]>();
+                var SortComp = new BlockSortComparer(SortMask);
                 var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>((t) =>
                 {
                     Array.Sort(t.ToSort, SortComp);
@@ -61,24 +61,28 @@ namespace twihash
                     MaxDegreeOfParallelism = config.hash.FileSortThreads
                 });
 
-                for (; reader.Length - reader.Position >= config.hash.InitialSortFileSize; FileCount++)
+                while (reader.Readable)
                 {
-                    if(!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
-                    for (int i = 0; i < InitialSortUnit; i++) { ToSort[i] = reader.Read(); }
-                    FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSort));
-                }
-                int SortLastCount = (int)(reader.Length - reader.Position) / sizeof(long);
-                if (SortLastCount > 0)
-                {
-                    long[] ToSortLast = new long[SortLastCount];
-                    for (int i = 0; i < SortLastCount; i++) { ToSortLast[i] = reader.Read(); }
-                    FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSortLast));
-                    FileCount++;    //最後に作ったから足す
+                    if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
+                    int i = 0;
+                    for (; i < InitialSortUnit; i++)
+                    {
+                        if (!reader.Readable) { break; }
+                        ToSort[i] = reader.Read();
+                    }
+                    //最後は配列の長さが半端になるので必要な長さの配列を作る
+                    if(i < InitialSortUnit)
+                    {
+                        long[] ToSortLast = new long[i];
+                        Array.Copy(ToSort, ToSortLast, i);
+                        FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSortLast));
+                    }
+                    else { FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSort)); }
+                    FileCount++;
                 }
                 FirstSortBlock.Complete(); await FirstSortBlock.Completion.ConfigureAwait(false);
             }
             GC.Collect();
-            Random rand = new Random();
             int step = 0;
             //ファイル単位でマージソートしていく
             for (; FileCount > 1; step++)
@@ -114,52 +118,40 @@ namespace twihash
         ///<summary>ファイル2個をマージするやつ</summary>
         static void MargeSortUnit(long SortMask, string InputPathA, string InputPathB, string OutputPath)
         {
-            using (BufferedLongWriter writer = new BufferedLongWriter(OutputPath))
-            using (BufferedLongReader readerA = new BufferedLongReader(InputPathA))
-            using (BufferedLongReader readerB = new BufferedLongReader(InputPathB))
+            using (var writer = new BufferedLongWriter(OutputPath))
+            using (var readerA = new BufferedLongReader(InputPathA))
+            using (var readerB = new BufferedLongReader(InputPathB))
             {
                 //2つのファイルを並行して読んでいく
 
-
-                //残りの書込回数をこれで数える(境界条件対策
-                long restA = readerA.Length / sizeof(long), restB = readerB.Length / sizeof(long);
-
                 long lastA = 0, lastB = 0, maskedA = 0, maskedB = 0;
+                bool hasA = true, hasB = true;
                 void ReadA()
                 {
-                    if (readerA.Readable())
+                    if (readerA.Readable)
                     {
                         lastA = readerA.Read();
                         maskedA = lastA & SortMask;
                     }
-                    else { maskedA = long.MaxValue; }   //maskされてないMax→もう読めない
+                    else { hasA = false; }    //もう読めない→値がない
                 }
                 void ReadB()
                 {
-                    if (readerB.Readable())
+                    if (readerB.Readable)
                     {
                         lastB = readerB.Read();
                         maskedB = lastB & SortMask;
                     }
-                    else { maskedB = long.MaxValue; }   //maskされてないMax→もう読めない
+                    else { hasB = false; }   //もう読めない→値がない
                 }
 
                 ReadA(); ReadB();
-                do
+                while (hasA || hasB)
                 {
-                    if (maskedA < maskedB)
-                    {
-                        writer.Write(lastA);
-                        ReadA();
-                        restA--;
-                    }
-                    else
-                    {
-                        writer.Write(lastB);
-                        ReadB();
-                        restB--;
-                    }
-                } while (restA > 0 || restB > 0);
+                    if (!hasA) { writer.Write(lastB); ReadB(); }
+                    else if (!hasB || maskedA < maskedB) { writer.Write(lastA); ReadA(); }
+                    else { writer.Write(lastB); ReadB(); }
+                }
             }
             //終わったら古いやつは消す
             File.Delete(InputPathA);
@@ -170,10 +162,9 @@ namespace twihash
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongReader : IDisposable
     {
-        static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
+        static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
         readonly FileStream file;
         readonly BrotliStream zip;
-        public long Length { get; }
         ///<summary>Read()したバイト数</summary>
         public long Position { get; private set; }
 
@@ -187,8 +178,9 @@ namespace twihash
         {
             file = File.OpenRead(FilePath);
             zip = new BrotliStream(file, CompressionMode.Decompress);
-            Length = file.Length;
+            //最初はここで強制的に読ませる
             FillNextBuf();
+            ActualReadAuto();
         }
 
         void FillNextBuf()
@@ -196,13 +188,13 @@ namespace twihash
             FillNextBufTask = zip.ReadAsync(NextBuf, 0, NextBuf.Length);
         }
 
-        void ChangeBufAuto()
+        void ActualReadAuto()
         {
             if (BufCursor >= ActualBufSize)
             {
                 //読み込みが終わってなかったらここで待機される
                 ActualBufSize = FillNextBufTask.Result;
-
+                if(ActualBufSize == 0) { Readable = false; }
                 byte[] swap = Buf;
                 Buf = NextBuf;
                 NextBuf = swap;
@@ -211,14 +203,15 @@ namespace twihash
             }
         }
 
-        public bool Readable() => Position < Length;
+        ///<summary>続きのデータがあるかどうか</summary>
+        public bool Readable { get; private set; } = true;
         public long Read()
         {
-            if(!Readable()) { throw new InvalidOperationException("EOF"); }
+            if(!Readable) { throw new InvalidOperationException("EOF"); }
             long ret = BitConverter.ToInt64(Buf, BufCursor);
             Position += sizeof(long);
             BufCursor += sizeof(long);
-            ChangeBufAuto();
+            ActualReadAuto();
             return ret;
         }
 
@@ -235,7 +228,7 @@ namespace twihash
     class BufferedLongWriter : IDisposable
     {
         static readonly Config config = Config.Instance;
-        static readonly int BufSize = Config.Instance.hash.FileSortBufferSize;
+        static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
         readonly FileStream file;
         readonly BrotliStream zip;
         byte[] Buf = new byte[BufSize];
@@ -252,7 +245,7 @@ namespace twihash
 
         public void Write(long Value)
         {
-            LongToBytes Bytes = new LongToBytes() { Long = Value };
+            var Bytes = new LongToBytes() { Long = Value };
             Buf[BufCursor] = Bytes.Byte0;
             Buf[BufCursor + 1] = Bytes.Byte1;
             Buf[BufCursor + 2] = Bytes.Byte2;
@@ -314,15 +307,14 @@ namespace twihash
     class AllHashFileWriter : IDisposable
     {
         readonly BufferedLongWriter writer;
-
         public AllHashFileWriter()
         {
-            writer = new BufferedLongWriter(SortFile.AllHashFilePath, (CompressionLevel)3);
+            writer = new BufferedLongWriter(SortFile.AllHashFilePath);
         }
-        
+
         public void Write(IEnumerable<long> Values)
         {
-            foreach(long v in Values) { writer.Write(v); }
+            foreach (long v in Values) { writer.Write(v); }
         }
 
         public void Dispose()
@@ -335,7 +327,7 @@ namespace twihash
     class SortedFileReader : IDisposable
     {
         readonly BufferedLongReader reader;
-        long FullMask;
+        readonly long FullMask;
 
         public SortedFileReader(string FilePath, long FullMask)
         {
@@ -356,12 +348,12 @@ namespace twihash
             {
                 TempList.Clear();
                 if (HasExtraHash) { TempHash = ExtraReadHash; HasExtraHash = false; }
-                else if (reader.Readable()) { TempHash = reader.Read(); }
+                else if (reader.Readable) { TempHash = reader.Read(); }
                 else { return null; }
                 TempList.Add(TempHash);
                 //MaskしたやつがMaskedKeyと一致しなかったら終了
                 long MaskedKey = TempHash & FullMask;
-                while (reader.Readable())
+                while (reader.Readable)
                 {
                     TempHash = reader.Read();
                     if ((TempHash & FullMask) == MaskedKey) { TempList.Add(TempHash); }

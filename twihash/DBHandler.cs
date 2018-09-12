@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using twitenlib;
 using System.Threading;
 using System.Threading.Tasks.Dataflow;
+using System.Collections.Concurrent;
 
 namespace twihash
 {
@@ -62,10 +63,25 @@ namespace twihash
         {
             try
             {
-                using (AllHashFileWriter writer = new AllHashFileWriter())
+                using (var writer = new AllHashFileWriter())
                 {
-                    ActionBlock<DataTable> WriterBlock = new ActionBlock<DataTable>(
-                        (table) => { writer.Write(table.AsEnumerable().Select((row) => row.Field<long>(0))); },
+                    //large heapに入れたくなかったら64 + "10~11" - ~~~ くらい
+                    int HashUnitBits = Math.Min(63, 64 + 16 - (int)Math.Log(config.hash.LastHashCount, 2));
+                    //とりあえず平均より十分大きめに
+                    int TableListSize = (int)Math.Max(16, config.hash.LastHashCount >> (63 - HashUnitBits) << 1);
+
+                    //これに読み込み用のListを入れてメモリ割り当てを減らしてみる
+                    var LongPool = new ConcurrentQueue<List<long>>();
+                    var WriterBlock = new ActionBlock<List<long>>(
+                        (table) => 
+                        {
+                            writer.Write(table);
+                            if(table.Count <= TableListSize)
+                            {
+                                table.Clear();
+                                LongPool.Enqueue(table);
+                            }
+                        },
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
@@ -73,11 +89,11 @@ namespace twihash
                         });
 
                     long TotalHashCount = 0;
-                    int HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(config.hash.LastHashCount, 2)); //TableがLarge Heapに載らない程度に調整
-                    ActionBlock<long> LoadHashBlock = new ActionBlock<long>(async (i) =>
+
+                    var LoadHashBlock = new ActionBlock<long>(async (i) =>
                     {
-                        DataTable Table;
-                        do
+                        if (!LongPool.TryDequeue(out var Table)) { Table = new List<long>(TableListSize); }
+                        while(true)
                         {
                             using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
 FROM media
@@ -86,10 +102,11 @@ GROUP BY dcthash;"))
                             {
                                 Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
                                 Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = unchecked(((i + 1) << HashUnitBits) - 1);
-                                Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                                if( await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0))).ConfigureAwait(false)) { break; }
+                                else { Table.Clear(); }
                             }
-                        } while (Table == null);    //大変安易な対応
-                        Interlocked.Add(ref TotalHashCount, Table.Rows.Count);
+                        }
+                        Interlocked.Add(ref TotalHashCount, Table.Count);
                         await WriterBlock.SendAsync(Table);
                     }, new ExecutionDataflowBlockOptions()
                     {
@@ -120,12 +137,12 @@ GROUP BY dcthash;"))
         {
             try
             {
-                HashSet<long> ret = new HashSet<long>();
+                var ret = new HashSet<long>();
                 const int QueryRangeSeconds = 600;
-                ActionBlock<long> LoadHashBlock = new ActionBlock<long>(async (i) => 
+                var LoadHashBlock = new ActionBlock<long>(async (i) => 
                 {
-                    DataTable Table;
-                    do
+                    var Table = new List<long>();
+                    while(true)
                     {
                         using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
 FROM media_downloaded_at
@@ -134,16 +151,11 @@ WHERE downloaded_at BETWEEN @begin AND @end;"))
                         {
                             Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * i;
                             Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
-                            Table = await SelectTable(Cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
-                        }
-                    } while (Table == null);    //大変安易な対応
-                    lock (ret)
-                    {
-                        foreach (long h in Table.AsEnumerable().Select((row) => row.Field<long>(0)))
-                        {
-                            ret.Add(h);
+                            if (await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0))).ConfigureAwait(false)) { break; }
+                            else { Table.Clear(); }
                         }
                     }
+                    lock (ret) { foreach (long h in Table) { ret.Add(h); } }
                 }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
                 for(long i = 0; i < Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - config.hash.LastUpdate) / QueryRangeSeconds + 1; i++)
                 {

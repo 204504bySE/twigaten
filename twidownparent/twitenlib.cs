@@ -155,7 +155,7 @@ namespace twitenlib
             public string TempDir { get; }
             public int InitialSortFileSize { get; }
             public int FileSortThreads { get; }
-            public int FileSortBufferSize { get; }
+            public int ZipBufferSize { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
@@ -167,7 +167,7 @@ namespace twitenlib
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "16777216");
                 FileSortThreads = int.Parse(data["hash"][nameof(FileSortThreads)] ?? Environment.ProcessorCount.ToString());
-                FileSortBufferSize = int.Parse(data["hash"][nameof(FileSortBufferSize)] ?? "262144");
+                ZipBufferSize = int.Parse(data["hash"][nameof(ZipBufferSize)] ?? "65536");
             }
             public void NewLastUpdate(long time)
             {
@@ -271,21 +271,25 @@ namespace twitenlib
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
-
-                        using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
+                        try
                         {
-                            ret = new DataTable();
-                            adapter.Fill(ret);
+                            using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
+                            {
+                                ret = new DataTable();
+                                adapter.Fill(ret);
+                            }
+                            await tran.CommitAsync().ConfigureAwait(false);
+                            return ret;
                         }
-                        await tran.CommitAsync().ConfigureAwait(false);
+                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
-                return ret;
             }
-            catch { return null; }
+            catch { }
+            return null;
         }
 
-        protected async Task ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
+        protected async Task<bool> ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
             try
             {
@@ -296,13 +300,25 @@ namespace twitenlib
                     {
                         cmd.Connection = conn;
                         cmd.Transaction = tran;
-
-                        ReadAction.Invoke(await cmd.ExecuteReaderAsync());
-                        await tran.CommitAsync().ConfigureAwait(false);
+                        DbDataReader reader = null;
+                        try
+                        {
+                            //FuncにしたゆえにここでCommit投げられないけどこうしないと例外をCatchできないのだ
+                            reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+                            while (await reader.ReadAsync().ConfigureAwait(false)) { ReadAction.Invoke(reader); }
+                            reader.Close();
+                            await tran.CommitAsync();
+                            return true;
+                        }
+                        catch { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
-            catch { throw; }
+            //ReadFuncをasyncにするとそれ自体がTaskになる
+            //何も考えずにawait await ExecuteReader()するとnullをawaitできなくて死ぬ
+            //nullチェックしてからawaitでおｋ #ウンコード
+            catch { }
+            return false;
         }
 
         protected async ValueTask<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
@@ -316,15 +332,20 @@ namespace twitenlib
                     await conn.OpenAsync().ConfigureAwait(false);
                     using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
                     {
-                        cmd.Connection = conn;
-                        cmd.Transaction = tran;
-                        ret = Convert.ToInt64(await cmd.ExecuteScalarAsync().ConfigureAwait(false));
-                        await tran.CommitAsync().ConfigureAwait(false);
+                        try
+                        {
+                            cmd.Connection = conn;
+                            cmd.Transaction = tran;
+                            ret = Convert.ToInt64(await cmd.ExecuteScalarAsync().ConfigureAwait(false));
+                            await tran.CommitAsync().ConfigureAwait(false);
+                            return ret;
+                        }
+                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
-                return ret;
             }
-            catch { return -1; }
+            catch { }
+            return -1;
         }
 
         protected ValueTask<int> ExecuteNonQuery(MySqlCommand cmd)
@@ -347,18 +368,23 @@ namespace twitenlib
                     await conn.OpenAsync().ConfigureAwait(false);
                     using (MySqlTransaction tran = await conn.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                     {
-                        foreach (MySqlCommand c in cmd)
+                        try
                         {
-                            c.Connection = conn;
-                            c.Transaction = tran;
-                            ret += await c.ExecuteNonQueryAsync().ConfigureAwait(false);
+                            foreach (MySqlCommand c in cmd)
+                            {
+                                c.Connection = conn;
+                                c.Transaction = tran;
+                                ret += await c.ExecuteNonQueryAsync().ConfigureAwait(false);
+                            }
+                            await tran.CommitAsync().ConfigureAwait(false);
+                            return ret;
                         }
-                        await tran.CommitAsync().ConfigureAwait(false);
+                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
-                return ret;
             }
-            catch { return -1; }
+            catch { }
+            return -1;
         }
     }
 
