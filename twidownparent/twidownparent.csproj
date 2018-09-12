@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="CoreTweet" Version="0.9.0.415" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySqlConnector" Version="0.43.0" />
+    <PackageReference Include="MySqlConnector" Version="0.44.1" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
 

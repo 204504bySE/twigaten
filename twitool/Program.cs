@@ -91,42 +91,42 @@ namespace twitool
             int RemovedCount = 0;
             const int BulkUnit = 1000;
             const string head = @"DELETE FROM media WHERE media_id IN";
-
-            DataTable Table;
             string BulkDeleteCmd = BulkCmdStrIn(BulkUnit, head);
             try
             {
+                var Table = new List<(long media_id, string media_url)>(BulkUnit);
                 do
                 {
+                    Table.Clear();  //ループ判定が後ろにあるのでここでやるしかない
                     using (MySqlCommand cmd = new MySqlCommand(@"SELECT media_id, media_url FROM media
 WHERE source_tweet_id IS NULL
 ORDER BY media_id
 LIMIT @limit;"))
                     {
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
-                        Table = await SelectTable(cmd);
+                        if (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
                     }
-                    if (Table == null || Table.Rows.Count < 1) { break; }
+                    if (Table.Count < 1) { break; }
 
-                    foreach (DataRow row in Table.Rows)
+                    foreach (var row in Table)
                     {
-                        File.Delete(Path.Combine(config.crawl.PictPaththumb, row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1))));
+                        File.Delete(Path.Combine(config.crawl.PictPaththumb, row.media_id.ToString() + Path.GetExtension(row.media_url)));
                     }
 
-                    if (Table.Rows.Count < BulkUnit)
+                    if (Table.Count < BulkUnit)
                     {
-                        BulkDeleteCmd = BulkCmdStrIn(Table.Rows.Count, head);
+                        BulkDeleteCmd = BulkCmdStrIn(Table.Count, head);
                     }
                     using (MySqlCommand delcmd = new MySqlCommand(BulkDeleteCmd))
                     {
-                        for (int n = 0; n < Table.Rows.Count; n++)
+                        for (int n = 0; n < Table.Count; n++)
                         {
-                            delcmd.Parameters.AddWithValue('@' + n.ToString(), Table.Rows[n][0]);
+                            delcmd.Parameters.AddWithValue('@' + n.ToString(), Table[n].media_id);
                         }
                         RemovedCount += await ExecuteNonQuery(delcmd);
                     }
                     //Console.WriteLine("{0} Media removed", RemovedCount);
-                } while (Table.Rows.Count >= BulkUnit);
+                } while (Table.Count >= BulkUnit);
             }
             catch (Exception e) { Console.WriteLine(e); return; }
             Console.WriteLine("{0} Orphan Media removed.", RemovedCount);
@@ -140,9 +140,9 @@ LIMIT @limit;"))
             //Console.WriteLine("{0} / {0} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
             try
             {
+                var Table = new List<(long media_id, string media_url)>(BulkUnit);
                 while (drive.TotalFreeSpace < drive.TotalSize / 25 << 2)
                 {
-                    DataTable Table;
                     using (MySqlCommand cmd = new MySqlCommand(@"(SELECT
 media_id, media_url
 FROM media_downloaded_at
@@ -152,31 +152,32 @@ LIMIT @limit)
 ORDER BY media_id;"))
                     {
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
-                        Table = await SelectTable(cmd);
+                        if(!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
                     }
-                    if (Table == null || Table.Rows.Count < BulkUnit) { break; }
+                    if (Table.Count < BulkUnit) { break; }
 
-                    foreach (DataRow row in Table.Rows)
+                    foreach (var row in Table)
                     {
-                        File.Delete(Path.Combine(config.crawl.PictPaththumb, (row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1)))));
+                        File.Delete(Path.Combine(config.crawl.PictPaththumb, (row.media_id.ToString() + Path.GetExtension(row.media_url))));
                     }
 
                     MySqlCommand[] Cmd = new MySqlCommand[] {
-                        new MySqlCommand(BulkCmdStrIn(Table.Rows.Count, @"DELETE FROM media_downloaded_at WHERE media_id IN")),
-                        new MySqlCommand(BulkCmdStrIn(Table.Rows.Count, @"DELETE FROM media WHERE source_tweet_id IS NULL AND media_id IN")) };
-                    for (int n = 0; n < Table.Rows.Count; n++)
+                        new MySqlCommand(BulkCmdStrIn(Table.Count, @"DELETE FROM media_downloaded_at WHERE media_id IN")),
+                        new MySqlCommand(BulkCmdStrIn(Table.Count, @"DELETE FROM media WHERE source_tweet_id IS NULL AND media_id IN")) };
+                    for (int n = 0; n < Table.Count; n++)
                     {
                         string atNum = '@' + n.ToString();
                         for (int i = 0; i < Cmd.Length; i++)
                         {
-                            Cmd[i].Parameters.Add(atNum, DbType.Int64).Value = Table.Rows[n][0];
+                            Cmd[i].Parameters.Add(atNum, DbType.Int64).Value = Table[n].media_id;
                         }
                     }
                     await ExecuteNonQuery(Cmd);
                     foreach(MySqlCommand c in Cmd) { c.Dispose(); }
-                    RemovedCountFile += Table.Rows.Count;
+                    RemovedCountFile += Table.Count;
                     //Console.WriteLine("{0} Media removed", RemovedCountFile);
                     //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
+                    Table.Clear();
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return; }
@@ -194,36 +195,37 @@ ORDER BY media_id;"))
             //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
             try
             {
+                var Table = new List<(long user_id, string profile_image_url, bool is_default_profile_image)>(BulkUnit);
                 while (drive.TotalFreeSpace < drive.TotalSize / 25 << 2)
                 {
-                    DataTable Table;
                     using (MySqlCommand cmd = new MySqlCommand(@"SELECT
 user_id, profile_image_url, is_default_profile_image FROM user
 WHERE updated_at IS NOT NULL AND profile_image_url IS NOT NULL
 ORDER BY updated_at LIMIT @limit;"))
                     {
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
-                        Table = await SelectTable(cmd);
+                        if (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1), r.GetBoolean(2))))) { return; }
                     }
-                    foreach (DataRow row in Table.Rows)
+                    if (Table.Count < BulkUnit) { break; }
+
+                    foreach (var row in Table)
                     {
-                        if (!row.Field<bool>(2))
+                        if (!row.is_default_profile_image)
                         {
-                            File.Delete(Path.Combine(config.crawl.PictPathProfileImage, row.Field<long>(0).ToString() + Path.GetExtension(row.Field<string>(1))));
+                            File.Delete(Path.Combine(config.crawl.PictPathProfileImage, row.user_id.ToString() + Path.GetExtension(row.profile_image_url)));
                         }
                     }
-                    if (Table.Rows.Count < BulkUnit) { BulkUpdateCmd = BulkCmdStrIn(Table.Rows.Count, head); }
                     using (MySqlCommand upcmd = new MySqlCommand(BulkUpdateCmd))
                     {
-                        for (int n = 0; n < Table.Rows.Count; n++)
+                        for (int n = 0; n < Table.Count; n++)
                         {
-                            upcmd.Parameters.Add('@' + n.ToString(), DbType.Int64).Value = Table.Rows[n][0];
+                            upcmd.Parameters.Add('@' + n.ToString(), DbType.Int64).Value = Table[n].user_id;
                         }
                         RemovedCount += await ExecuteNonQuery(upcmd);
                     }
                     //Console.WriteLine("{0} Icons removed", RemovedCount);
                     //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
-                    if (Table.Rows.Count < BulkUnit) { break; }
+                    Table.Clear();
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return; }
