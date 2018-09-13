@@ -206,7 +206,7 @@ namespace twidownstream
         //tokenの有効性を確認して自身のプロフィールも取得
         //Revokeの可能性があるときだけ呼ぶ
         public enum TokenStatus { Success, Failure, Revoked, Locked }
-        public async ValueTask<TokenStatus> VerifyCredentials()
+        public async Task<TokenStatus> VerifyCredentials()
         {
             try
             {
@@ -280,7 +280,7 @@ namespace twidownstream
 
         public void DisconnectStream() { StreamSubscriber?.Dispose(); StreamSubscriber = null; }
 
-        public async ValueTask<TokenStatus> RecieveRestTimelineAuto()
+        public async Task<TokenStatus> RecieveRestTimelineAuto()
         {
             //TLが遅い分は省略
             if(TweetTime.Count >= 2 && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
@@ -370,7 +370,7 @@ namespace twidownstream
             }
         }
 
-        public async ValueTask<int> RestBlock()
+        public async Task<int> RestBlock()
         {
             try
             {
@@ -381,7 +381,7 @@ namespace twidownstream
             catch { return -1; }
         }
 
-        public async ValueTask<int> RestFriend()
+        public async Task<int> RestFriend()
         {
             try
             {

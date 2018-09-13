@@ -35,8 +35,8 @@ namespace twidownstream
                 return;
             }
 
-            UserStreamerManager manager = await UserStreamerManager.Create().ConfigureAwait(false);
-            Stopwatch sw = new Stopwatch();
+            var manager = await UserStreamerManager.Create().ConfigureAwait(false);
+            var sw = new Stopwatch();
             while (true)
             {
                 sw.Restart();

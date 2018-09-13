@@ -85,7 +85,7 @@ namespace twihash
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
-                            BoundedCapacity = Environment.ProcessorCount << 1
+                            BoundedCapacity = Environment.ProcessorCount + 1
                         });
 
                     long TotalHashCount = 0;
@@ -102,7 +102,7 @@ GROUP BY dcthash;"))
                             {
                                 Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
                                 Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = unchecked(((i + 1) << HashUnitBits) - 1);
-                                if( await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0))).ConfigureAwait(false)) { break; }
+                                if( await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
                                 else { Table.Clear(); }
                             }
                         }
@@ -151,7 +151,7 @@ WHERE downloaded_at BETWEEN @begin AND @end;"))
                         {
                             Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * i;
                             Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
-                            if (await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0))).ConfigureAwait(false)) { break; }
+                            if (await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
                             else { Table.Clear(); }
                         }
                     }

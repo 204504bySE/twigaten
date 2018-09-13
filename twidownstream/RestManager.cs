@@ -23,13 +23,13 @@ namespace twidownstream
             ServicePointManager.DefaultConnectionLimit = Math.Max(config.crawl.DefaultConnectionThreads, config.crawl.RestTweetThreads * 3);
         }
 
-        public async ValueTask<int> Proceed()
+        public async Task<int> Proceed()
         {
-            Tokens[] tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
+            var tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
             if (tokens.Length > 0) { Console.WriteLine("App: {0} Accounts to REST", tokens.Length); }
-            ActionBlock<Tokens> RestProcess = new ActionBlock<Tokens>(async (t) => 
+            var RestProcess = new ActionBlock<Tokens>(async (t) => 
             {
-                UserStreamer s = new UserStreamer(t);
+                var s = new UserStreamer(t);
                 await s.RestFriend();
                 await s.RestBlock();
                 await s.RestMyTweet();
@@ -38,8 +38,8 @@ namespace twidownstream
                 MaxDegreeOfParallelism = config.crawl.RestTweetThreads,
                 BoundedCapacity = config.crawl.RestTweetThreads << 1
             });
-            Stopwatch sw = Stopwatch.StartNew();
-            foreach(Tokens t in tokens)
+            var sw = Stopwatch.StartNew();
+            foreach(var t in tokens)
             {
                 await RestProcess.SendAsync(t);
                 if(sw.ElapsedMilliseconds > 60000)

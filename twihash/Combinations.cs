@@ -98,7 +98,7 @@ namespace twihash
 
         public string CombiString(int index)
         {
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
             int[] combiarray = this[index];
             int i;
             for (i = 0; i < Select - 1; i++)

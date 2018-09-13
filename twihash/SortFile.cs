@@ -58,16 +58,16 @@ namespace twihash
                 }, new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
-                    MaxDegreeOfParallelism = config.hash.FileSortThreads
+                    MaxDegreeOfParallelism = config.hash.InitialFileSortThreads,
+                    BoundedCapacity = config.hash.InitialFileSortThreads + 1
                 });
 
                 while (reader.Readable)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
                     int i = 0;
-                    for (; i < InitialSortUnit; i++)
+                    for (; i < InitialSortUnit && reader.Readable; i++)
                     {
-                        if (!reader.Readable) { break; }
                         ToSort[i] = reader.Read();
                     }
                     //最後は配列の長さが半端になるので必要な長さの配列を作る
@@ -75,9 +75,9 @@ namespace twihash
                     {
                         long[] ToSortLast = new long[i];
                         Array.Copy(ToSort, ToSortLast, i);
-                        FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSortLast));
+                        await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast));
                     }
-                    else { FirstSortBlock.Post((SortingFilePath(0, FileCount), ToSort)); }
+                    else { await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort)); }
                     FileCount++;
                 }
                 FirstSortBlock.Complete(); await FirstSortBlock.Completion.ConfigureAwait(false);

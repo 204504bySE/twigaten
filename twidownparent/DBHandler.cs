@@ -14,22 +14,6 @@ namespace twidownparent
     {
         public DBHandler() : base("crawl", "", Config.Instance.database.Address) { }
 
-        //全tokenを返す 失敗したらnull
-        public async Task<long[]> SelectAlltoken()
-        {
-            DataTable Table;
-            using (var cmd = new MySqlCommand("SELECT user_id FROM token;"))
-            {
-                Table = await SelectTable(cmd).ConfigureAwait(false);
-            }
-            var ret = new long[Table.Rows.Count];
-            for (int i = 0; i < Table.Rows.Count; i++)
-            {
-                ret[i] = Table.Rows[i].Field<long>(0);
-            }
-            return ret;
-        }
-
         public async Task<long> CountToken()
         {
             using(var cmd = new MySqlCommand("SELECT COUNT(user_id) FROM token;"))
@@ -38,22 +22,16 @@ namespace twidownparent
             }
         }
 
+        ///<summary>Newというより割り当てがないToken</summary>
         public async Task<long[]> SelectNewToken()
         {
-            //Newというより割り当てがないToken
-            DataTable Table;
+            var ret = new List<long>();
             using (var cmd = new MySqlCommand(@"SELECT user_id FROM token
 WHERE NOT EXISTS (SELECT * FROM crawlprocess WHERE user_id = token.user_id);"))
             {
-                Table = await SelectTable(cmd).ConfigureAwait(false);
+                if(await ExecuteReader(cmd, (r) => ret.Add(r.GetInt64(0))).ConfigureAwait(false)) { return ret.ToArray(); }
+                else { return new long[0]; }    //例によって全部取得成功しない限り返さない
             }
-            if (Table == null) { return new long[0]; }
-            var ret = new long[Table.Rows.Count];
-            for (int i = 0; i < Table.Rows.Count; i++)
-            {
-                ret[i] = Table.Rows[i].Field<long>(0);
-            }
-            return ret;
         }
 
         public async Task<int> Assigntoken(long user_id, int pid, bool RestMyTweet)
