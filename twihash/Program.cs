@@ -26,6 +26,11 @@ namespace twihash
             sw.Restart();
             long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
             long Count = await db.AllMediaHash();
+
+            //ベンチマーク用に古いAllHashを使う奴
+            //long NewLastUpdate = config.hash.LastUpdate;
+            //long Count = config.hash.LastHashCount;
+
             HashSet<long> NewHash = null;
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {
@@ -43,7 +48,7 @@ namespace twihash
             }
             GC.Collect();
             sw.Restart();
-            MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks);
+            MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks, Count);
             await media.Proceed();
             sw.Stop();
             Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
@@ -53,16 +58,14 @@ namespace twihash
     }
 
     //ハミング距離が一定以下のハッシュ値のペア
-    public struct MediaPair
+    public readonly struct MediaPair
     {
-        public long media0;
-        public long media1;
-        public sbyte hammingdistance;
-        public MediaPair(long _media0, long _media1, sbyte _ham)
+        public long media0 { get; }
+        public long media1 { get; }
+        public MediaPair(long _media0, long _media1)
         {
             media0 = _media0;
             media1 = _media1;
-            hammingdistance = _ham;
         }
 
         //media0,media1順で比較
@@ -99,19 +102,21 @@ namespace twihash
         readonly HashSet<long> NewHash;
         readonly int MaxHammingDistance;
         readonly int ExtraBlock;
+        readonly long HashCount;
         readonly Combinations Combi;
-        public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock)
+        public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock, long HashCount)
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
             this.MaxHammingDistance = MaxHammingDistance;
             this.ExtraBlock = ExtraBlock;
             this.db = db;
+            this.HashCount = HashCount;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
         }
 
         public async Task Proceed()
         {
-            Stopwatch sw = new Stopwatch();
+            var sw = new Stopwatch();
             for (int i = 0; i < Combi.Length; i++)
             {
                 sw.Restart();
@@ -129,14 +134,14 @@ namespace twihash
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
             long FullMask = UnMask(BaseBlocks, Combi.Count);
-            string SortedFilePath = await SortFile.MergeSortAll(FullMask);
+            string SortedFilePath = await SortFile.MergeSortAll(FullMask, HashCount);
 
             int ret = 0;
             int dbcount = 0;
 
-            BatchBlock<MediaPair> PairBatchBlock = new BatchBlock<MediaPair>(DBHandler.StoreMediaPairsUnit);
-            ActionBlock<MediaPair[]> PairStoreBlock = new ActionBlock<MediaPair[]>(
-                async (MediaPair[] p) =>
+            var PairBatchBlock = new BatchBlock<MediaPair>(DBHandler.StoreMediaPairsUnit);
+            var PairStoreBlock = new ActionBlock<MediaPair[]>(
+                async (p) =>
                 {
                 int AddCount;
                     do { AddCount = await db.StoreMediaPairs(p); } while (AddCount < 0);    //失敗したら無限に再試行
@@ -145,16 +150,22 @@ namespace twihash
                 new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
             PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-            ActionBlock<long[]> MultipleSortBlock = new ActionBlock<long[]>((Sorted) =>
+            var MultipleSortBlock = new ActionBlock<long[]>((Sorted) =>
             {
+                //これ速くならなかったね
+                //var NeedInsert = new bool[Sorted.Length];
+                //if (NewHash == null) { for (int i = 0; i < Sorted.Length; i++) { NeedInsert[i] = true; } }
+                //else { for (int i = 0; i < Sorted.Length; i++) { NeedInsert[i] = NewHash.Contains(Sorted[i]); } }
+
                 for (int i = 0; i < Sorted.Length; i++)
                 {
                     bool NeedInsert_i = NewHash?.Contains(Sorted[i]) ?? true;
-                    //long maskedhash_i = Sorted[i] & FullMask;
+                    long maskedhash_i = Sorted[i] & FullMask;
                     for (int j = i + 1; j < Sorted.Length; j++)
                     {
-                        //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
+                        //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる           
                         if (NeedInsert_i || NewHash.Contains(Sorted[j]))    //NewHashがnullなら後者は処理されないからセーフ
+                        //if (NeedInsert[i] || NeedInsert[j])
                         {
                             //ブロックソートで一致した組のハミング距離を測る
                             int ham = HammingDistance(Sorted[i], Sorted[j]);
@@ -184,7 +195,7 @@ namespace twihash
                                 if (x == StartBlock)
                                 {
                                     Interlocked.Increment(ref ret);
-                                    PairBatchBlock.Post(new MediaPair(Sorted[i], Sorted[j], (sbyte)ham));
+                                    PairBatchBlock.Post(new MediaPair(Sorted[i], Sorted[j]));
                                 }
                             }
                         }
@@ -197,9 +208,8 @@ namespace twihash
                 SingleProducerConstrained = true
             });
 
-            using (SortedFileReader Reader = new SortedFileReader(SortedFilePath, FullMask))
+            using (var Reader = new SortedFileReader(SortedFilePath, FullMask))
             {
-                int MaxInputCount = Environment.ProcessorCount << 10;
                 for (long[] Sorted = Reader.ReadBlock(); Sorted != null; Sorted = Reader.ReadBlock())
                 {
                     //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない

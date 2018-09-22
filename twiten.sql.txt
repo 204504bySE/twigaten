@@ -23,14 +23,14 @@ create table crawlprocess(
 create table friend(
 	user_id bigint not null,
 	friend_id bigint not null,
-	unique (user_id, friend_id),
+	primary key (user_id, friend_id),
 	foreign key (user_id) references token(user_id) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;
 	
 create table block(
 	user_id bigint not null,
 	target_id bigint not null,
-	unique (user_id, target_id),
+	primary key (user_id, target_id),
 	foreign key (user_id) references token(user_id) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;
 
@@ -88,8 +88,7 @@ create table tweet_media(
 create table dcthashpair(
 	hash_pri bigint not null,
 	hash_sub bigint not null,
-	dcthash_distance tinyint not null,
-	unique (hash_pri, hash_sub),
+	primary key (hash_pri, hash_sub),
 	foreign key (hash_pri) references media(dcthash) on delete cascade,
 	foreign key (hash_sub) references media(dcthash) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;

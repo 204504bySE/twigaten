@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
-using System.Runtime.InteropServices;
-using System.IO.Compression;
 using System.Collections.Concurrent;
 
 namespace twihash
@@ -37,19 +35,40 @@ namespace twihash
             }
         }
         ///<summary>全ハッシュをファイルに書き出しながらソートしていくやつ</summary>
-        public static async ValueTask<string> MergeSortAll(long SortMask)
+        public static async ValueTask<string> MergeSortAll(long SortMask, long HashCount)
         {
             long FileCount = 0;
             //最初はAllHashから読み出しながら個別のファイルを作る
             using (var reader = new BufferedLongReader(AllHashFilePath))
             {
-                int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
+                //任意の数以上の最小の2のべき乗を求める
+                //https://qiita.com/NotFounds/items/4648a3793d1b2a4f11d5
+                long nearPow2(long n)
+                {
+                    // nが0以下の時は0とする。
+                    if (n <= 0) return 0;
+
+                    // (n & (n - 1)) == 0 の時は、nが2の冪乗であるため、そのままnを返す。
+                    if ((n & (n - 1)) == 0) return n;
+
+                    // bitシフトを用いて、2の冪乗を求める。
+                    ulong ret = 1;
+                    while (n > 0) { ret <<= 1; n >>= 1; }
+                    return (long)ret;
+                }
+
+                //ファイル数が2^nになるように処理サイズを調整する
+                int InitialSortUnit = (int)(HashCount / nearPow2(HashCount / (config.hash.InitialSortFileSize / sizeof(long))) + 1);
+                //int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
+
                 //これにソート用の配列を入れてメモリ割り当てを減らしてみる
                 var LongPool = new ConcurrentQueue<long[]>();
+
                 var SortComp = new BlockSortComparer(SortMask);
-                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>((t) =>
+                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>(async (t) =>
                 {
-                    Array.Sort(t.ToSort, SortComp);
+                    await QuickSortAll(SortMask, t.ToSort, SortComp).ConfigureAwait(false);
+                    //Array.Sort(t.ToSort, SortComp);
                     using (BufferedLongWriter w = new BufferedLongWriter(t.FilePath))
                     {
                         foreach (long h in t.ToSort) { w.Write(h); }
@@ -58,8 +77,8 @@ namespace twihash
                 }, new ExecutionDataflowBlockOptions()
                 {
                     SingleProducerConstrained = true,
-                    MaxDegreeOfParallelism = config.hash.InitialFileSortThreads,
-                    BoundedCapacity = config.hash.InitialFileSortThreads + 1
+                    MaxDegreeOfParallelism = 1,
+                    BoundedCapacity = 2
                 });
 
                 while (reader.Readable)
@@ -75,9 +94,9 @@ namespace twihash
                     {
                         long[] ToSortLast = new long[i];
                         Array.Copy(ToSort, ToSortLast, i);
-                        await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast));
+                        await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast)).ConfigureAwait(false);
                     }
-                    else { await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort)); }
+                    else { await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort)).ConfigureAwait(false); }
                     FileCount++;
                 }
                 FirstSortBlock.Complete(); await FirstSortBlock.Completion.ConfigureAwait(false);
@@ -93,7 +112,7 @@ namespace twihash
                         SortingFilePath(step, i << 1),
                         SortingFilePath(step, (i << 1) | 1),
                         SortingFilePath(step + 1, i));
-                    //余りファイルは最初のファイルにくっつけてしまう
+                    //余りファイルは最初のファイルにくっつけてしまう(出ないようにしたけどね
                     if (i == 0 && (FileCount & 1) != 0)
                     {
                         string NextFirstPath = SortingFilePath(step + 1, 0);
@@ -125,7 +144,7 @@ namespace twihash
                 //2つのファイルを並行して読んでいく
 
                 long lastA = 0, lastB = 0, maskedA = 0, maskedB = 0;
-                bool hasA = true, hasB = true;
+                bool hasA = true, hasB = true;  //最後まで読んでしまったフラグ
                 void ReadA()
                 {
                     if (readerA.Readable)
@@ -133,7 +152,7 @@ namespace twihash
                         lastA = readerA.Read();
                         maskedA = lastA & SortMask;
                     }
-                    else { hasA = false; }    //もう読めない→値がない
+                    else { hasA = false; }
                 }
                 void ReadB()
                 {
@@ -142,7 +161,7 @@ namespace twihash
                         lastB = readerB.Read();
                         maskedB = lastB & SortMask;
                     }
-                    else { hasB = false; }   //もう読めない→値がない
+                    else { hasB = false; }
                 }
 
                 ReadA(); ReadB();
@@ -157,171 +176,85 @@ namespace twihash
             File.Delete(InputPathA);
             File.Delete(InputPathB);
         }
-    }
 
-    ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
-    class BufferedLongReader : IDisposable
-    {
-        static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
-        readonly FileStream file;
-        readonly BrotliStream zip;
-        ///<summary>Read()したバイト数</summary>
-        public long Position { get; private set; }
-
-        byte[] Buf = new byte[BufSize];
-        int ActualBufSize;
-        int BufCursor;  //bufの読み込み位置
-        byte[] NextBuf = new byte[BufSize];
-        Task<int> FillNextBufTask;
-
-        public BufferedLongReader(string FilePath)
+        static async Task QuickSortAll(long SortMask, long[] SortList, IComparer<long> Comparer)
         {
-            file = File.OpenRead(FilePath);
-            zip = new BrotliStream(file, CompressionMode.Decompress);
-            //最初はここで強制的に読ませる
-            FillNextBuf();
-            ActualReadAuto();
-        }
+            var QuickSortBlock = new TransformBlock<(int Begin, int End), (int Begin1, int End1, int Begin2, int End2)?>
+                (((int Begin, int End) SortRange) => {
+                    return QuickSortUnit(SortRange, SortMask, SortList, Comparer);
+                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
-        void FillNextBuf()
-        {
-            FillNextBufTask = zip.ReadAsync(NextBuf, 0, NextBuf.Length);
-        }
-
-        void ActualReadAuto()
-        {
-            if (BufCursor >= ActualBufSize)
+            QuickSortBlock.Post((0, SortList.Length - 1));
+            int ProcessingCount = 1;
+            do
             {
-                //読み込みが終わってなかったらここで待機される
-                ActualBufSize = FillNextBufTask.Result;
-                if(ActualBufSize == 0) { Readable = false; }
-                byte[] swap = Buf;
-                Buf = NextBuf;
-                NextBuf = swap;
-                BufCursor = 0;
-                FillNextBuf();
+                (int Begin1, int End1, int Begin2, int End2)? NextSortRange = await QuickSortBlock.ReceiveAsync().ConfigureAwait(false);
+                if (NextSortRange != null)
+                {
+                    QuickSortBlock.Post((NextSortRange.Value.Begin1, NextSortRange.Value.End1));
+                    QuickSortBlock.Post((NextSortRange.Value.Begin2, NextSortRange.Value.End2));
+                    ProcessingCount++;  //↑で1個終わって2個始めたから1個増える
+                }
+                else { ProcessingCount--; }
+            } while (ProcessingCount > 0);
+        }
+
+        static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
+        {
+            if (SortRange.Begin >= SortRange.End) { return null; }
+            /*十分に並列化されるか要素数が少なくなったらLINQに投げる*/
+            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / Environment.ProcessorCount))
+            {
+                Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
+                return null;
             }
-        }
+            /*
+            //要素数が少なかったら挿入ソートしたい
+            if (SortRange.End - SortRange.Begin <= 16)
+            {
+                for (int k = SortRange.Begin + 1; k <= SortRange.End; k++)
+                {
+                    long TempHash = SortList[k];
+                    long TempMasked = SortList[k] & SortMask;
+                    if ((SortList[k - 1] & SortMask) > TempMasked)
+                    {
+                        int m = k;
+                        do
+                        {
+                            SortList[m] = SortList[m - 1];
+                            m--;
+                        } while (m > SortRange.Begin
+                        && (SortList[m - 1] & SortMask) > TempMasked);
+                        SortList[m] = TempHash;
+                    }
+                }
+                return null;
+            }
+            */
+            //ふつーにピボットを選ぶ
+            long PivotA = SortList[SortRange.Begin] & SortMask;
+            long PivotB = SortList[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask;
+            long PivotC = SortList[SortRange.End] & SortMask;
+            long PivotMasked;
+            if (PivotA <= PivotB && PivotB <= PivotC || PivotA >= PivotB && PivotB >= PivotC) { PivotMasked = PivotB; }
+            else if (PivotA <= PivotC && PivotC <= PivotB || PivotA >= PivotC && PivotC >= PivotB) { PivotMasked = PivotC; }
+            else { PivotMasked = PivotA; }
 
-        ///<summary>続きのデータがあるかどうか</summary>
-        public bool Readable { get; private set; } = true;
-        public long Read()
-        {
-            if(!Readable) { throw new InvalidOperationException("EOF"); }
-            long ret = BitConverter.ToInt64(Buf, BufCursor);
-            Position += sizeof(long);
-            BufCursor += sizeof(long);
-            ActualReadAuto();
-            return ret;
-        }
-
-        public void Dispose()
-        {
-            zip.Dispose();
-            file.Dispose();
-            Position = long.MaxValue;
-            BufCursor = int.MaxValue;
-        }
-    }
-
-    ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
-    class BufferedLongWriter : IDisposable
-    {
-        static readonly Config config = Config.Instance;
-        static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
-        readonly FileStream file;
-        readonly BrotliStream zip;
-        byte[] Buf = new byte[BufSize];
-        int BufCursor;
-        byte[] WriteBuf = new byte[BufSize];
-        Task ActualWriteTask;
-
-        public BufferedLongWriter(string FilePath, CompressionLevel Level = CompressionLevel.Fastest)
-        {
-            file = File.OpenWrite(FilePath);
-            //圧縮レベル2を指定する方法は存在しないorz
-            zip = new BrotliStream(file, Level);
-        }
-
-        public void Write(long Value)
-        {
-            var Bytes = new LongToBytes() { Long = Value };
-            Buf[BufCursor] = Bytes.Byte0;
-            Buf[BufCursor + 1] = Bytes.Byte1;
-            Buf[BufCursor + 2] = Bytes.Byte2;
-            Buf[BufCursor + 3] = Bytes.Byte3;
-            Buf[BufCursor + 4] = Bytes.Byte4;
-            Buf[BufCursor + 5] = Bytes.Byte5;
-            Buf[BufCursor + 6] = Bytes.Byte6;
-            Buf[BufCursor + 7] = Bytes.Byte7;
-            BufCursor += sizeof(long);
-            if (BufCursor >= BufSize) { ActualWrite(); }
-        }
-
-        void ActualWrite()
-        {
-            ActualWriteTask?.Wait();
-            byte[] swap = Buf;
-            Buf = WriteBuf;
-            WriteBuf = swap;
-            ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor);
-            BufCursor = 0;
-        }
-       
-        public void Dispose()
-        {
-            ActualWrite();
-            ActualWriteTask.Wait();
-            zip.Flush();
-            zip.Dispose();
-            file.Dispose();
-        }
-
-        //https://stackoverflow.com/questions/8827649/fastest-way-to-convert-int-to-4-bytes-in-c-sharp
-        [StructLayout(LayoutKind.Explicit)]
-        struct LongToBytes
-        {
-            [FieldOffset(0)]
-            public byte Byte0;
-            [FieldOffset(1)]
-            public byte Byte1;
-            [FieldOffset(2)]
-            public byte Byte2;
-            [FieldOffset(3)]
-            public byte Byte3;
-            [FieldOffset(4)]
-            public byte Byte4;
-            [FieldOffset(5)]
-            public byte Byte5;
-            [FieldOffset(6)]
-            public byte Byte6;
-            [FieldOffset(7)]
-            public byte Byte7;
-
-            [FieldOffset(0)]
-            public long Long;
+            int i = SortRange.Begin; int j = SortRange.End;
+            while (true)
+            {
+                while ((SortList[i] & SortMask) < PivotMasked) { i++; }
+                while ((SortList[j] & SortMask) > PivotMasked) { j--; }
+                if (i >= j) { break; }
+                long SwapHash = SortList[i];
+                SortList[i] = SortList[j];
+                SortList[j] = SwapHash;
+                i++; j--;
+            }
+            return (SortRange.Begin, i - 1, j + 1, SortRange.End);
         }
     }
 
-    ///<summary>DBから読んだ全Hashをファイルに書くやつ</summary>
-    class AllHashFileWriter : IDisposable
-    {
-        readonly BufferedLongWriter writer;
-        public AllHashFileWriter()
-        {
-            writer = new BufferedLongWriter(SortFile.AllHashFilePath);
-        }
-
-        public void Write(IEnumerable<long> Values)
-        {
-            foreach (long v in Values) { writer.Write(v); }
-        }
-
-        public void Dispose()
-        {
-            writer.Dispose();
-        }
-    }
 
     ///<summary>ブロックソート済みのファイルを必要な単位で読み出すやつ</summary>
     class SortedFileReader : IDisposable

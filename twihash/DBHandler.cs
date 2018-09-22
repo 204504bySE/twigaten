@@ -18,7 +18,7 @@ namespace twihash
         
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpair VALUES";
         public const int StoreMediaPairsUnit = 1000;
-        static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 3, StoreMediaPairsHead);
+        static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 2, StoreMediaPairsHead);
         static readonly MediaPair.OrderPri OrderPri = new MediaPair.OrderPri();
         static readonly MediaPair.OrderSub OrderSub = new MediaPair.OrderSub();
 
@@ -34,14 +34,13 @@ namespace twihash
                 Array.Sort(StorePairs, OrderPri);   //deadlock防止
                 using (MySqlCommand Cmd =  new MySqlCommand(
                     StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
-                        : BulkCmdStr(StorePairs.Length, 3, StoreMediaPairsHead)))
+                        : BulkCmdStr(StorePairs.Length, 2, StoreMediaPairsHead)))
                 { 
                     for (int i = 0; i < StorePairs.Length; i++)
                     {
                         string numstr = i.ToString();
                         Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = StorePairs[i].media0;
                         Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = StorePairs[i].media1;
-                        Cmd.Parameters.Add("@c" + numstr, MySqlDbType.Int64).Value = StorePairs[i].hammingdistance;
                     }
                     ret = await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                     //次に降順
@@ -51,7 +50,6 @@ namespace twihash
                         string numstr = i.ToString();
                         Cmd.Parameters["@a" + numstr].Value = StorePairs[i].media1;   //↑とは逆
                         Cmd.Parameters["@b" + numstr].Value = StorePairs[i].media0;
-                        Cmd.Parameters["@c" + numstr].Value = StorePairs[i].hammingdistance;
                     }
                     return ret + await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                 }
@@ -76,11 +74,8 @@ namespace twihash
                         (table) => 
                         {
                             writer.Write(table);
-                            if(table.Count <= TableListSize)
-                            {
-                                table.Clear();
-                                LongPool.Enqueue(table);
-                            }
+                            table.Clear();
+                            LongPool.Enqueue(table);
                         },
                         new ExecutionDataflowBlockOptions()
                         {
