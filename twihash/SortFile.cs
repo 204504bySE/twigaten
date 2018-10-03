@@ -75,10 +75,10 @@ namespace twihash
                     }
                     if (t.ToSort.Length == InitialSortUnit) { LongPool.Enqueue(t.ToSort); }
                 }, new ExecutionDataflowBlockOptions()
-                {
+                {   //ここでメモリを節約する、かもしれない
                     SingleProducerConstrained = true,
                     MaxDegreeOfParallelism = 1,
-                    BoundedCapacity = 2
+                    BoundedCapacity = 1
                 });
 
                 while (reader.Readable)
@@ -106,7 +106,7 @@ namespace twihash
             //ファイル単位でマージソートしていく
             for (; FileCount > 1; step++)
             {
-                ActionBlock<int> MergeSortBlock = new ActionBlock<int>((i) =>
+                var MergeSortBlock = new ActionBlock<int>((i) =>
                 {
                     MargeSortUnit(SortMask,
                         SortingFilePath(step, i << 1),
@@ -203,7 +203,7 @@ namespace twihash
         {
             if (SortRange.Begin >= SortRange.End) { return null; }
             /*十分に並列化されるか要素数が少なくなったらLINQに投げる*/
-            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / Environment.ProcessorCount))
+            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / Math.Max(1, Environment.ProcessorCount - 1)))
             {
                 Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
                 return null;
