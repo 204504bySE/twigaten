@@ -168,7 +168,7 @@ namespace twidownstream
                     {   //ここでGCする #ウンコード
                         sw.Restart();
                         Counter.PrintReset();
-                        await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
+                        await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
                         await ExistThisPid().ConfigureAwait(false);
                     }
                     //ツイートが詰まってたら休む                    
@@ -182,7 +182,7 @@ namespace twidownstream
             }
             ConnectBlock.Complete();
             await ConnectBlock.Completion.ConfigureAwait(false);
-            await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint);
+            await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
             return ActiveStreamers;
         }
 

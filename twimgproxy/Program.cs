@@ -9,12 +9,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace aspcoretest
+namespace twimgproxy
 {
     public class Program
     {
         //ポート番号は適宜
-        const int ListenPort = 12305;
+        const int ListenPort = 12309;
 
         public static void Main(string[] args)
         {
@@ -23,19 +23,18 @@ namespace aspcoretest
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-                .UseKestrel(options => 
+                .UseKestrel(options =>
                 {
-                    options.Listen(IPAddress.Any, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
-                    options.Listen(IPAddress.IPv6Any, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
+                    //LinuxではIPv6AnyだけListenすればIPv4もListenされる
+                    options.Listen(IPAddress.IPv6Loopback, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
-                //.UseUrls("http://*:12305/")
-                
                 .ConfigureLogging((hostingContext, logging) => {
                     logging.ClearProviders();
                     logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
                     logging.AddFilter("Microsoft.AspNetCore.Mvc", LogLevel.Error);
+
                 })
                 .Build();
     }

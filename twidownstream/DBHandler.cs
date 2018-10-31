@@ -64,7 +64,7 @@ NATURAL JOIN crawlprocess
                          r.GetString(1),
                          r.GetString(2),
                          r.GetInt64(0)));
-                 })) { return ret.ToArray(); }
+                 }).ConfigureAwait(false)) { return ret.ToArray(); }
                 else { return new Tokens[0]; }//一応全取得に成功しない限り返さない
             }
 
@@ -89,7 +89,7 @@ WHERE pid = @pid;"))
                         r.GetString(1),
                         r.GetString(2),
                         r.GetInt64(0)));
-                })) { return ret.ToArray(); }
+                }).ConfigureAwait(false)) { return ret.ToArray(); }
                 else { return new Tokens[0]; }//一応全取得に成功しない限り返さない
             }
         }
@@ -197,7 +197,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
                     profile_image_url = r.GetString(0);
                     updated_at = r.IsDBNull(1) ? null as long? : r.GetInt64(1);
                     is_default_profile_image = r.GetBoolean(2);
-                }, IsolationLevel.ReadUncommitted))
+                }, IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                 {
                     //そのユーザーの情報がないという状況が謎だがとりあえず取得する
                     if (!HasRow) { return new ProfileImageInfo { NeedDownload = true }; }

@@ -292,7 +292,7 @@ namespace twitenlib
         ///<summary>ReadActionには1行読む毎にやる処理を書く 最後まで成功したらTrue</summary>
         protected async Task<bool> ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
-            try
+            //try
             {
                 using (var conn = NewConnection())
                 {
@@ -307,14 +307,14 @@ namespace twitenlib
                             reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
                             while (await reader.ReadAsync().ConfigureAwait(false)) { ReadAction.Invoke(reader); }
                             reader.Close();
-                            await tran.CommitAsync();
+                            await tran.CommitAsync().ConfigureAwait(false);
                             return true;
                         }
                         catch { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
-            catch { }
+            //catch { }
             return false;
         }
 

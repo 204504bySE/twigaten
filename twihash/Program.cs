@@ -25,7 +25,7 @@ namespace twihash
             Console.WriteLine("Loading hash");
             sw.Restart();
             long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
-            long Count = await db.AllMediaHash();
+            long Count = await db.AllMediaHash().ConfigureAwait(false);
 
             //ベンチマーク用に古いAllHashを使う奴
             //long NewLastUpdate = config.hash.LastUpdate;
@@ -34,7 +34,7 @@ namespace twihash
             HashSet<long> NewHash = null;
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {
-                NewHash = await db.NewerMediaHash();
+                NewHash = await db.NewerMediaHash().ConfigureAwait(false);
                 if (NewHash == null) { Console.WriteLine("New hash load failed."); Environment.Exit(1); }
                 Console.WriteLine("{0} New hash", NewHash.Count);
             }
@@ -49,7 +49,7 @@ namespace twihash
             GC.Collect();
             sw.Restart();
             MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks, Count);
-            await media.Proceed();
+            await media.Proceed().ConfigureAwait(false);
             sw.Stop();
             Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
             File.Delete(SortFile.AllHashFilePath);
@@ -121,7 +121,7 @@ namespace twihash
             {
                 sw.Restart();
                 GC.Collect();
-                (int db, int sort) = await MultipleSortUnit(i);
+                (int db, int sort) = await MultipleSortUnit(i).ConfigureAwait(false);
                 sw.Stop();
                 Console.WriteLine("{0}\t{1} / {2}\t{3}\t{4}ms ", i, db, sort, Combi.CombiString(i), sw.ElapsedMilliseconds);
             }
@@ -129,12 +129,12 @@ namespace twihash
 
 
         const int bitcount = 64;    //longのbit数
-        async ValueTask<(int db, int sort)> MultipleSortUnit(int Index)
+        async Task<(int db, int sort)> MultipleSortUnit(int Index)
         {
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
             long FullMask = UnMask(BaseBlocks, Combi.Count);
-            string SortedFilePath = await SortFile.MergeSortAll(FullMask, HashCount);
+            string SortedFilePath = await SortFile.MergeSortAll(FullMask, HashCount).ConfigureAwait(false);
 
             int ret = 0;
             int dbcount = 0;
@@ -144,7 +144,7 @@ namespace twihash
                 async (p) =>
                 {
                 int AddCount;
-                    do { AddCount = await db.StoreMediaPairs(p); } while (AddCount < 0);    //失敗したら無限に再試行
+                    do { AddCount = await db.StoreMediaPairs(p).ConfigureAwait(false); } while (AddCount < 0);    //失敗したら無限に再試行
                     Interlocked.Add(ref dbcount, AddCount); 
                 },
                 new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
@@ -213,13 +213,13 @@ namespace twihash
                 for (long[] Sorted = Reader.ReadBlock(); Sorted != null; Sorted = Reader.ReadBlock())
                 {
                     //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない
-                    await MultipleSortBlock.SendAsync(Sorted);
+                    await MultipleSortBlock.SendAsync(Sorted).ConfigureAwait(false);
                 }
             }
             File.Delete(SortedFilePath);
             //余りをDBに入れる
-            MultipleSortBlock.Complete(); await MultipleSortBlock.Completion;
-            PairBatchBlock.Complete(); await PairStoreBlock.Completion;
+            MultipleSortBlock.Complete(); await MultipleSortBlock.Completion.ConfigureAwait(false);
+            PairBatchBlock.Complete(); await PairStoreBlock.Completion.ConfigureAwait(false);
             return (dbcount, ret);
         }
 

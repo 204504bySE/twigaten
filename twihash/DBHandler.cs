@@ -102,7 +102,7 @@ GROUP BY dcthash;"))
                             }
                         }
                         Interlocked.Add(ref TotalHashCount, Table.Count);
-                        await WriterBlock.SendAsync(Table);
+                        await WriterBlock.SendAsync(Table).ConfigureAwait(false);
                     }, new ExecutionDataflowBlockOptions()
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,

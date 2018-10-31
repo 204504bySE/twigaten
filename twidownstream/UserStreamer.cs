@@ -211,7 +211,7 @@ namespace twidownstream
             try
             {
                 //Console.WriteLine("{0} {1}: Verifying token", DateTime.Now, Token.UserId);
-                await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false));
+                await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false)).ConfigureAwait(false);
                 //Console.WriteLine("{0} {1}: Token verification success", DateTime.Now, Token.UserId);
                 return TokenStatus.Success;
             }
