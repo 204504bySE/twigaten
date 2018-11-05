@@ -114,7 +114,8 @@ namespace twidownstream
                         m.x.RetweetedStatus?.User?.Id is long rtuser && UserLock.Add(rtuser)));
                 }
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
-        static readonly ActionBlock<(Status, Tokens, bool, bool, bool, bool)> HandleTweetBlock = new ActionBlock<(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)>(async m =>
+        static readonly ActionBlock<(Status, Tokens, bool, bool, bool, bool)> HandleTweetBlock
+            = new ActionBlock<(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)>(async m =>
         {
             //画像なしツイートは先に捨ててるのでここでは確認しない
              await HandleTweet(m.x, m.t, m.stream, m.rtlocked, m.storeuser, m.storertuser).ConfigureAwait(false); 
@@ -348,7 +349,6 @@ namespace twidownstream
             if (MediaTotal.Get() > 0) { Console.WriteLine("App: {0} / {1} / {2} Media Stored", MediaSuccess.GetReset(), MediaToStore.GetReset(), MediaTotal.GetReset()); }
         }
     }
-
 }
 
 

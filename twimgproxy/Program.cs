@@ -18,6 +18,7 @@ namespace twimgproxy
 
         public static void Main(string[] args)
         {
+            Counter.AutoRefresh();
             BuildWebHost(args).Run();
         }
 
@@ -34,7 +35,6 @@ namespace twimgproxy
                     logging.ClearProviders();
                     logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
                     logging.AddFilter("Microsoft.AspNetCore.Mvc", LogLevel.Error);
-
                 })
                 .Build();
     }

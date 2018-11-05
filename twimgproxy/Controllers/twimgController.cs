@@ -8,30 +8,25 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
-using twimgproxy;
+using static twimgproxy.twimgStatic;
 
-namespace aspcoretest.Controllers
+namespace twimgproxy.Controllers
 {
     [Route("twimg")]
     public class twimgController : Controller
     {
-        static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
-        {
-            UseCookies = false,
-            SslProtocols = System.Security.Authentication.SslProtocols.Tls12
-        });
-        static readonly FileExtensionContentTypeProvider ExtMime = new FileExtensionContentTypeProvider();
-        static readonly DBHandler DB = new DBHandler();
 
         [HttpGet("thumb/{FileName}")]
         public async Task<IActionResult> thumb(string FileName)
         {
             if(!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long media_id)) { return StatusCode(400); }
-            var Source = await DB.SelectThumbUrl(media_id).ConfigureAwait(false);
-            if(Source == null) { return StatusCode(404); }
+            var MediaInfo = await DB.SelectThumbUrl(media_id).ConfigureAwait(false);
+            if(MediaInfo == null) { return StatusCode(404); }
 
             if (!ExtMime.TryGetContentType(FileName, out string mime)) { mime = "application/octet-stream"; };
-            return await Download(Source.Value.Url + (Source.Value.Url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""), Source.Value.Referer, mime).ConfigureAwait(false);
+            var result = await Download(MediaInfo.Value.media_url + (MediaInfo.Value.media_url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""), MediaInfo.Value.tweet_url, mime).ConfigureAwait(false);
+            if (!result.Success) { Removed.RemovedMediaBlock.Post(MediaInfo.Value); }
+            return result.Result;
         }
 
         [HttpGet("profile_image/{FileName}")]
@@ -42,12 +37,14 @@ namespace aspcoretest.Controllers
             if (Source == null) { return StatusCode(404); }
 
             if (!ExtMime.TryGetContentType(FileName, out string mime)) { mime = "application/octet-stream"; };
-            return await Download(Source.Value.Url, Source.Value.Referer, mime).ConfigureAwait(false);
+            return (await Download(Source.Value.Url, Source.Value.Referer, mime).ConfigureAwait(false)).Result;
         }
 
         //ファイルをダウンロードしてそのまんま返す
-        async Task<IActionResult> Download(string Url, string Referer, string mime)
+        //boolは成功したかどうか
+        async Task<(bool Success, IActionResult Result)> Download(string Url, string Referer, string mime)
         {
+            Counter.MediaTotal.Increment();
             using (var req = new HttpRequestMessage(HttpMethod.Get, Url))
             {
                 req.Headers.Referrer = new Uri(Referer);
@@ -55,10 +52,10 @@ namespace aspcoretest.Controllers
                 {
                     if (res.IsSuccessStatusCode)
                     {
-
-                        return File(await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false), mime);
+                        Counter.MediaSuccess.Increment();
+                        return (true, File(await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false), mime));
                     }
-                    else { return StatusCode((int)res.StatusCode); }
+                    else { return (false, StatusCode((int)res.StatusCode)); }
                 }
             }
         }
