@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -25,7 +27,7 @@ namespace twimgproxy.Controllers
 
             if (!ExtMime.TryGetContentType(FileName, out string mime)) { mime = "application/octet-stream"; };
             var result = await Download(MediaInfo.Value.media_url + (MediaInfo.Value.media_url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""), MediaInfo.Value.tweet_url, mime).ConfigureAwait(false);
-            if (!result.Success) { Removed.RemovedMediaBlock.Post(MediaInfo.Value); }
+            if (result.Removed) { Removed.RemoveTweetQueue.Post(MediaInfo.Value.source_tweet_id); }
             return result.Result;
         }
 
@@ -40,9 +42,9 @@ namespace twimgproxy.Controllers
             return (await Download(Source.Value.Url, Source.Value.Referer, mime).ConfigureAwait(false)).Result;
         }
 
-        //ファイルをダウンロードしてそのまんま返す
-        //boolは成功したかどうか
-        async Task<(bool Success, IActionResult Result)> Download(string Url, string Referer, string mime)
+        ///<summary>ファイルをダウンロードしてそのまんま返す
+        ///Removedは404と410で判定</summary>
+        async Task<(bool Removed, IActionResult Result)> Download(string Url, string Referer, string mime)
         {
             Counter.MediaTotal.Increment();
             using (var req = new HttpRequestMessage(HttpMethod.Get, Url))
@@ -53,9 +55,9 @@ namespace twimgproxy.Controllers
                     if (res.IsSuccessStatusCode)
                     {
                         Counter.MediaSuccess.Increment();
-                        return (true, File(await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false), mime));
+                        return (false, File(await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false), mime));
                     }
-                    else { return (false, StatusCode((int)res.StatusCode)); }
+                    else { return (res.StatusCode == HttpStatusCode.NotFound || res.StatusCode == HttpStatusCode.Gone, StatusCode((int)res.StatusCode)); }
                 }
             }
         }

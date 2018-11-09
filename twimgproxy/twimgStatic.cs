@@ -15,7 +15,8 @@ namespace twimgproxy
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12
         });
         public static readonly FileExtensionContentTypeProvider ExtMime = new FileExtensionContentTypeProvider();
-        public static readonly DBHandler DB = new DBHandler();
+        public static readonly DBHandlerView DB = new DBHandlerView();
+        public static readonly DBHandlerCrawl DBCrawl = new DBHandlerCrawl();
         public static readonly RemovedMedia Removed = new RemovedMedia();
     }
 }

@@ -21,12 +21,11 @@ namespace twimgproxy
         //structだからreadonlyにすると更新されなくなるよ
         public static CounterValue MediaSuccess = new CounterValue();
         public static CounterValue MediaTotal = new CounterValue();
-        public static CounterValue TweetToDelete = new CounterValue();
         public static CounterValue TweetDeleted = new CounterValue();
         public static void PrintReset()
         {
             if (MediaTotal.Get() > 0) { Console.WriteLine("{0} / {1} Media Downloaded", MediaSuccess.GetReset(), MediaTotal.GetReset()); }
-            if (TweetToDelete.Get() > 0) { Console.WriteLine("App: {0} / {1} Tweet Deleted", TweetDeleted.GetReset(), TweetToDelete.GetReset()); }
+            if (TweetDeleted.Get() > 0) { Console.WriteLine("App: {0} Tweet Deleted", TweetDeleted.GetReset()); }
         }
 
         public static void AutoRefresh()

@@ -5,40 +5,35 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static twimgproxy.DBHandler;
+using static twimgproxy.DBHandlerView;
 using static twimgproxy.twimgStatic;
 
 namespace twimgproxy
 {
     public class RemovedMedia
     {
-        const int RemoveBatchSize = 128;
+        const int RemoveBatchSize = 16;
 
-        public RemovedMedia()
+        public BatchBlock<long> RemoveTweetQueue { get; } = new BatchBlock<long>(RemoveBatchSize);
+        readonly ActionBlock<long[]> RemoveTweetBlock = new ActionBlock<long[]>(async (batch) =>
         {
-            RemovedMediaBlock = new ActionBlock<MediaInfo>(async (m) =>
-            {
-                //ひとまず何もしないようにしておく
-                return;
-                //一応もう一度ダウンロードして確認するよ
-                if (await CheckRemoved(m).ConfigureAwait(false)) { RemoveTweetBatch.Post(m.source_tweet_id); }
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
-            RemoveTweetBatch.LinkTo(RemoveTweetBlock);
-        }
-        public ActionBlock<MediaInfo> RemovedMediaBlock { get; }
-        BatchBlock<long> RemoveTweetBatch = new BatchBlock<long>(RemoveBatchSize);
-        readonly ActionBlock<long[]> RemoveTweetBlock = new ActionBlock<long[]>(async (m) =>
-        {
-            foreach (var tweet_id in m.Distinct())
+            foreach (long tweet_id in batch.Distinct())
             {
                 //もっと古い公開ツイートがある場合だけ消そうな
-                return;
-
-                Counter.TweetToDelete.Increment();
-                Counter.TweetDeleted.Add(await DB.RemoveDeletedTweet(tweet_id).ConfigureAwait(false));
+                if (await DB.AllHaveOlderMedia(tweet_id).ConfigureAwait(false))
+                {
+                    Counter.TweetDeleted.Add(await DBCrawl.RemoveDeletedTweet(tweet_id).ConfigureAwait(false));
+                }
             }
         }, new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true });
 
+        public RemovedMedia()
+        {
+            RemoveTweetQueue.LinkTo(RemoveTweetBlock);
+        }
+
+        //やっぱいいや
+        /*
         static async Task<bool> CheckRemoved(MediaInfo m)
         {
             try
@@ -55,5 +50,6 @@ namespace twimgproxy
             }
             catch { return false; }   //失敗したときはほっとく
         }
+        */
     }
 }
