@@ -26,13 +26,18 @@ namespace twidownstream
         //Singleton
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
+        ///<summary>全Tokenでこれを共有するとHttpClientも共有される</summary>
+        static readonly ConnectionOptions TokenOptions = new ConnectionOptions
+        {
+            DisableKeepAlive = false,
+            UseCompression = true,
+            UseCompressionOnStreaming = true
+        };
 
         public UserStreamer(Tokens t)
         {
             Token = t;
-            Token.ConnectionOptions.DisableKeepAlive = false;
-            Token.ConnectionOptions.UseCompression = true;
-            Token.ConnectionOptions.UseCompressionOnStreaming = true;
+            Token.ConnectionOptions = TokenOptions;
         }
 
         public void Dispose()

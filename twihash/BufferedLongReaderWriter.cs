@@ -74,7 +74,7 @@ namespace twihash
         }
     }
 
-    ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
+    ///<summary>WriteInt64()を普通に呼ぶと遅いのでまとめて書く</summary>
     class BufferedLongWriter : IDisposable
     {
         static readonly Config config = Config.Instance;

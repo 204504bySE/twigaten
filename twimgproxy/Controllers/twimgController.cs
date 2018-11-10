@@ -27,7 +27,7 @@ namespace twimgproxy.Controllers
 
             if (!ExtMime.TryGetContentType(FileName, out string mime)) { mime = "application/octet-stream"; };
             var result = await Download(MediaInfo.Value.media_url + (MediaInfo.Value.media_url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""), MediaInfo.Value.tweet_url, mime).ConfigureAwait(false);
-            if (result.Removed) { Removed.RemoveTweetQueue.Post(MediaInfo.Value.source_tweet_id); }
+            if (result.Removed) { Removed.Enqueue(MediaInfo.Value.source_tweet_id); }
             return result.Result;
         }
 

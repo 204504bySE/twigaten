@@ -204,7 +204,7 @@ namespace twihash
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
-                BoundedCapacity = Environment.ProcessorCount << 2,
+                BoundedCapacity = Environment.ProcessorCount << 4,
                 SingleProducerConstrained = true
             });
 

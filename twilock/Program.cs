@@ -13,6 +13,7 @@ namespace twilock
 {
     class Program
     {
+        ///<summary>複数のtwidownstream間でツイートの処理を調停するやつだけど結局使ってない</summary>
         static async Task Main(string[] args)
         {
             try
