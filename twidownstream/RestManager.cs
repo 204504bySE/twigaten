@@ -17,13 +17,6 @@ namespace twidownstream
     {
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
-        ///<summary>全Tokenでこれを共有するとHttpClientも共有される</summary>
-        static readonly ConnectionOptions TokenOptions = new ConnectionOptions
-        {
-            DisableKeepAlive = false,
-            UseCompression = true,
-            UseCompressionOnStreaming = true
-        };
 
         public RestManager()
         {
@@ -33,7 +26,6 @@ namespace twidownstream
         public async Task<int> Proceed()
         {
             var tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
-            foreach(var t in tokens) { t.ConnectionOptions = TokenOptions; }
             if (tokens.Length > 0) { Console.WriteLine("App: {0} Accounts to REST", tokens.Length); }
             var RestProcess = new ActionBlock<Tokens>(async (t) => 
             {
