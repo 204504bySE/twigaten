@@ -65,15 +65,15 @@ namespace twihash
                 var LongPool = new ConcurrentQueue<long[]>();
 
                 var SortComp = new BlockSortComparer(SortMask);
-                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort)>(async (t) =>
+                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort, int Length)>(async (t) =>
                 {
-                    await QuickSortAll(SortMask, t.ToSort, SortComp).ConfigureAwait(false);
+                    await QuickSortAll(SortMask, t.ToSort, t.Length, SortComp).ConfigureAwait(false);
                     //Array.Sort(t.ToSort, SortComp);
                     using (BufferedLongWriter w = new BufferedLongWriter(t.FilePath))
                     {
-                        foreach (long h in t.ToSort) { w.Write(h); }
+                        for(int i = 0; i < t.Length; i++) { w.Write(t.ToSort[i]); }
                     }
-                    if (t.ToSort.Length == InitialSortUnit) { LongPool.Enqueue(t.ToSort); }
+                    LongPool.Enqueue(t.ToSort);
                 }, new ExecutionDataflowBlockOptions()
                 {   //ここでメモリを節約する、かもしれない
                     SingleProducerConstrained = true,
@@ -84,24 +84,15 @@ namespace twihash
                 while (reader.Readable)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
-                    int i = 0;
-                    for (; i < InitialSortUnit && reader.Readable; i++)
-                    {
-                        ToSort[i] = reader.Read();
-                    }
-                    //最後は配列の長さが半端になるので必要な長さの配列を作る
-                    if(i < InitialSortUnit)
-                    {
-                        long[] ToSortLast = new long[i];
-                        Array.Copy(ToSort, ToSortLast, i);
-                        await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSortLast)).ConfigureAwait(false);
-                    }
-                    else { await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort)).ConfigureAwait(false); }
+                    int i;
+                    for (i = 0; i < ToSort.Length && reader.Readable; i++) { ToSort[i] = reader.Read(); }
+                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort, i)).ConfigureAwait(false);
                     FileCount++;
                 }
                 FirstSortBlock.Complete(); await FirstSortBlock.Completion.ConfigureAwait(false);
             }
             GC.Collect();
+            GC.WaitForPendingFinalizers();
             int step = 0;
             //ファイル単位でマージソートしていく
             for (; FileCount > 1; step++)
@@ -177,14 +168,14 @@ namespace twihash
             File.Delete(InputPathB);
         }
 
-        static async Task QuickSortAll(long SortMask, long[] SortList, IComparer<long> Comparer)
+        static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
         {
             var QuickSortBlock = new TransformBlock<(int Begin, int End), (int Begin1, int End1, int Begin2, int End2)?>
                 (((int Begin, int End) SortRange) => {
                     return QuickSortUnit(SortRange, SortMask, SortList, Comparer);
                 }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
-            QuickSortBlock.Post((0, SortList.Length - 1));
+            QuickSortBlock.Post((0, SortListLength - 1));
             int ProcessingCount = 1;
             do
             {
@@ -203,7 +194,7 @@ namespace twihash
         {
             if (SortRange.Begin >= SortRange.End) { return null; }
             /*十分に並列化されるか要素数が少なくなったらLINQに投げる*/
-            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / Math.Max(1, Environment.ProcessorCount - 1)))
+            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / (Math.Max(1, Environment.ProcessorCount - 1) << 1)))
             {
                 Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
                 return null;

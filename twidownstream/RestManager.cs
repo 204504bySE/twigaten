@@ -25,14 +25,14 @@ namespace twidownstream
 
         public async Task<int> Proceed()
         {
-            var tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All);
+            var tokens = await db.Selecttoken(DBHandler.SelectTokenMode.All).ConfigureAwait(false);
             if (tokens.Length > 0) { Console.WriteLine("App: {0} Accounts to REST", tokens.Length); }
             var RestProcess = new ActionBlock<Tokens>(async (t) => 
             {
                 var s = new UserStreamer(t);
-                await s.RestFriend();
-                await s.RestBlock();
-                await s.RestMyTweet();
+                await s.RestFriend().ConfigureAwait(false);
+                await s.RestBlock().ConfigureAwait(false);
+                await s.RestMyTweet().ConfigureAwait(false);
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.RestTweetThreads,
@@ -41,7 +41,7 @@ namespace twidownstream
             var sw = Stopwatch.StartNew();
             foreach(var t in tokens)
             {
-                await RestProcess.SendAsync(t);
+                await RestProcess.SendAsync(t).ConfigureAwait(false);
                 if(sw.ElapsedMilliseconds > 60000)
                 {
                     Counter.PrintReset();
@@ -51,7 +51,7 @@ namespace twidownstream
                 }
             }
             RestProcess.Complete();
-            await RestProcess.Completion;
+            await RestProcess.Completion.ConfigureAwait(false);
             return tokens.Length;
         }
     }

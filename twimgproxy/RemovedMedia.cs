@@ -33,25 +33,5 @@ namespace twimgproxy
         {
             RemoveTweetQueue.LinkTo(RemoveTweetBlock);
         }
-
-        //やっぱいいや
-        /*
-        static async Task<bool> CheckRemoved(MediaInfo m)
-        {
-            try
-            {
-                using (var req = new HttpRequestMessage(HttpMethod.Head, m.media_url))
-                {
-                    req.Headers.Referrer = new Uri(m.tweet_url);
-                    using (var res = await Http.SendAsync(req).ConfigureAwait(false))
-                    {
-                        //凍結は403が返ってくるけど鍵垢と区別できないのでとりあえず放置
-                        return res.StatusCode == HttpStatusCode.NotFound || res.StatusCode == HttpStatusCode.Gone;
-                    }
-                }
-            }
-            catch { return false; }   //失敗したときはほっとく
-        }
-        */
     }
 }

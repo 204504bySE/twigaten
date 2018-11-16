@@ -18,7 +18,7 @@ using System.Net.Http;
 
 namespace twidownstream
 {
-    class UserStreamerStatic
+    static class UserStreamerStatic
     {
         //Singleton
         static readonly Config config = Config.Instance;

@@ -39,6 +39,7 @@ namespace twihash
                 Console.WriteLine("{0} New hash", NewHash.Count);
             }
             GC.Collect();
+            GC.WaitForPendingFinalizers();
             sw.Stop();
             if (Count < 0) { Console.WriteLine("Hash load failed."); Environment.Exit(1); }
             else
@@ -47,6 +48,7 @@ namespace twihash
                 config.hash.NewLastHashCount(Count);
             }
             GC.Collect();
+            GC.WaitForPendingFinalizers();
             sw.Restart();
             MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks, Count);
             await media.Proceed().ConfigureAwait(false);
