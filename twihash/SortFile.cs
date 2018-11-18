@@ -37,7 +37,7 @@ namespace twihash
         ///<summary>全ハッシュをファイルに書き出しながらソートしていくやつ</summary>
         public static async ValueTask<string> MergeSortAll(long SortMask, long HashCount)
         {
-            long FileCount = 0;
+            int FileCount = 0;
             //最初はAllHashから読み出しながら個別のファイルを作る
             using (var reader = new BufferedLongReader(AllHashFilePath))
             {
@@ -59,7 +59,8 @@ namespace twihash
 
                 //ファイル数が2^nになるように処理サイズを調整する
                 int InitialSortUnit = (int)(HashCount / nearPow2(HashCount / (config.hash.InitialSortFileSize / sizeof(long))) + 1);
-                //int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long);
+                //処理サイズを調整しないやつ
+                //int InitialSortUnit = (int)(config.hash.InitialSortFileSize / sizeof(long));
 
                 //これにソート用の配列を入れてメモリ割り当てを減らしてみる
                 var LongPool = new ConcurrentQueue<long[]>();
@@ -77,8 +78,8 @@ namespace twihash
                 }, new ExecutionDataflowBlockOptions()
                 {   //ここでメモリを節約する、かもしれない
                     SingleProducerConstrained = true,
-                    MaxDegreeOfParallelism = 1,
-                    BoundedCapacity = 1
+                    MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
+                    BoundedCapacity = config.hash.InitialSortConcurrency
                 });
 
                 while (reader.Readable)
@@ -93,79 +94,107 @@ namespace twihash
             }
             GC.Collect();
             GC.WaitForPendingFinalizers();
+
+            //マージソートするんだけど多数ファイルをまとめてやりたい
             int step = 0;
+            int FilePerStep = config.hash.FileSortFilesPerStep;
             //ファイル単位でマージソートしていく
             for (; FileCount > 1; step++)
             {
-                var MergeSortBlock = new ActionBlock<int>((i) =>
+                var MergeSortBlock = new ActionBlock<int>((begin) =>
                 {
-                    MargeSortUnit(SortMask,
-                        SortingFilePath(step, i << 1),
-                        SortingFilePath(step, (i << 1) | 1),
-                        SortingFilePath(step + 1, i));
-                    //余りファイルは最初のファイルにくっつけてしまう(出ないようにしたけどね
-                    if (i == 0 && (FileCount & 1) != 0)
-                    {
-                        string NextFirstPath = SortingFilePath(step + 1, 0);
-                        File.Delete(NextFirstPath + "_");
-                        File.Move(NextFirstPath, NextFirstPath + "_");
-                        MargeSortUnit(SortMask, SortingFilePath(step, FileCount - 1),
-                            NextFirstPath + "_", NextFirstPath);
-                    }
+                    MergeSortManyUnit(SortMask, step, begin, (begin + FilePerStep > FileCount) ? FileCount % FilePerStep : FilePerStep);
+
                 }, new ExecutionDataflowBlockOptions()
                 {
-                    MaxDegreeOfParallelism = config.hash.FileSortThreads
+                    MaxDegreeOfParallelism = config.hash.FileSortThreads,
+                    SingleProducerConstrained = true
                 });
+                //ソート後のファイル数を計算しておく
+                int NextFileCount = FileCount / FilePerStep + (FileCount % FilePerStep == 0 ? 0 : 1);
 
-                for(int i = 0; i < FileCount >> 1; i++) { MergeSortBlock.Post(i); }
+                for (int i = 0; i < NextFileCount; i++) { MergeSortBlock.Post(i * FilePerStep); }
                 MergeSortBlock.Complete();
                 await MergeSortBlock.Completion.ConfigureAwait(false);
-                FileCount >>= 1;    //ソート後のファイル数はこうなる
+                FileCount = NextFileCount;
             }
             return SortingFilePath(step, 0);
         }
 
-        ///<summary>ファイル2個をマージするやつ</summary>
-        static void MargeSortUnit(long SortMask, string InputPathA, string InputPathB, string OutputPath)
+        ///<summary>多数ファイルのマージソートをちょっと楽にしたい</summary>
+        class MergeSortReader : IDisposable
         {
-            using (var writer = new BufferedLongWriter(OutputPath))
-            using (var readerA = new BufferedLongReader(InputPathA))
-            using (var readerB = new BufferedLongReader(InputPathB))
+            readonly BufferedLongReader Reader;
+            readonly long SortMask;
+            readonly string FilePath;
+
+            public MergeSortReader(string FilePath, long SortMask)
             {
-                //2つのファイルを並行して読んでいく
+                Reader = new BufferedLongReader(FilePath);
+                this.SortMask = SortMask;
+                this.FilePath = FilePath;
+            }
 
-                long lastA = 0, lastB = 0, maskedA = 0, maskedB = 0;
-                bool hasA = true, hasB = true;  //最後まで読んでしまったフラグ
-                void ReadA()
+            public bool ReadOK { get; private set; }
+            public long Last { get; private set; }
+            public long LastMasked { get; private set; }
+            public void Read()
+            {
+                ReadOK = Reader.Readable;
+                if (ReadOK)
                 {
-                    if (readerA.Readable)
-                    {
-                        lastA = readerA.Read();
-                        maskedA = lastA & SortMask;
-                    }
-                    else { hasA = false; }
-                }
-                void ReadB()
-                {
-                    if (readerB.Readable)
-                    {
-                        lastB = readerB.Read();
-                        maskedB = lastB & SortMask;
-                    }
-                    else { hasB = false; }
-                }
-
-                ReadA(); ReadB();
-                while (hasA || hasB)
-                {
-                    if (!hasA) { writer.Write(lastB); ReadB(); }
-                    else if (!hasB || maskedA < maskedB) { writer.Write(lastA); ReadA(); }
-                    else { writer.Write(lastB); ReadB(); }
+                    Last = Reader.Read();
+                    LastMasked = Last & SortMask;
                 }
             }
-            //終わったら古いやつは消す
-            File.Delete(InputPathA);
-            File.Delete(InputPathB);
+            public void Dispose()
+            {
+                Reader.Dispose();
+                ReadOK = false;
+                File.Delete(FilePath);
+            }
+        }
+        ///<summary>多数ファイルを同時にマージソートする
+        ///計算量はよく考えておｋ</summary>
+        static void MergeSortManyUnit(long SortMask, int Step, int Begin, int Count)
+        {
+            string OutFilePath = HashFilePath((Step + 1).ToString() + "-" + ((Begin + Count) / Count - 1).ToString());
+            //入力ファイルが1個だったら移動させて済ませる
+            if (Count == 1)
+            {
+                File.Move(HashFilePath(Step.ToString() + "-" + (Begin).ToString()), OutFilePath);
+                return;
+            }
+            else if (Count < 1) { throw new ArgumentOutOfRangeException(); }
+
+            var readers = new MergeSortReader[Count];
+            for (int i = 0; i < Count; i++)
+            {
+                readers[i] = new MergeSortReader(HashFilePath(Step.ToString() + "-" + (i + Begin).ToString()), SortMask);
+                //最初は全readerに読み込みをやらせる
+                readers[i].Read();
+            }
+            using (var writer = new BufferedLongWriter(OutFilePath))
+            {
+                //あとは全readerが読めなくなるまで続ける
+                while (true)
+                {
+                    long Min = long.MaxValue;
+                    int MinIndex = -1;
+                    for (int i = 0; i < Count; i++)
+                    {
+                        if (readers[i].ReadOK && readers[i].LastMasked <= Min)
+                        {
+                            Min = readers[i].LastMasked;
+                            MinIndex = i;
+                        }
+                    }
+                    if (MinIndex == -1) { break; }
+                    writer.Write(readers[MinIndex].Last);
+                    readers[MinIndex].Read();
+                }
+            }
+            foreach (var r in readers) { r.Dispose(); }
         }
 
         static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
@@ -194,7 +223,7 @@ namespace twihash
         {
             if (SortRange.Begin >= SortRange.End) { return null; }
             /*十分に並列化されるか要素数が少なくなったらLINQに投げる*/
-            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / (Math.Max(1, Environment.ProcessorCount - 1) << 1)))
+            if (SortRange.End - SortRange.Begin <= Math.Max(1048576, SortList.Length / ((Environment.ProcessorCount << 1) - 1)))
             {
                 Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
                 return null;

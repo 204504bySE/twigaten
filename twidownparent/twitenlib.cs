@@ -154,7 +154,9 @@ namespace twitenlib
             public int HashCountOffset { get; }
             public string TempDir { get; }
             public long InitialSortFileSize { get; }
+            public int InitialSortConcurrency { get; }
             public int FileSortThreads { get; }
+            public int FileSortFilesPerStep { get; }
             public int ZipBufferSize { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
@@ -166,7 +168,9 @@ namespace twitenlib
                 HashCountOffset = int.Parse(data["hash"][nameof(HashCountOffset)] ?? "5000000");
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
                 InitialSortFileSize = long.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
+                InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
                 FileSortThreads = int.Parse(data["hash"][nameof(FileSortThreads)] ?? Environment.ProcessorCount.ToString());
+                FileSortFilesPerStep = int.Parse(data["hash"][nameof(FileSortFilesPerStep)] ?? "2");
                 ZipBufferSize = int.Parse(data["hash"][nameof(ZipBufferSize)] ?? "65536");
             }
             public void NewLastUpdate(long time)
