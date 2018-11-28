@@ -57,7 +57,10 @@ namespace twimgproxy.Controllers
                         Counter.MediaSuccess.Increment();
                         return (false, File(await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false), mime));
                     }
-                    else { return (res.StatusCode == HttpStatusCode.NotFound || res.StatusCode == HttpStatusCode.Gone, StatusCode((int)res.StatusCode)); }
+                    else { return (res.StatusCode == HttpStatusCode.NotFound
+                                || res.StatusCode == HttpStatusCode.Gone
+                                || res.StatusCode == HttpStatusCode.Forbidden,
+                                StatusCode((int)res.StatusCode)); }
                 }
             }
         }
