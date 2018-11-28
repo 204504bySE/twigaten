@@ -9,14 +9,37 @@ using twitenlib;
 
 namespace twihash
 {
+    //https://stackoverflow.com/questions/8827649/fastest-way-to-convert-int-to-4-bytes-in-c-sharp
+    [StructLayout(LayoutKind.Explicit)]
+    struct LongToBytes
+    {
+        [FieldOffset(0)]
+        public byte Byte0;
+        [FieldOffset(1)]
+        public byte Byte1;
+        [FieldOffset(2)]
+        public byte Byte2;
+        [FieldOffset(3)]
+        public byte Byte3;
+        [FieldOffset(4)]
+        public byte Byte4;
+        [FieldOffset(5)]
+        public byte Byte5;
+        [FieldOffset(6)]
+        public byte Byte6;
+        [FieldOffset(7)]
+        public byte Byte7;
+
+        [FieldOffset(0)]
+        public long Long;
+    }
+
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongReader : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
         readonly FileStream file;
         readonly BrotliStream zip;
-        ///<summary>Read()したバイト数</summary>
-        public long Position { get; private set; }
 
         byte[] Buf = new byte[BufSize];
         int ActualBufSize;
@@ -58,8 +81,8 @@ namespace twihash
         public long Read()
         {
             if (!Readable) { throw new InvalidOperationException("EOF"); }
-            long ret = BitConverter.ToInt64(Buf, BufCursor);
-            Position += sizeof(long);
+            //こっちは素直にBitConverterを使った方が速い
+            var ret = BitConverter.ToInt64(Buf, BufCursor);
             BufCursor += sizeof(long);
             ActualReadAuto();
             return ret;
@@ -69,7 +92,6 @@ namespace twihash
         {
             zip.Dispose();
             file.Dispose();
-            Position = long.MaxValue;
             BufCursor = int.MaxValue;
         }
     }
@@ -125,31 +147,6 @@ namespace twihash
             zip.Flush();
             zip.Dispose();
             file.Dispose();
-        }
-
-        //https://stackoverflow.com/questions/8827649/fastest-way-to-convert-int-to-4-bytes-in-c-sharp
-        [StructLayout(LayoutKind.Explicit)]
-        struct LongToBytes
-        {
-            [FieldOffset(0)]
-            public byte Byte0;
-            [FieldOffset(1)]
-            public byte Byte1;
-            [FieldOffset(2)]
-            public byte Byte2;
-            [FieldOffset(3)]
-            public byte Byte3;
-            [FieldOffset(4)]
-            public byte Byte4;
-            [FieldOffset(5)]
-            public byte Byte5;
-            [FieldOffset(6)]
-            public byte Byte6;
-            [FieldOffset(7)]
-            public byte Byte7;
-
-            [FieldOffset(0)]
-            public long Long;
         }
     }
 

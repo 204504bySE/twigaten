@@ -20,6 +20,12 @@ namespace twitool
     {
         static async Task Main(string[] args)
         {
+            /*
+            await new RemovedMedia().DeleteRemovedTweet().ConfigureAwait(false);
+            Console.WriteLine("＼(^o^)／");
+            return;
+            */
+
             //CheckOldProcess.CheckandExit();
             Config config = Config.Instance;
             DBHandler db = new DBHandler();
@@ -78,12 +84,12 @@ namespace twitool
             return (int)(unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
         }
         */
-    }
+        }
 
 
     public class DBHandler : twitenlib.DBHandler
     {
-        public DBHandler() : base("tool", "", Config.Instance.database.Address) { }
+        public DBHandler() : base("tool", "", config.database.Address, config.database.Protocol) { }
 
         //ツイートが削除されて参照されなくなった画像を消す
         public async Task RemoveOrphanMedia()
@@ -328,74 +334,6 @@ AND NOT EXISTS (SELECT user_id FROM token WHERE token.user_id = user.user_id);")
         }
 
 
-
-        /*
-        //tweet_mediaが書かれなかったツイ画対応を復元する
-        //丸ごとコピペした最低な奴
-        public async Task<int> FixOrphanTweets()
-        {
-            int ret = 0;
-            const int BulkUnit = 8192;
-            const string head = @"INSERT IGNORE INTO tweet_media VALUES";
-            string BulkInsertCmdFull;
-
-            DataTable Table;
-            using (MySqlCommand cmd = new MySqlCommand(@"SELECT tweet_id, media_id FROM media
-INNER JOIN tweet ON tweet_id = media.source_tweet_id
-WHERE NOT EXISTS (SELECT * FROM tweet_media WHERE tweet_id = media.source_tweet_id);"))
-            {
-                Table = SelectTable(cmd);
-            }
-            if (Table == null) { return 0; }
-            Console.WriteLine("{0} Tweets to fix", Table.Rows.Count);
-
-
-            BulkInsertCmdFull = BulkCmdStr(BulkUnit, 2, head);
-
-            object StoreLock = new object();
-            Parallel.For(0, Table.Rows.Count / BulkUnit,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-                (int i) =>
-                {
-                    MySqlCommand cmd = new MySqlCommand(BulkInsertCmdFull);
-                    for (int j = 0; j < BulkUnit; j++)
-                    {
-                        cmd.Parameters.AddWithValue("@a" + j.ToString(), Table.Rows[BulkUnit * i + j][0]);
-                        cmd.Parameters.AddWithValue("@b" + j.ToString(), Table.Rows[BulkUnit * i + j][1]);
-                    }
-                    lock (StoreLock) { ret += ExecuteNonQuery(cmd); }
-                });
-            MySqlCommand cmdlast = new MySqlCommand(BulkCmdStr(Table.Rows.Count % BulkUnit, 2, head));
-
-            int iLast = Table.Rows.Count / BulkUnit;
-            for (int j = 0; j < Table.Rows.Count % BulkUnit; j++)
-            {
-                cmdlast.Parameters.AddWithValue("@a" + j.ToString(), Table.Rows[BulkUnit * iLast + j][0]);
-                cmdlast.Parameters.AddWithValue("@b" + j.ToString(), Table.Rows[BulkUnit * iLast + j][1]);
-            }
-            ret += ExecuteNonQuery(cmdlast);
-            return ret;
-        }
-
-        //とりあえずここに置くやつ #クズ
-        bool downloadFile(string uri, string outputPath)
-        {
-            try
-            {
-                WebRequest req = WebRequest.Create(uri);
-                WebResponse res = req.GetResponse();
-
-                using (FileStream fileStream = File.Create(outputPath))
-                using (Stream httpStream = res.GetResponseStream())
-                {
-                    httpStream.CopyTo(fileStream);
-                    fileStream.Flush();
-                }
-            }
-            catch { File.Delete(outputPath); return false; }
-            return true;
-        }
-        */
         public async Task RemoveOrphanProfileImage()
         {
             int RemoveCount = 0;

@@ -7,6 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using System.IO;
 using twitenlib;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace twihash
 {
@@ -34,6 +35,21 @@ namespace twihash
                 else { return 0; }
             }
         }
+
+        ///<summary>MergeSortAllの中でちょっと使うだけ</summary>
+        readonly struct FirstSort
+        {
+            public readonly string WriteFilePath;
+            public readonly long[] ToSort;
+            public readonly int Length;
+            public FirstSort(string WriteFilePath, long[] ToSort, int Length)
+            {
+                this.WriteFilePath = WriteFilePath;
+                this.ToSort = ToSort;
+                this.Length = Length;
+            }
+        }
+
         ///<summary>全ハッシュをファイルに書き出しながらソートしていくやつ</summary>
         public static async ValueTask<string> MergeSortAll(long SortMask, long HashCount)
         {
@@ -58,21 +74,25 @@ namespace twihash
                 }
 
                 //ファイル数が2^nになるように処理サイズを調整する
-                int InitialSortUnit = (int)(HashCount / nearPow2(HashCount / (config.hash.InitialSortFileSize / sizeof(long))) + 1);
+                //int InitialSortUnit = (int)(HashCount / nearPow2(HashCount / (config.hash.InitialSortFileSize / sizeof(long))) + 1);
                 //処理サイズを調整しないやつ
-                //int InitialSortUnit = (int)(config.hash.InitialSortFileSize / sizeof(long));
+                int InitialSortUnit = (int)(config.hash.InitialSortFileSize / sizeof(long));
+
+                var SortComp = new BlockSortComparer(SortMask);
 
                 //これにソート用の配列を入れてメモリ割り当てを減らしてみる
                 var LongPool = new ConcurrentQueue<long[]>();
 
-                var SortComp = new BlockSortComparer(SortMask);
-                var FirstSortBlock = new ActionBlock<(string FilePath, long[] ToSort, int Length)>(async (t) =>
+                //メモリを食い潰さないようにペースを調整させるぞ
+                var FirstSortBlock = new ActionBlock<FirstSort>(async (t) =>
                 {
                     await QuickSortAll(SortMask, t.ToSort, t.Length, SortComp).ConfigureAwait(false);
                     //Array.Sort(t.ToSort, SortComp);
-                    using (BufferedLongWriter w = new BufferedLongWriter(t.FilePath))
+                    
+                    //書き込みは並列で行う
+                    using (var writer = new BufferedLongWriter(t.WriteFilePath))
                     {
-                        for(int i = 0; i < t.Length; i++) { w.Write(t.ToSort[i]); }
+                        for (int j = 0; j < t.Length; j++) { writer.Write(t.ToSort[j]); }
                     }
                     LongPool.Enqueue(t.ToSort);
                 }, new ExecutionDataflowBlockOptions()
@@ -81,16 +101,18 @@ namespace twihash
                     MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
                     BoundedCapacity = config.hash.InitialSortConcurrency
                 });
-
+                //読み込み過ぎてメモリを食い潰さないように進める
                 while (reader.Readable)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
                     int i;
                     for (i = 0; i < ToSort.Length && reader.Readable; i++) { ToSort[i] = reader.Read(); }
-                    await FirstSortBlock.SendAsync((SortingFilePath(0, FileCount), ToSort, i)).ConfigureAwait(false);
+
+                    await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(0, FileCount), ToSort, i)).ConfigureAwait(false);
                     FileCount++;
                 }
-                FirstSortBlock.Complete(); await FirstSortBlock.Completion.ConfigureAwait(false);
+                FirstSortBlock.Complete();
+                await FirstSortBlock.Completion.ConfigureAwait(false);
             }
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -98,6 +120,14 @@ namespace twihash
             //マージソートするんだけど多数ファイルをまとめてやりたい
             int step = 0;
             int FilePerStep = config.hash.FileSortFilesPerStep;
+            if (FilePerStep > FileCount)
+            {
+                //1回でマージしきれないときはファイル数を均等に振って並列に処理したい
+                //(割られる数/+割る数-1)/割る数 → 切り上げの除算
+                int temp = (FileCount + FilePerStep - 1) / FilePerStep;
+                FilePerStep = (FileCount + temp - 1) / temp;
+            }
+
             //ファイル単位でマージソートしていく
             for (; FileCount > 1; step++)
             {
@@ -162,7 +192,7 @@ namespace twihash
             //入力ファイルが1個だったら移動させて済ませる
             if (Count == 1)
             {
-                File.Move(HashFilePath(Step.ToString() + "-" + (Begin).ToString()), OutFilePath);
+                File.Move(HashFilePath(Step.ToString() + "-" + Begin.ToString()), OutFilePath);
                 return;
             }
             else if (Count < 1) { throw new ArgumentOutOfRangeException(); }
@@ -197,26 +227,33 @@ namespace twihash
             foreach (var r in readers) { r.Dispose(); }
         }
 
+        ///<summary>配列の0~SortListLengthまでを並列ソート</summary>
         static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
         {
-            var QuickSortBlock = new TransformBlock<(int Begin, int End), (int Begin1, int End1, int Begin2, int End2)?>
+            //順不同で処理させるための小細工
+            //自分自身にはPost()できないからね
+            var BufBlock = new BufferBlock<(int Begin, int End)>();
+            var QuickSortBlock = new TransformBlock<(int Begin, int End), int>
                 (((int Begin, int End) SortRange) => {
-                    return QuickSortUnit(SortRange, SortMask, SortList, Comparer);
-                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
+                    var next = QuickSortUnit(SortRange, SortMask, SortList, Comparer);
+                    if (next.HasValue)
+                    {
+                        BufBlock.Post((next.Value.Begin1, next.Value.End1));
+                        BufBlock.Post((next.Value.Begin2, next.Value.End2));
+                        return 1;   //処理中の物は1個増える
+                    }
+                    else { return -1; } //処理中の物は1個減る
+                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, SingleProducerConstrained = true });
 
+            BufBlock.LinkTo(QuickSortBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+            
             QuickSortBlock.Post((0, SortListLength - 1));
             int ProcessingCount = 1;
-            do
-            {
-                (int Begin1, int End1, int Begin2, int End2)? NextSortRange = await QuickSortBlock.ReceiveAsync().ConfigureAwait(false);
-                if (NextSortRange != null)
-                {
-                    QuickSortBlock.Post((NextSortRange.Value.Begin1, NextSortRange.Value.End1));
-                    QuickSortBlock.Post((NextSortRange.Value.Begin2, NextSortRange.Value.End2));
-                    ProcessingCount++;  //↑で1個終わって2個始めたから1個増える
-                }
-                else { ProcessingCount--; }
-            } while (ProcessingCount > 0);
+            //処理が終わるまで待つだけ
+            do { ProcessingCount += await QuickSortBlock.ReceiveAsync().ConfigureAwait(false); }
+            while (ProcessingCount > 0);
+            BufBlock.Complete();
+            await QuickSortBlock.Completion.ConfigureAwait(false);
         }
 
         static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
@@ -272,54 +309,6 @@ namespace twihash
                 i++; j--;
             }
             return (SortRange.Begin, i - 1, j + 1, SortRange.End);
-        }
-    }
-
-
-    ///<summary>ブロックソート済みのファイルを必要な単位で読み出すやつ</summary>
-    class SortedFileReader : IDisposable
-    {
-        readonly BufferedLongReader reader;
-        readonly long FullMask;
-
-        public SortedFileReader(string FilePath, long FullMask)
-        {
-            reader = new BufferedLongReader(FilePath);
-            this.FullMask = FullMask;
-        }
-
-        long ExtraReadHash;
-        bool HasExtraHash;
-        readonly List<long> TempList = new List<long>();
-
-        ///<summary>ブロックソートで一致する範囲だけ読み出す
-        ///長さ2以上になるやつだけ返す</summary>
-        public long[] ReadBlock()
-        {
-            long TempHash;
-            do
-            {
-                TempList.Clear();
-                if (HasExtraHash) { TempHash = ExtraReadHash; HasExtraHash = false; }
-                else if (reader.Readable) { TempHash = reader.Read(); }
-                else { return null; }
-                TempList.Add(TempHash);
-                //MaskしたやつがMaskedKeyと一致しなかったら終了
-                long MaskedKey = TempHash & FullMask;
-                while (reader.Readable)
-                {
-                    TempHash = reader.Read();
-                    if ((TempHash & FullMask) == MaskedKey) { TempList.Add(TempHash); }
-                    //1個余計に読んだので記録しておく
-                    else { ExtraReadHash = TempHash; HasExtraHash = true; break; }
-                }
-            } while (TempList.Count < 2);
-            return TempList.ToArray();
-        }
-
-        public void Dispose()
-        {
-            reader.Dispose();
         }
     }
 }
