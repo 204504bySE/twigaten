@@ -12,7 +12,7 @@ namespace twidownparent
 
     class DBHandler : twitenlib.DBHandler
     {
-        public DBHandler() : base("crawl", "", Config.Instance.database.Address) { }
+        public DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol) { }
 
         public async Task<long> CountToken()
         {

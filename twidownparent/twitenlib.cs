@@ -64,6 +64,7 @@ namespace twitenlib
             public int StreamSpeedSeconds { get; }
             public int StreamSpeedTweets { get; }
             public int StreamSpeedHysteresis { get; }
+            public int MaxRestInterval { get; }
             public int DefaultConnectionThreads { get; }
             public int MaxDBConnections { get; }
             public int RestTweetThreads { get; }
@@ -85,6 +86,7 @@ namespace twitenlib
                 StreamSpeedSeconds = int.Parse(data["crawl"][nameof(StreamSpeedSeconds)] ?? "180");
                 StreamSpeedTweets = int.Parse(data["crawl"][nameof(StreamSpeedTweets)] ?? "50");
                 StreamSpeedHysteresis = int.Parse(data["crawl"][nameof(StreamSpeedHysteresis)] ?? "16");
+                MaxRestInterval = int.Parse(data["crawl"][nameof(MaxRestInterval)] ?? "900");
                 DefaultConnectionThreads = int.Parse(data["crawl"][nameof(DefaultConnectionThreads)] ?? "1000");
                 MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? "10");
                 RestTweetThreads = int.Parse(data["crawl"][nameof(RestTweetThreads)] ?? Environment.ProcessorCount.ToString());
@@ -189,9 +191,11 @@ namespace twitenlib
         public class _database
         {
             public string Address { get; }
+            public MySqlConnectionProtocol Protocol { get; }
             public _database(IniData data)
             {
-                Address = data["database"][nameof(Address)] ?? "127.0.0.1"; //::1だとNotSupportedExceptionになるのだｗ
+                Address = data["database"][nameof(Address)] ?? "localhost"; //::1だとNotSupportedExceptionになるのだｗ
+                Protocol = (MySqlConnectionProtocol)Enum.Parse(typeof(MySqlConnectionProtocol), data["database"][nameof(Protocol)] ?? "Tcp");
             }
         }
         public _database database;
@@ -201,12 +205,13 @@ namespace twitenlib
     {
         protected static readonly Config config = Config.Instance;
         readonly string ConnectionStr;
-        public DBHandler(string user, string pass, string server ="localhost", uint timeout = 20, uint poolsize = 40, uint lifetime = 3600)
+        public DBHandler(string user, string pass, string server, MySqlConnectionProtocol protocol, uint timeout = 20, uint poolsize = 40, uint lifetime = 3600)
         {
-            if(lifetime < timeout) { throw new ArgumentException("lifetime < timeout"); }
+            if(lifetime != 0 && lifetime < timeout) { throw new ArgumentException("lifetime < timeout"); }
             var builder = new MySqlConnectionStringBuilder()
             {
-                Server = server,
+                Server = server, 
+                ConnectionProtocol = protocol,
                 Database = "twiten",
                 SslMode = MySqlSslMode.None,    //にゃーん
                 UserID = user,
@@ -296,7 +301,7 @@ namespace twitenlib
         ///<summary>ReadActionには1行読む毎にやる処理を書く 最後まで成功したらTrue</summary>
         protected async Task<bool> ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
-            //try
+            try
             {
                 using (var conn = NewConnection())
                 {
@@ -314,11 +319,11 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return true;
                         }
-                        catch { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (Exception e) { Console.WriteLine(e); reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
-            //catch { }
+            catch { }
             return false;
         }
 
@@ -341,7 +346,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return ret;
                         }
-                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (Exception e) { Console.WriteLine(e.Message); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
