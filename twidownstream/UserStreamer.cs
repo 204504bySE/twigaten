@@ -21,7 +21,7 @@ namespace twidownstream
         IDisposable StreamSubscriber;
         long LastReceivedTweetId;
         readonly TweetTimeList TweetTime = new TweetTimeList();
-        DateTimeOffset LastStreamingMessageTime;
+        DateTimeOffset LastMessageTime = DateTimeOffset.UtcNow; //RESTでも使う
 
         //Singleton
         static readonly Config config = Config.Instance;
@@ -167,8 +167,8 @@ namespace twidownstream
             if (StreamSubscriber != null)
             {
                 //User streamへの接続が切れてそうならここで明示的に切断する
-                if ((DateTimeOffset.Now - LastStreamingMessageTime).TotalSeconds
-                > Math.Max(config.crawl.StreamSpeedSeconds, (LastStreamingMessageTime - TweetTime.Min).TotalSeconds))
+                if ((DateTimeOffset.Now - LastMessageTime).TotalSeconds
+                > Math.Max(config.crawl.StreamSpeedSeconds, (LastMessageTime - TweetTime.Min).TotalSeconds))
                 {
                     DisconnectStream();
                     return NeedConnectResult.JustNeeded;
@@ -196,7 +196,7 @@ namespace twidownstream
             if (config.crawl.StreamSpeedSeconds <= 0) { return NeedStreamResult.RestOnly; }
             //User stream接続を失った可能性があるときもRestOnly→切断させる
             if (StreamSubscriber != null 
-                && (DateTimeOffset.Now - LastStreamingMessageTime) > TweetTime.Span)
+                && (DateTimeOffset.Now - LastMessageTime) > TweetTime.Span)
             { return NeedStreamResult.RestOnly; }
             //タイムラインを取得してない場合は必ずこれ
             if (TweetTime.Count < 2) { return NeedStreamResult.RestOnly; }
@@ -208,9 +208,9 @@ namespace twidownstream
         }
 
 
-        //tokenの有効性を確認して自身のプロフィールも取得
-        //Revokeの可能性があるときだけ呼ぶ
         public enum TokenStatus { Success, Failure, Revoked, Locked }
+        ///<summary>tokenの有効性を確認して自身のプロフィールも取得
+        ///基本的にはRevokeの可能性があるときだけ呼ぶ</summary>
         public async Task<TokenStatus> VerifyCredentials()
         {
             try
@@ -258,14 +258,14 @@ namespace twidownstream
         public void RecieveStream()
         {
             DisconnectStream();
-            LastStreamingMessageTime = DateTimeOffset.Now;
+            LastMessageTime = DateTimeOffset.UtcNow;
             StreamSubscriber = Token.Streaming.UserAsObservable()
                 //.SubscribeOn(TaskPoolScheduler.Default)
                 //.ObserveOn(TaskPoolScheduler.Default)
                 .Subscribe(
                     async (StreamingMessage m) =>
                     {
-                        LastStreamingMessageTime = DateTimeOffset.Now;
+                        LastMessageTime = DateTimeOffset.UtcNow;
                         if (m.Type == MessageType.Create)
                         {
                             StatusMessage mm = m as StatusMessage;
@@ -288,7 +288,10 @@ namespace twidownstream
         public async Task<TokenStatus> RecieveRestTimelineAuto()
         {
             //TLが遅い分は省略
-            if(TweetTime.Count >= 2 && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
+            //とはいえ一定時間取得してなかったら強制的にやる
+            if(DateTimeOffset.UtcNow - LastMessageTime < TimeSpan.FromSeconds(config.crawl.MaxRestInterval)
+                && TweetTime.Count >= 2 
+                && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
             //RESTで取得してツイートをDBに突っ込む
             //各ツイートの時刻をTweetTimeに格納
             try
@@ -313,6 +316,7 @@ namespace twidownstream
                 }
                 if (Timeline.Count == 0) { TweetTime.Add(DateTimeOffset.Now); }
                 //Console.WriteLine("{0} {1}: REST timeline success", DateTime.Now, Token.UserId);
+                LastMessageTime = DateTimeOffset.UtcNow;
                 return TokenStatus.Success;
             }
             catch (Exception e)
@@ -442,7 +446,7 @@ namespace twidownstream
                     if (x.Source.Id == Token.UserId || x.Target.Id == Token.UserId) { await db.StoreEvents(x).ConfigureAwait(false); }
                     break;
                 case EventCode.UserUpdate:
-                    if (x.Source.Id == Token.UserId) { try { await db.StoreUserProfile(await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false)).ConfigureAwait(false); } catch { } }
+                    if (x.Source.Id == Token.UserId) { await VerifyCredentials().ConfigureAwait(false); }
                     break;
             }
         }

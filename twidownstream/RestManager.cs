@@ -33,6 +33,7 @@ namespace twidownstream
                 await s.RestFriend().ConfigureAwait(false);
                 await s.RestBlock().ConfigureAwait(false);
                 await s.RestMyTweet().ConfigureAwait(false);
+                await s.VerifyCredentials().ConfigureAwait(false);
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.RestTweetThreads,
