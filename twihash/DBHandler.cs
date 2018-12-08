@@ -14,7 +14,7 @@ namespace twihash
 {
     class DBHandler : twitenlib.DBHandler
     {
-        public DBHandler() : base("hash", "", config.database.Address, config.database.Protocol, 20,(uint)Math.Min(Environment.ProcessorCount, 40)) { }
+        public DBHandler() : base("hash", "", config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40)) { }
         
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpair VALUES";
         public const int StoreMediaPairsUnit = 1000;
@@ -22,7 +22,7 @@ namespace twihash
         static readonly MediaPair.OrderPri OrderPri = new MediaPair.OrderPri();
         static readonly MediaPair.OrderSub OrderSub = new MediaPair.OrderSub();
 
-        public async ValueTask<int> StoreMediaPairs(MediaPair[] StorePairs)
+        public async Task<int> StoreMediaPairs(MediaPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
             if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentOutOfRangeException(); }
@@ -57,7 +57,7 @@ namespace twihash
         }
 
         ///<summary>DBから読み込んだハッシュをそのままファイルに書き出す</summary>
-        public async ValueTask<long> AllMediaHash()
+        public async Task<long> AllMediaHash()
         {
             try
             {
@@ -128,7 +128,7 @@ GROUP BY dcthash;"))
         //これが始まった後に追加されたハッシュは無視されるが
         //次回の実行で拾われるから問題ない
 
-        public async ValueTask<HashSet<long>> NewerMediaHash()
+        public async Task<HashSet<long>> NewerMediaHash()
         {
             try
             {

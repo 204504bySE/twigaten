@@ -116,8 +116,7 @@ FROM media m
 LEFT JOIN media_downloaded_at d USING (media_id)
 JOIN tweet t ON m.source_tweet_Id = t.tweet_id
 JOIN user u USING (user_id)
-WHERE m.source_tweet_id = @tweet_id
-AND d.downloaded_at IS NULL;"))
+WHERE m.source_tweet_id = @tweet_id;"))
                 {
                     cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = t.tweet_id;
 
@@ -148,7 +147,7 @@ LIMIT 1000;"))
                 var tweet_param = cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64);
                 
                 //ここから始めるんじゃ(
-                long last_tweet_id = 865135683278471169;
+                long last_tweet_id = 903494683149574144;
                 tweet_param.Value = last_tweet_id;
 
                 var media_id = new List<long>();

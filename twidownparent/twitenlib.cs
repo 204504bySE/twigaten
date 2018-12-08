@@ -319,7 +319,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return true;
                         }
-                        catch (Exception e) { Console.WriteLine(e); reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
@@ -346,7 +346,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return ret;
                         }
-                        catch (Exception e) { Console.WriteLine(e.Message); await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }

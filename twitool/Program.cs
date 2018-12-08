@@ -20,11 +20,11 @@ namespace twitool
     {
         static async Task Main(string[] args)
         {
-            /*
+            
             await new RemovedMedia().DeleteRemovedTweet().ConfigureAwait(false);
             Console.WriteLine("＼(^o^)／");
             return;
-            */
+            
 
             //CheckOldProcess.CheckandExit();
             Config config = Config.Instance;

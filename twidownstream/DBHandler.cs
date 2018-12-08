@@ -194,7 +194,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
                 if (await ExecuteReader(cmd, (r) =>
                 {
                     HasRow = true;
-                    profile_image_url = r.GetString(0);
+                    profile_image_url = r.IsDBNull(0) ? null : r.GetString(0);
                     updated_at = r.IsDBNull(1) ? null as long? : r.GetInt64(1);
                     is_default_profile_image = r.GetBoolean(2);
                 }, IsolationLevel.ReadUncommitted).ConfigureAwait(false))

@@ -74,6 +74,7 @@ namespace twihash
             {
                 sw.Restart();
                 GC.Collect();
+                GC.WaitForPendingFinalizers();
                 (int db, int sort) = await MultipleSortUnit(i).ConfigureAwait(false);
                 sw.Stop();
                 Console.WriteLine("{0}\t{1} / {2}\t{3}\t{4}ms ", i, db, sort, Combi.CombiString(i), sw.ElapsedMilliseconds);
@@ -153,7 +154,7 @@ namespace twihash
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
-                BoundedCapacity = Environment.ProcessorCount << 2,
+                BoundedCapacity = Environment.ProcessorCount << 4,
                 SingleProducerConstrained = true
             });
 
@@ -191,7 +192,7 @@ namespace twihash
             return ret;
         }
 
-        //ハミング距離を計算する
+        ///<summary>ハミング距離を計算する</summary>
         int HammingDistance(long a, long b)
         {
             //xorしてpopcnt
