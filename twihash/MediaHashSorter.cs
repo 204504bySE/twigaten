@@ -13,8 +13,8 @@ namespace twihash
     //ハミング距離が一定以下のハッシュ値のペア
     public readonly struct MediaPair
     {
-        public long media0 { get; }
-        public long media1 { get; }
+        public readonly long media0;
+        public readonly long media1;
         public MediaPair(long _media0, long _media1)
         {
             media0 = _media0;
@@ -239,12 +239,14 @@ namespace twihash
                 while (reader.Readable)
                 {
                     TempHash = reader.Read();
-                    if ((TempHash & FullMask) == MaskedKey) { TempList.Add(TempHash); }
+                    if ((TempHash & FullMask) == MaskedKey)
+                    {
+                        TempList.Add(TempHash);
+                    }
                     //1個余計に読んだので記録しておく
                     else { ExtraReadHash = TempHash; HasExtraHash = true; break; }
                 }
-            //HashSet.Contains()とActionBlockに全部投げるのどっちが速いかという問題ではある
-            } while (TempList.Count < 2 && NewHash != null && TempList.All(h => !NewHash.Contains(h)));
+            } while (TempList.Count < 2 || (NewHash != null && !TempList.Any(h => NewHash.Contains(h))));
             return TempList.ToArray();
         }
 
