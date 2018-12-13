@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -87,8 +88,8 @@ namespace twihash
         {
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
-            long FullMask = UnMask(BaseBlocks, Combi.Count);
-            string SortedFilePath = await SortFile.MergeSortAll(FullMask, HashCount).ConfigureAwait(false);
+            long SortMask = UnMask(BaseBlocks, Combi.Count);            
+            int SortedFileCount = await SortFile.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
 
             int ret = 0;
             int dbcount = 0;
@@ -110,7 +111,7 @@ namespace twihash
                 for (int i = 0; i < Sorted.Length; i++)
                 {
                     bool NeedInsert_i = NewHash?.Contains(Sorted[i]) ?? true;
-                    long maskedhash_i = Sorted[i] & FullMask;
+                    long maskedhash_i = Sorted[i] & SortMask;
                     for (int j = i + 1; j < Sorted.Length; j++)
                     {
                         //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる           
@@ -157,8 +158,8 @@ namespace twihash
                 BoundedCapacity = Environment.ProcessorCount << 4,
                 SingleProducerConstrained = true
             });
-
-            using (var Reader = new SortedFileReader(SortedFilePath, FullMask, NewHash))
+            
+            using (var Reader = new SortedFileReader(SortedFileCount, SortMask, NewHash))
             {
                 long[] Sorted;
                 while ((Sorted = Reader.ReadBlock()) != null)
@@ -167,7 +168,6 @@ namespace twihash
                     await MultipleSortBlock.SendAsync(Sorted).ConfigureAwait(false);
                 }
             }
-            File.Delete(SortedFilePath);
             //余りをDBに入れる
             MultipleSortBlock.Complete(); await MultipleSortBlock.Completion.ConfigureAwait(false);
             PairBatchBlock.Complete(); await PairStoreBlock.Completion.ConfigureAwait(false);
@@ -202,57 +202,6 @@ namespace twihash
             long result = value - ((value >> 1) & 0x5555555555555555L);
             result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
             return (int)(unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56);
-        }
-    }
-
-    ///<summary>ブロックソート済みのファイルを必要な単位で読み出すやつ</summary>
-    class SortedFileReader : IDisposable
-    {
-        readonly BufferedLongReader reader;
-        readonly long FullMask;
-        readonly HashSet<long> NewHash;
-
-        public SortedFileReader(string FilePath, long FullMask, HashSet<long> NewHash)
-        {
-            reader = new BufferedLongReader(FilePath);
-            this.FullMask = FullMask;
-            this.NewHash = NewHash;
-        }
-        long ExtraReadHash;
-        bool HasExtraHash;
-        readonly List<long> TempList = new List<long>();
-
-        ///<summary>ブロックソートで一致する範囲だけ読み出す
-        ///長さ2以上でNewHashが含まれてるやつだけ返す</summary>
-        public long[] ReadBlock()
-        {
-            long TempHash;
-            do
-            {
-                TempList.Clear();
-                if (HasExtraHash) { TempHash = ExtraReadHash; HasExtraHash = false; }
-                else if (reader.Readable) { TempHash = reader.Read(); }
-                else { return null; }
-                TempList.Add(TempHash);
-                //MaskしたやつがMaskedKeyと一致しなかったら終了
-                long MaskedKey = TempHash & FullMask;
-                while (reader.Readable)
-                {
-                    TempHash = reader.Read();
-                    if ((TempHash & FullMask) == MaskedKey)
-                    {
-                        TempList.Add(TempHash);
-                    }
-                    //1個余計に読んだので記録しておく
-                    else { ExtraReadHash = TempHash; HasExtraHash = true; break; }
-                }
-            } while (TempList.Count < 2 || (NewHash != null && !TempList.Any(h => NewHash.Contains(h))));
-            return TempList.ToArray();
-        }
-
-        public void Dispose()
-        {
-            reader.Dispose();
         }
     }
 }

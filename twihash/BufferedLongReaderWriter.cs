@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -35,7 +36,7 @@ namespace twihash
     }
 
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
-    class BufferedLongReader : IDisposable
+    class BufferedLongReader : IEnumerable<long>, IEnumerator<long>
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
         readonly FileStream file;
@@ -76,16 +77,21 @@ namespace twihash
             }
         }
 
-        ///<summary>続きのデータがあるかどうか</summary>
-        public bool Readable { get; private set; } = true;
-        public long Read()
+        ///<summary>続きのデータがあるかどうか 内部処理用</summary>
+        bool Readable = true;
+
+        public long Current { get; private set; }
+        object IEnumerator.Current => Current;
+
+        ///<summary>次のデータを読んでCurrentに入れる Readableが別にあるのキモいけどしょうがない</summary>
+        public bool MoveNext()
         {
-            if (!Readable) { throw new InvalidOperationException("EOF"); }
+            if (!Readable) { return false; }
             //こっちは素直にBitConverterを使った方が速い
-            var ret = BitConverter.ToInt64(Buf, BufCursor);
+            Current = BitConverter.ToInt64(Buf, BufCursor);
             BufCursor += sizeof(long);
             ActualReadAuto();
-            return ret;
+            return true;
         }
 
         public void Dispose()
@@ -93,6 +99,18 @@ namespace twihash
             zip.Dispose();
             file.Dispose();
             BufCursor = int.MaxValue;
+        }
+
+        public IEnumerator<long> GetEnumerator() => this;
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public void Reset()
+        {
+            zip.Seek(0, SeekOrigin.Begin);
+            BufCursor = 0;
+            Readable = true;
+            FillNextBuf();
+            ActualReadAuto();            
         }
     }
 
