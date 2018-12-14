@@ -138,7 +138,7 @@ namespace twihash
         static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
         {
             if (SortRange.Begin >= SortRange.End) { return null; }
-            /*十分に並列化されるか要素数が少なくなったらLINQに投げる*/
+            //十分に並列化されるか要素数が少なくなったらLINQに投げる
             if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length >> ConcurrencyLog))
             {
                 Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
@@ -155,16 +155,17 @@ namespace twihash
             else { PivotMasked = PivotA; }
 
             int i = SortRange.Begin; int j = SortRange.End;
-            while (true)
+            while (true)    //i > jになったら内側のwhileがすぐ終了するのでここで確認する必要はない
             {
-                while ((SortList[i] & SortMask) < PivotMasked) { i++; }
+                while ((SortList[i] & SortMask) <= PivotMasked) { i++; }
                 while ((SortList[j] & SortMask) > PivotMasked) { j--; }
-                if (i >= j) { break; }
+                if (i > j) { break; }
                 long SwapHash = SortList[i];
                 SortList[i] = SortList[j];
                 SortList[j] = SwapHash;
                 i++; j--;
             }
+            //↑で i > j になるまで進めているので範囲が被らないように戻す
             return (SortRange.Begin, i - 1, j + 1, SortRange.End);
         }
     }
