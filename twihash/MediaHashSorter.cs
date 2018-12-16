@@ -90,7 +90,6 @@ namespace twihash
             int StartBlock = BaseBlocks.Last();
             long SortMask = UnMask(BaseBlocks, Combi.Count);            
             int SortedFileCount = await SortFile.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
-
             int ret = 0;
             int dbcount = 0;
 
@@ -155,7 +154,7 @@ namespace twihash
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
-                BoundedCapacity = Environment.ProcessorCount << 4,
+                BoundedCapacity = Environment.ProcessorCount << 2,
                 SingleProducerConstrained = true
             });
             

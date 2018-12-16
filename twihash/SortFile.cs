@@ -134,6 +134,7 @@ namespace twihash
             await QuickSortBlock.Completion.ConfigureAwait(false);
         }
 
+        static readonly Random random = new Random();
         static readonly int ConcurrencyLog = (int)Math.Ceiling(Math.Log(Environment.ProcessorCount, 2) + 1);
         static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
         {
@@ -145,14 +146,9 @@ namespace twihash
                 return null;
             }
 
-            //ふつーにピボットを選ぶ
-            long PivotA = SortList[SortRange.Begin] & SortMask;
-            long PivotB = SortList[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask;
-            long PivotC = SortList[SortRange.End] & SortMask;
-            long PivotMasked;
-            if (PivotA <= PivotB && PivotB <= PivotC || PivotA >= PivotB && PivotB >= PivotC) { PivotMasked = PivotB; }
-            else if (PivotA <= PivotC && PivotC <= PivotB || PivotA >= PivotC && PivotC >= PivotB) { PivotMasked = PivotC; }
-            else { PivotMasked = PivotA; }
+            //ピボットをランダムに選ぶ
+            //選び方が固定だとピボットに最大値が選ばれたときに無限ループして死ぬ
+            long PivotMasked = SortList[random.Next(SortRange.Begin, SortRange.End + 1)] & SortMask;
 
             int i = SortRange.Begin; int j = SortRange.End;
             while (true)    //i > jになったら内側のwhileがすぐ終了するのでここで確認する必要はない
