@@ -134,35 +134,38 @@ namespace twihash
             await QuickSortBlock.Completion.ConfigureAwait(false);
         }
 
-        static readonly Random random = new Random();
         static readonly int ConcurrencyLog = (int)Math.Ceiling(Math.Log(Environment.ProcessorCount, 2) + 1);
         static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
         {
             if (SortRange.Begin >= SortRange.End) { return null; }
             //十分に並列化されるか要素数が少なくなったらLINQに投げる
+            void LinqSort() { Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer); }
             if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length >> ConcurrencyLog))
             {
-                Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
+                LinqSort();
                 return null;
             }
 
-            //ピボットをランダムに選ぶ
-            //選び方が固定だとピボットに最大値が選ばれたときに無限ループして死ぬ
-            long PivotMasked = SortList[random.Next(SortRange.Begin, SortRange.End + 1)] & SortMask;
+            //ふつーにピボットを選ぶ
+            long PivotA = SortList[SortRange.Begin] & SortMask;
+            long PivotB = SortList[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask;
+            long PivotC = SortList[SortRange.End] & SortMask;
+            long PivotMasked;
+            if (PivotA <= PivotB && PivotB <= PivotC || PivotA >= PivotB && PivotB >= PivotC) { PivotMasked = PivotB; }
+            else if (PivotA <= PivotC && PivotC <= PivotB || PivotA >= PivotC && PivotC >= PivotB) { PivotMasked = PivotC; }
+            else { PivotMasked = PivotA; }
 
-            int i = SortRange.Begin; int j = SortRange.End;
-            while (true)    //i > jになったら内側のwhileがすぐ終了するのでここで確認する必要はない
+            int i = SortRange.Begin - 1; int j = SortRange.End + 1;
+            while (true)
             {
-                while ((SortList[i] & SortMask) <= PivotMasked) { i++; }
-                while ((SortList[j] & SortMask) > PivotMasked) { j--; }
-                if (i > j) { break; }
+                do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
+                do { j--; } while ((SortList[j] & SortMask) > PivotMasked);
+                if (i >= j) { break; }
                 long SwapHash = SortList[i];
                 SortList[i] = SortList[j];
                 SortList[j] = SwapHash;
-                i++; j--;
             }
-            //↑で i > j になるまで進めているので範囲が被らないように戻す
-            return (SortRange.Begin, i - 1, j + 1, SortRange.End);
+            return (SortRange.Begin, j, j + 1, SortRange.End);
         }
     }
 }
