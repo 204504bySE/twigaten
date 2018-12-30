@@ -164,7 +164,7 @@ namespace twihash
     ///<summary>バッファーを用意して別スレッドで読み込みたいだけ</summary>
     class ReadBuffer<T> : IEnumerable<T>, IEnumerator<T> where T: struct
     {
-        static readonly int BufSize = Config.Instance.hash.ZipBufferSize / Marshal.SizeOf<T>();
+        static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Marshal.SizeOf<T>();
 
         T[] Buf = new T[BufSize];
         int ActualBufSize;//Bufの有効なサイズ(要素単位であってバイト単位ではない)

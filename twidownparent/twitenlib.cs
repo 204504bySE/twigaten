@@ -159,7 +159,7 @@ namespace twitenlib
             public int InitialSortConcurrency { get; }
             public int FileSortThreads { get; }
             public int FileSortFilesPerStep { get; }
-            public int ZipBufferSize { get; }
+            public int ZipBufferElements { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
@@ -173,7 +173,7 @@ namespace twitenlib
                 InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
                 FileSortThreads = int.Parse(data["hash"][nameof(FileSortThreads)] ?? Environment.ProcessorCount.ToString());
                 FileSortFilesPerStep = int.Parse(data["hash"][nameof(FileSortFilesPerStep)] ?? "2");
-                ZipBufferSize = int.Parse(data["hash"][nameof(ZipBufferSize)] ?? "65536");
+                ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "8192");
             }
             public void NewLastUpdate(long time)
             {

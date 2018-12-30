@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,46 +11,25 @@ using twitenlib;
 
 namespace twihash
 {
-    //https://stackoverflow.com/questions/8827649/fastest-way-to-convert-int-to-4-bytes-in-c-sharp
-    [StructLayout(LayoutKind.Explicit)]
-    struct LongToBytes
-    {
-        [FieldOffset(0)]
-        public byte Byte0;
-        [FieldOffset(1)]
-        public byte Byte1;
-        [FieldOffset(2)]
-        public byte Byte2;
-        [FieldOffset(3)]
-        public byte Byte3;
-        [FieldOffset(4)]
-        public byte Byte4;
-        [FieldOffset(5)]
-        public byte Byte5;
-        [FieldOffset(6)]
-        public byte Byte6;
-        [FieldOffset(7)]
-        public byte Byte7;
-
-        [FieldOffset(0)]
-        public long Long;
-    }
-
     ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
     class BufferedLongReader : IEnumerable<long>, IEnumerator<long>
     {
-        static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
+        static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
         readonly FileStream file;
         readonly BrotliStream zip;
 
-        byte[] Buf = new byte[BufSize];
-        int ActualBufSize;
+        byte[] Buf = new byte[BufSize * sizeof(long)];
+        long[] BufAsLong;
+        int ActualBufElements;
         int BufCursor;  //bufの読み込み位置
-        byte[] NextBuf = new byte[BufSize];
+        byte[] NextBuf = new byte[BufSize * sizeof(long)];
+        long[] NextBufAsLong;
         Task<int> FillNextBufTask;
 
         public BufferedLongReader(string FilePath)
         {
+            BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
+            NextBufAsLong = Unsafe.As<byte[], long[]>(ref NextBuf);
             file = File.OpenRead(FilePath);
             zip = new BrotliStream(file, CompressionMode.Decompress);
             //最初はここで強制的に読ませる
@@ -64,14 +44,17 @@ namespace twihash
 
         void ActualReadAuto()
         {
-            if (BufCursor >= ActualBufSize)
+            if (BufCursor >= ActualBufElements)
             {
                 //読み込みが終わってなかったらここで待機される
-                ActualBufSize = FillNextBufTask.Result;
-                if (ActualBufSize == 0) { Readable = false; }
+                ActualBufElements = FillNextBufTask.Result / sizeof(long);
+                if (ActualBufElements == 0) { Readable = false; }
                 byte[] swap = Buf;
                 Buf = NextBuf;
                 NextBuf = swap;
+                long[] swaplong = BufAsLong;
+                BufAsLong = NextBufAsLong;
+                NextBufAsLong = swaplong;
                 BufCursor = 0;
                 FillNextBuf();
             }
@@ -87,9 +70,9 @@ namespace twihash
         public bool MoveNext()
         {
             if (!Readable) { return false; }
-            //こっちは素直にBitConverterを使った方が速い
-            Current = BitConverter.ToInt64(Buf, BufCursor);
-            BufCursor += sizeof(long);
+            //差分をとるようにしてちょっと圧縮しやすくしてみよう
+            Current += BufAsLong[BufCursor];
+            BufCursor++;
             ActualReadAuto();
             return true;
         }
@@ -117,34 +100,32 @@ namespace twihash
     ///<summary>WriteInt64()を普通に呼ぶと遅いのでまとめて書く</summary>
     class BufferedLongWriter : IDisposable
     {
-        static readonly Config config = Config.Instance;
-        static readonly int BufSize = Config.Instance.hash.ZipBufferSize;
+        static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
         readonly FileStream file;
         readonly BrotliStream zip;
-        byte[] Buf = new byte[BufSize];
-        int BufCursor;
-        byte[] WriteBuf = new byte[BufSize];
+        byte[] Buf = new byte[BufSize * sizeof(long)];
+        long[] BufAsLong;        
+        int BufCursor;  //こいつはlong単位で動かすからな
+        byte[] WriteBuf = new byte[BufSize * sizeof(long)];
+        long[] WriteBufAsLong;
         Task ActualWriteTask;
 
-        public BufferedLongWriter(string FilePath, CompressionLevel Level = CompressionLevel.Fastest)
+        public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            //圧縮レベル2を指定する方法は存在しないorz
-            zip = new BrotliStream(file, Level);
+            zip = new BrotliStream(file, CompressionLevel.Fastest);
+            //↓自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
+            BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
+            WriteBufAsLong = Unsafe.As<byte[], long[]>(ref WriteBuf);
         }
 
+        long LastValue;
         public void Write(long Value)
         {
-            var Bytes = new LongToBytes() { Long = Value };
-            Buf[BufCursor] = Bytes.Byte0;
-            Buf[BufCursor + 1] = Bytes.Byte1;
-            Buf[BufCursor + 2] = Bytes.Byte2;
-            Buf[BufCursor + 3] = Bytes.Byte3;
-            Buf[BufCursor + 4] = Bytes.Byte4;
-            Buf[BufCursor + 5] = Bytes.Byte5;
-            Buf[BufCursor + 6] = Bytes.Byte6;
-            Buf[BufCursor + 7] = Bytes.Byte7;
-            BufCursor += sizeof(long);
+            //差分をとるようにしてちょっと圧縮しやすくしてみよう
+            BufAsLong[BufCursor] = Value - LastValue;
+            LastValue = Value;
+            BufCursor++;
             if (BufCursor >= BufSize) { ActualWrite(); }
         }
 
@@ -154,7 +135,10 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor);
+            long[] swaplong = BufAsLong;
+            BufAsLong = WriteBufAsLong;
+            WriteBufAsLong = swaplong;
+            ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long));
             BufCursor = 0;
         }
 

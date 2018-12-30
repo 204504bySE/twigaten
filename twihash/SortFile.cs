@@ -158,7 +158,8 @@ namespace twihash
             int i = SortRange.Begin - 1; int j = SortRange.End + 1;
             while (true)
             {
-                do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
+                //do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
+                for (i++; i < SortList.Length; i++) { if ((SortList[i] & SortMask) >= PivotMasked) { break; } }
                 do { j--; } while ((SortList[j] & SortMask) > PivotMasked);
                 if (i >= j) { break; }
                 long SwapHash = SortList[i];
