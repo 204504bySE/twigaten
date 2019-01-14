@@ -11,7 +11,7 @@ using System.Threading;
 
 namespace twihash
 {
-    static class SortFile
+    static class SplitQuickSort
     {
         static readonly Config config = Config.Instance;
 
@@ -98,18 +98,13 @@ namespace twihash
                 FirstSortBlock.Complete();
                 await FirstSortBlock.Completion.ConfigureAwait(false);
             }
-            //なんとなくここで片付けてしまう
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-
             return FileCount;
         }
 
         ///<summary>配列の0~SortListLengthまでを並列ソート</summary>
         static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
         {
-            //順不同で処理させるための小細工
-            //自分自身にはPost()できないからね
+            //順不同で処理させるための小細工 自分自身にはPost()できないからね
             var BufBlock = new BufferBlock<(int Begin, int End)>();
             var QuickSortBlock = new TransformBlock<(int Begin, int End), int>
                 (((int Begin, int End) SortRange) => {
@@ -134,7 +129,7 @@ namespace twihash
             await QuickSortBlock.Completion.ConfigureAwait(false);
         }
 
-        static readonly int ConcurrencyLog = (int)Math.Ceiling(Math.Log(Environment.ProcessorCount, 2) + 1);
+        static readonly int ConcurrencyLog = (int)Math.Ceiling(Math.Log(Environment.ProcessorCount, 2));
         static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
         {
             if (SortRange.Begin >= SortRange.End) { return null; }

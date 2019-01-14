@@ -33,8 +33,6 @@ namespace twihash
                 if (NewHash == null) { Console.WriteLine("New hash load failed."); Environment.Exit(1); }
                 Console.WriteLine("{0} New hash", NewHash.Count);
             }
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
             sw.Stop();
             if (Count < 0) { Console.WriteLine("Hash load failed."); Environment.Exit(1); }
             else
@@ -42,14 +40,16 @@ namespace twihash
                 Console.WriteLine("{0} Hash loaded in {1} ms", Count, sw.ElapsedMilliseconds);
                 config.hash.NewLastHashCount(Count);
             }
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
             sw.Restart();
-            MediaHashSorter media = new MediaHashSorter(NewHash, db, config.hash.MaxHammingDistance, config.hash.ExtraBlocks, Count);
+            MediaHashSorter media = new MediaHashSorter(NewHash, db,
+                config.hash.MaxHammingDistance,
+                //MergeSorterBaseの仕様上SortMaskで最上位bitだけ0にされるとまずいので制限
+                Math.Min(config.hash.ExtraBlocks, 32 - config.hash.MaxHammingDistance),
+                Count);
             await media.Proceed().ConfigureAwait(false);
             sw.Stop();
             Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
-            File.Delete(SortFile.AllHashFilePath);
+            File.Delete(SplitQuickSort.AllHashFilePath);
             config.hash.NewLastUpdate(NewLastUpdate);
         }
     }

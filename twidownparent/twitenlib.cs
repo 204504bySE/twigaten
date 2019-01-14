@@ -155,10 +155,9 @@ namespace twitenlib
             public long LastHashCount { get; }
             public int HashCountOffset { get; }
             public string TempDir { get; }
-            public long InitialSortFileSize { get; }
+            public int InitialSortFileSize { get; }
             public int InitialSortConcurrency { get; }
-            public int FileSortThreads { get; }
-            public int FileSortFilesPerStep { get; }
+            public int MergeSortCompareUnit { get; }
             public int ZipBufferElements { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
@@ -169,10 +168,9 @@ namespace twitenlib
                 LastHashCount = long.Parse(data["hash"][nameof(LastHashCount)] ?? "0");
                 HashCountOffset = int.Parse(data["hash"][nameof(HashCountOffset)] ?? "5000000");
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
-                InitialSortFileSize = long.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
+                InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
                 InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
-                FileSortThreads = int.Parse(data["hash"][nameof(FileSortThreads)] ?? Environment.ProcessorCount.ToString());
-                FileSortFilesPerStep = int.Parse(data["hash"][nameof(FileSortFilesPerStep)] ?? "2");
+                MergeSortCompareUnit = int.Parse(data["hash"][nameof(MergeSortCompareUnit)] ?? "2");
                 ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "8192");
             }
             public void NewLastUpdate(long time)

@@ -19,19 +19,17 @@ namespace twihash
         readonly BrotliStream zip;
 
         byte[] Buf = new byte[BufSize * sizeof(long)];
-        long[] BufAsLong;
+        long[] BufAsLong;   //自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
         int ActualBufElements;
-        int BufCursor;  //bufの読み込み位置
+        int BufCursor;  //BufAsLongの読み込み位置(long単位で動かす)
         byte[] NextBuf = new byte[BufSize * sizeof(long)];
-        long[] NextBufAsLong;
         Task<int> FillNextBufTask;
 
         public BufferedLongReader(string FilePath)
         {
-            BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
-            NextBufAsLong = Unsafe.As<byte[], long[]>(ref NextBuf);
             file = File.OpenRead(FilePath);
             zip = new BrotliStream(file, CompressionMode.Decompress);
+
             //最初はここで強制的に読ませる
             FillNextBuf();
             ActualReadAuto();
@@ -52,9 +50,7 @@ namespace twihash
                 byte[] swap = Buf;
                 Buf = NextBuf;
                 NextBuf = swap;
-                long[] swaplong = BufAsLong;
-                BufAsLong = NextBufAsLong;
-                NextBufAsLong = swaplong;
+                BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
                 BufCursor = 0;
                 FillNextBuf();
             }
@@ -107,7 +103,6 @@ namespace twihash
         long[] BufAsLong;        
         int BufCursor;  //こいつはlong単位で動かすからな
         byte[] WriteBuf = new byte[BufSize * sizeof(long)];
-        long[] WriteBufAsLong;
         Task ActualWriteTask;
 
         public BufferedLongWriter(string FilePath)
@@ -116,7 +111,6 @@ namespace twihash
             zip = new BrotliStream(file, CompressionLevel.Fastest);
             //↓自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
             BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
-            WriteBufAsLong = Unsafe.As<byte[], long[]>(ref WriteBuf);
         }
 
         long LastValue;
@@ -135,9 +129,7 @@ namespace twihash
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            long[] swaplong = BufAsLong;
-            BufAsLong = WriteBufAsLong;
-            WriteBufAsLong = swaplong;
+            BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
             ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long));
             BufCursor = 0;
         }
@@ -158,7 +150,7 @@ namespace twihash
         readonly BufferedLongWriter writer;
         public AllHashFileWriter()
         {
-            writer = new BufferedLongWriter(SortFile.AllHashFilePath);
+            writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath);
         }
 
         public void Write(IEnumerable<long> Values)

@@ -74,11 +74,9 @@ namespace twihash
             for (int i = 0; i < Combi.Length; i++)
             {
                 sw.Restart();
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
                 (int db, int sort) = await MultipleSortUnit(i).ConfigureAwait(false);
                 sw.Stop();
-                Console.WriteLine("{0}\t{1} / {2}\t{3}\t{4}ms ", i, db, sort, Combi.CombiString(i), sw.ElapsedMilliseconds);
+                Console.WriteLine("{0}\t{1} / {2}\t{3}ms ", i, db, sort, sw.ElapsedMilliseconds);
             }
         }
 
@@ -89,7 +87,7 @@ namespace twihash
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
             long SortMask = UnMask(BaseBlocks, Combi.Count);            
-            int SortedFileCount = await SortFile.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
+            int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
             int ret = 0;
             int dbcount = 0;
 
@@ -158,7 +156,7 @@ namespace twihash
                 SingleProducerConstrained = true
             });
             
-            using (var Reader = new SortedFileReader(SortedFileCount, SortMask, NewHash))
+            using (var Reader = new MergeSortReader(SortedFileCount, SortMask, NewHash))
             {
                 long[] Sorted;
                 while ((Sorted = Reader.ReadBlock()) != null)

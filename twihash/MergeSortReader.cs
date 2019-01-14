@@ -13,7 +13,7 @@ namespace twihash
 {
     ///<summary>分轄してブロックソートされたファイルを必要な単位で読み出すやつ
     ///Dispose()でファイルを削除する</summary>
-    class SortedFileReader : IDisposable
+    class MergeSortReader : IDisposable
     {
         static readonly Config config = Config.Instance;
 
@@ -22,7 +22,7 @@ namespace twihash
         readonly MergedEnumerator Reader;
         readonly ReadBuffer<long> Buffer;
 
-        public SortedFileReader(int FileCount, long SortMask, HashSet<long> NewHash)
+        public MergeSortReader(int FileCount, long SortMask, HashSet<long> NewHash)
         {
             this.SortMask = SortMask;
             this.NewHash = NewHash;
@@ -66,105 +66,153 @@ namespace twihash
         public void Dispose() { Reader.Dispose(); }
     }
 
+    ///<summary>IEnumeratorをそのまま使うのやめた
+    ///Interfaceで済むはずだけどこっちの方がちょっとだけ速いと聞いた #ウンコード</summary>
+    abstract class MergeSorterBase : IDisposable
+    {
+        ///<summary>Read()に失敗したら未定義(´・ω・`)</summary>
+        public long Current { get; protected set; }
+        ///<summary>Read()に失敗したらlong.MaxValueにする</summary>
+        public long CurrentMasked { get; protected set; }
+        public abstract void Read();
+        public abstract void Dispose();
+    }
+
+    ///<summary>Masked順でソート済みの2個のIEnumeratorをマージするやつ</summary>
+    class MergeSorter : MergeSorterBase
+    {
+        readonly MergeSorterBase[] Enumerators;
+
+        public MergeSorter(IEnumerable<MergeSorterBase> Enumerators)
+        {
+            this.Enumerators = Enumerators.ToArray();
+            InitRead();
+        }
+        public MergeSorter(params MergeSorterBase[] Enumerators)
+        {
+            this.Enumerators = Enumerators;
+            InitRead();
+        }
+        void InitRead()
+        {
+            foreach(var e in Enumerators) { e.Read(); }
+        }
+
+        ///<summary>ここでマージソートする</summary>
+        public override void Read()
+        {
+            var MinMasked = long.MaxValue;
+            int MinIndex = -1;
+
+            for (int i = 0; i < Enumerators.Length; i++)
+            {
+                if (Enumerators[i].CurrentMasked < MinMasked)
+                {                    
+                    MinMasked = Enumerators[i].CurrentMasked;
+                    MinIndex = i;
+                }
+            }
+            CurrentMasked = MinMasked;
+            if (0 <= MinIndex)
+            {
+                Current = Enumerators[MinIndex].Current;
+                Enumerators[MinIndex].Read();
+            }
+        }
+        
+        public override void Dispose()
+        {
+            foreach (var e in Enumerators) { e.Dispose(); }
+        }
+    }
+
     ///<summary>マージソート対象のファイルを読むクラス ファイル1個ごとに作る</summary>
-    class MergeSortReader : IDisposable
+    class MergeSortFileReader : MergeSorterBase
     {
         readonly BufferedLongReader Reader;
         readonly long SortMask;
         readonly string FilePath;
 
-        public MergeSortReader(string FilePath, long SortMask)
+        public MergeSortFileReader(string FilePath, long SortMask)
         {
             Reader = new BufferedLongReader(FilePath);
             this.SortMask = SortMask;
             this.FilePath = FilePath;
         }
-        ///<summary>ファイルを読み終わったらfalseになる</summary>
-        public bool ReadOK { get; private set; }
-        ///<summary>最後に読み込んだ値(そのまんま)</summary>
-        public long Last { get; private set; }
-        ///<summary>Last & SortMask</summary>
-        public long LastMasked { get; private set; }
-        public void Read()
-        {
-            ReadOK = Reader.MoveNext();
-            if (ReadOK)
-            {
-                Last = Reader.Current;
-                LastMasked = Last & SortMask;
-            }
-        }
-        public void Dispose()
-        {
-            Reader.Dispose();
-            ReadOK = false;
-        }
+        
         ///<summary>ファイルを消すのはDispose()後 #ウンコード</summary>
         public void DeleteFile() { File.Delete(FilePath); }
+        
+        public override void Read()
+        {
+            if (Reader.MoveNext())
+            {
+                Current = Reader.Current;
+                CurrentMasked = Reader.Current & SortMask;
+            }
+            else { CurrentMasked = long.MaxValue; }
+        }
+        public override void Dispose() => Reader.Dispose();
     }
 
+
     ///<summary>全ファイルをマージソートしながら読み込む</summary>
-    class MergedEnumerator : IEnumerator<long>, IEnumerable<long>, IDisposable
+    class MergedEnumerator : IEnumerator<long>, IEnumerable<long>
     {
+        static readonly int MergeSortCompareUnit = Config.Instance.hash.MergeSortCompareUnit;
         readonly long SortMask;
-        readonly MergeSortReader[] Readers;
+        ///<summary>Dispose()時にDeleteFile()呼びたいから保持してるだけ</summary>
+        readonly MergeSortFileReader[] Readers;
+        ///<summary>マージソートの最終結果を出すやつ</summary>
+        readonly MergeSorterBase RootEnumerator;
 
         public MergedEnumerator(int FileCount, long SortMask)
         {
             this.SortMask = SortMask;   //これをnew MergeSortReader()より先にやらないとﾁｰﾝ
-            Readers = new MergeSortReader[FileCount];
-            Reset();
-        }
-
-        ///<summary>初期化をここに入れておく</summary>
-        public void Reset()
-        {
+            Readers = new MergeSortFileReader[FileCount];
             for (int i = 0; i < Readers.Length; i++)
             {
-                Readers[i]?.Dispose();
-                Readers[i] = new MergeSortReader(SortFile.SortingFilePath(i), SortMask);
-                //最初に読み込ませておく必要がある #ウンコード
-                Readers[i].Read();
+                Readers[i] = new MergeSortFileReader(SplitQuickSort.SortingFilePath(i), SortMask);
             }
-        }
 
-        public long Current { get; private set; }
-        object IEnumerator.Current => Current;
+            //マージソート階層を作る
+            var SorterQueue = new Queue<MergeSorterBase>(Readers);
+            var SorterList = new List<MergeSorterBase>();
 
-        ///<summary>ここでマージソートを進める</summary>
-        public bool MoveNext()
-        {
-            long MinMasked = long.MaxValue;
-            int MinIndex = -1;
-            //今は何も考えずに全部一気にマージしてるけど
-            //ファイルが増えてたら多段階でマージすることも考える必要がある
-            for (int i = 0; i < Readers.Length; i++)
+            while (1 < SorterQueue.Count)
             {
-                if (Readers[i].ReadOK && Readers[i].LastMasked <= MinMasked)
+                for (int i = 0; 0 < SorterQueue.Count && i < MergeSortCompareUnit; i++)
                 {
-                    MinMasked = Readers[i].LastMasked;
-                    MinIndex = i;
+                    SorterList.Add(SorterQueue.Dequeue());
                 }
+                SorterQueue.Enqueue(new MergeSorter(SorterList));
+                SorterList.Clear();
             }
-            if (MinIndex == -1) { return false; }   //全Readerが読み込み終了
-            else
-            {
-                Current = Readers[MinIndex].Last;
-                Readers[MinIndex].Read();
-                return true;
-            }
+            RootEnumerator = SorterQueue.Dequeue();
         }
 
-        public IEnumerator<long> GetEnumerator() { return this; }
-        IEnumerator IEnumerable.GetEnumerator() { return this; }
+        public long Current { get => RootEnumerator.Current; }
+        object IEnumerator.Current => Current;
+        public bool MoveNext() { RootEnumerator.Read(); return RootEnumerator.CurrentMasked != long.MaxValue; }
+        public void Reset() => throw new NotSupportedException();
 
-        public void Dispose() { foreach (var r in Readers) { r.Dispose(); r.DeleteFile(); } }
+        public IEnumerator<long> GetEnumerator() => this;
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        ///<summary>ここでファイルを削除させる</summary>
+        public void Dispose()
+        {
+            //これでReadersまで連鎖的にDispose()される
+            RootEnumerator.Dispose();
+            //Dispose()後にファイル削除だけ別に行う #ウンコード
+            foreach (var r in Readers) { r.DeleteFile(); }
+        }
     }
 
     ///<summary>バッファーを用意して別スレッドで読み込みたいだけ</summary>
     class ReadBuffer<T> : IEnumerable<T>, IEnumerator<T> where T: struct
     {
-        static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Marshal.SizeOf<T>();
+        static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
 
         T[] Buf = new T[BufSize];
         int ActualBufSize;//Bufの有効なサイズ(要素単位であってバイト単位ではない)
@@ -186,8 +234,8 @@ namespace twihash
             //ここでSourceから読み込めばおｋ
             FillNextBufTask = Task.Run(() =>
             {
-                int i = 0;
-                for(; i < NextBuf.Length; i++)
+                int i;
+                for(i = 0; i < NextBuf.Length; i++)
                 {
                     if (Source.MoveNext()) { NextBuf[i] = Source.Current; }
                     else { break; }
