@@ -78,7 +78,7 @@ namespace twihash
         public abstract void Dispose();
     }
 
-    ///<summary>Masked順でソート済みの2個のIEnumeratorをマージするやつ</summary>
+    ///<summary>Masked順でソート済みのn個のIEnumeratorをマージするやつ</summary>
     class MergeSorter : MergeSorterBase
     {
         readonly MergeSorterBase[] Enumerators;

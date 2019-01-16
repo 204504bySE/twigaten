@@ -14,10 +14,23 @@
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
     <PackageReference Include="MySqlConnector" Version="0.48.2" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.2" />
+    <PackageReference Include="Zstandard.Net" Version="1.1.5" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Update="Microsoft.NETCore.App" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="C:\Users\pc03\.nuget\packages\zstandard.net\1.1.5\build\x64\libzstd.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="C:\Users\pc03\.nuget\packages\zstandard.net\1.1.5\build\x86\libzstd.dll">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

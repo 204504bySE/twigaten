@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using twitenlib;
+using Zstandard.Net;
 
 namespace twihash
 {
@@ -16,7 +16,7 @@ namespace twihash
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
         readonly FileStream file;
-        readonly BrotliStream zip;
+        readonly ZstandardStream zip;
 
         byte[] Buf = new byte[BufSize * sizeof(long)];
         long[] BufAsLong;   //自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
@@ -28,7 +28,7 @@ namespace twihash
         public BufferedLongReader(string FilePath)
         {
             file = File.OpenRead(FilePath);
-            zip = new BrotliStream(file, CompressionMode.Decompress);
+            zip = new ZstandardStream(file, CompressionMode.Decompress);
 
             //最初はここで強制的に読ませる
             FillNextBuf();
@@ -98,7 +98,7 @@ namespace twihash
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
         readonly FileStream file;
-        readonly BrotliStream zip;
+        readonly ZstandardStream zip;
         byte[] Buf = new byte[BufSize * sizeof(long)];
         long[] BufAsLong;        
         int BufCursor;  //こいつはlong単位で動かすからな
@@ -108,7 +108,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            zip = new BrotliStream(file, CompressionLevel.Fastest);
+            zip = new ZstandardStream(file, 1);
             //↓自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
             BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
         }
