@@ -28,38 +28,40 @@ namespace twihash
             this.NewHash = NewHash;
             Reader = new MergedEnumerator(FileCount, SortMask);
             Buffer = new ReadBuffer<long>(Reader);
+            //最初に1個読んでおく
+            Buffer.MoveNext();
+            LastHash = Buffer.Current;
         }
-
-        long ExtraReadHash;
-        bool HasExtraHash;
+        
         readonly List<long> TempList = new List<long>();
+        ///<summary>ReadBlock()をやり直すときにBuffer.Currentを読み直したくない</summary>
+        long LastHash;
 
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
         ///長さ2以上でNewHashが含まれてるやつだけ返す
         ///最後まで読み終わったらnull</summary>
         public long[] ReadBlock()
         {
-            long TempHash;
+            //最後に読んだやつがCurrentに残ってるので読む
+            long TempHash = LastHash;
             do
             {
+                //すでに全要素を読み込んだ後なら抜けてしまおう
+                //長さ1なら返さなくていいのでここで問題ない
+                if (!Buffer.MoveNext()) { return null; }
+                //MoveNext()したけどTempHashはまだ変わってないのでここで保存
                 TempList.Clear();
-                if (HasExtraHash) { TempHash = ExtraReadHash; HasExtraHash = false; }
-                else if (Buffer.MoveNext()) { TempHash = Buffer.Current; }
-                else { return null; }
                 TempList.Add(TempHash);
                 //MaskしたやつがMaskedKeyと一致しなかったら終了
                 long MaskedKey = TempHash & SortMask;
-                while (Buffer.MoveNext())
-                {
+                do
+                {   //↑でMoveNext()したのでここの先頭ではやらない
                     TempHash = Buffer.Current;
-                    if ((TempHash & SortMask) == MaskedKey)
-                    {
-                        TempList.Add(TempHash);
-                    }
-                    //1個余計に読んだので記録しておく
-                    else { ExtraReadHash = TempHash; HasExtraHash = true; break; }
-                }
+                    if ((TempHash & SortMask) == MaskedKey) { TempList.Add(TempHash); }
+                    else { break; }
+                } while (Buffer.MoveNext());
             } while (TempList.Count < 2 || (NewHash != null && !TempList.Any(h => NewHash.Contains(h))));
+            LastHash = TempHash;
             return TempList.ToArray();
         }
 
@@ -72,9 +74,8 @@ namespace twihash
     {
         ///<summary>Read()に失敗したら未定義(´・ω・`)</summary>
         public long Current { get; protected set; }
-        ///<summary>Read()に失敗したらlong.MaxValueにする</summary>
-        public long CurrentMasked { get; protected set; }
-        public abstract void Read();
+        ///<summary>Current & SortMask 失敗したらlong.MaxValue</summary>
+        public abstract long Read();
         public abstract void Dispose();
     }
 
@@ -82,44 +83,42 @@ namespace twihash
     class MergeSorter : MergeSorterBase
     {
         readonly MergeSorterBase[] Enumerators;
-
-        public MergeSorter(IEnumerable<MergeSorterBase> Enumerators)
-        {
-            this.Enumerators = Enumerators.ToArray();
-            InitRead();
-        }
+        readonly long[] LastMasked;
+        public MergeSorter(IEnumerable<MergeSorterBase> Enumerators) : this(Enumerators.ToArray()) { }
         public MergeSorter(params MergeSorterBase[] Enumerators)
         {
             this.Enumerators = Enumerators;
+            LastMasked = new long[Enumerators.Length];
             InitRead();
         }
         void InitRead()
         {
-            foreach(var e in Enumerators) { e.Read(); }
+            for(int i = 0; i < LastMasked.Length; i++) { LastMasked[i] = Enumerators[i].Read(); }
         }
 
         ///<summary>ここでマージソートする</summary>
-        public override void Read()
+        public override long Read()
         {
             var MinMasked = long.MaxValue;
             int MinIndex = -1;
 
-            for (int i = 0; i < Enumerators.Length; i++)
+            for (int i = 0; i < LastMasked.Length; i++)
             {
-                if (Enumerators[i].CurrentMasked < MinMasked)
-                {                    
-                    MinMasked = Enumerators[i].CurrentMasked;
+                if (LastMasked[i] < MinMasked)
+                {
+                    MinMasked = LastMasked[i];
                     MinIndex = i;
                 }
             }
-            CurrentMasked = MinMasked;
             if (0 <= MinIndex)
             {
                 Current = Enumerators[MinIndex].Current;
-                Enumerators[MinIndex].Read();
+                LastMasked[MinIndex] = Enumerators[MinIndex].Read();
+                return MinMasked;
             }
+            else { return long.MaxValue; }
         }
-        
+
         public override void Dispose()
         {
             foreach (var e in Enumerators) { e.Dispose(); }
@@ -143,14 +142,14 @@ namespace twihash
         ///<summary>ファイルを消すのはDispose()後 #ウンコード</summary>
         public void DeleteFile() { File.Delete(FilePath); }
         
-        public override void Read()
+        public override long Read()
         {
             if (Reader.MoveNext())
             {
                 Current = Reader.Current;
-                CurrentMasked = Reader.Current & SortMask;
+                return Current & SortMask;
             }
-            else { CurrentMasked = long.MaxValue; }
+            else { return long.MaxValue; }
         }
         public override void Dispose() => Reader.Dispose();
     }
@@ -193,7 +192,7 @@ namespace twihash
 
         public long Current { get => RootEnumerator.Current; }
         object IEnumerator.Current => Current;
-        public bool MoveNext() { RootEnumerator.Read(); return RootEnumerator.CurrentMasked != long.MaxValue; }
+        public bool MoveNext() { return RootEnumerator.Read() != long.MaxValue; }
         public void Reset() => throw new NotSupportedException();
 
         public IEnumerator<long> GetEnumerator() => this;

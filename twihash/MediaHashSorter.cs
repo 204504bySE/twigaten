@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.CompilerServices;
 
 namespace twihash
 {
@@ -54,7 +56,7 @@ namespace twihash
     {
         readonly DBHandler db;
         readonly HashSet<long> NewHash;
-        readonly int MaxHammingDistance;
+        readonly long MaxHammingDistance;
         readonly int ExtraBlock;
         readonly long HashCount;
         readonly Combinations Combi;
@@ -76,7 +78,7 @@ namespace twihash
                 sw.Restart();
                 (int db, int sort) = await MultipleSortUnit(i).ConfigureAwait(false);
                 sw.Stop();
-                Console.WriteLine("{0}\t{1} / {2}\t{3}ms ", i, db, sort, sw.ElapsedMilliseconds);
+                Console.WriteLine("{0}\t{1}, {2}\t{3}ms ", i, db, sort, sw.ElapsedMilliseconds);
             }
         }
 
@@ -115,8 +117,7 @@ namespace twihash
                         if (NeedInsert_i || NewHash.Contains(Sorted[j]))    //NewHashがnullなら後者は処理されないからセーフ
                         {
                             //ブロックソートで一致した組のハミング距離を測る
-                            int ham = HammingDistance(Sorted[i], Sorted[j]);
-                            if (ham <= MaxHammingDistance)
+                            if (HammingDistance(Sorted[i], Sorted[j]) <= MaxHammingDistance)
                             {
                                 //一致したペアが見つかる最初の組合せを調べる
                                 int matchblockindex = 0;
@@ -189,16 +190,21 @@ namespace twihash
             return ret;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ///<summary>ハミング距離を計算する</summary>
-        int HammingDistance(long a, long b)
+        long HammingDistance(long a, long b)
         {
             //xorしてpopcnt
-            long value = a ^ b;
+            ulong value = (ulong)(a ^ b);
 
-            //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
-            long result = value - ((value >> 1) & 0x5555555555555555L);
-            result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
-            return (int)(unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56);
+            if (Popcnt.IsSupported) { return Popcnt.PopCount(value); }
+            else
+            {
+                //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
+                ulong result = value - ((value >> 1) & 0x5555555555555555L);
+                result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
+                return (long)unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56;
+            }
         }
     }
 }
