@@ -134,10 +134,9 @@ namespace twihash
         {
             if (SortRange.Begin >= SortRange.End) { return null; }
             //十分に並列化されるか要素数が少なくなったらLINQに投げる
-            void LinqSort() { Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer); }
             if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length >> ConcurrencyLog))
             {
-                LinqSort();
+                Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
                 return null;
             }
 
