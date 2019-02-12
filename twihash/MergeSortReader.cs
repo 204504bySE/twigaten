@@ -74,7 +74,8 @@ namespace twihash
     {
         ///<summary>Read()に失敗したら未定義(´・ω・`)</summary>
         public long Current { get; protected set; }
-        ///<summary>Current & SortMask 失敗したらlong.MaxValue</summary>
+        ///<summary>成功したら Current & SortMask
+        ///失敗したらlong.MaxValue</summary>
         public abstract long Read();
         public abstract void Dispose();
     }
@@ -99,7 +100,7 @@ namespace twihash
         ///<summary>ここでマージソートする</summary>
         public override long Read()
         {
-            var MinMasked = long.MaxValue;
+            long MinMasked = long.MaxValue;
             int MinIndex = -1;
 
             for (int i = 0; i < LastMasked.Length; i++)
@@ -176,16 +177,23 @@ namespace twihash
 
             //マージソート階層を作る
             var SorterQueue = new Queue<MergeSorterBase>(Readers);
-            var SorterList = new List<MergeSorterBase>();
+            var TempSorter = new List<MergeSorterBase>();
+            var NextSorter = new List<MergeSorterBase>();
 
+            //きれいなマージソート階層を作るようにした(一応)
             while (1 < SorterQueue.Count)
             {
-                for (int i = 0; 0 < SorterQueue.Count && i < MergeSortCompareUnit; i++)
+                while (1 < SorterQueue.Count)
                 {
-                    SorterList.Add(SorterQueue.Dequeue());
+                    for (int i = 0; 0 < SorterQueue.Count && i < MergeSortCompareUnit; i++)
+                    {
+                        TempSorter.Add(SorterQueue.Dequeue());
+                    }
+                    NextSorter.Add(new MergeSorter(TempSorter));
+                    TempSorter.Clear();
                 }
-                SorterQueue.Enqueue(new MergeSorter(SorterList));
-                SorterList.Clear();
+                SorterQueue = new Queue<MergeSorterBase>(NextSorter);
+                NextSorter.Clear();
             }
             RootEnumerator = SorterQueue.Dequeue();
         }
