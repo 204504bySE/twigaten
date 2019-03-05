@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using System.Runtime.Intrinsics.X86;
+using System.Runtime.CompilerServices;
 
 namespace twihash
 {
@@ -189,6 +190,7 @@ namespace twihash
             return ret;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ///<summary>ハミング距離を計算する</summary>
         long HammingDistance(long a, long b)
         {

@@ -165,7 +165,7 @@ namespace twidownstream
                 while (true)
                 {
                     if (sw.ElapsedMilliseconds > 60000)
-                    {   //ここでGCする #ウンコード
+                    {
                         sw.Restart();
                         Counter.PrintReset();
                         await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
