@@ -61,7 +61,7 @@ namespace twihash
         {
             try
             {
-                using (var writer = new AllHashFileWriter())
+                using (var writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath))
                 {
                     //large heapに入れたくなかったら64 + "10~11" - ~~~ くらい
                     int HashUnitBits = Math.Min(63, 64 + 16 - (int)Math.Log(config.hash.LastHashCount, 2));
@@ -69,11 +69,11 @@ namespace twihash
                     int TableListSize = (int)Math.Max(16, config.hash.LastHashCount >> (63 - HashUnitBits) << 1);
 
                     //これに読み込み用のListを入れてメモリ割り当てを減らしてみる
-                    var LongPool = new ConcurrentQueue<List<long>>();
-                    var WriterBlock = new ActionBlock<List<long>>(
-                        (table) => 
+                    var LongPool = new ConcurrentQueue<AddOnlyList<long>>();
+                    var WriterBlock = new ActionBlock<AddOnlyList<long>>(
+                        async (table) => 
                         {
-                            writer.Write(table);
+                            await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
                             table.Clear();
                             LongPool.Enqueue(table);
                         },
@@ -87,7 +87,7 @@ namespace twihash
 
                     var LoadHashBlock = new ActionBlock<long>(async (i) =>
                     {
-                        if (!LongPool.TryDequeue(out var Table)) { Table = new List<long>(TableListSize); }
+                        if (!LongPool.TryDequeue(out var Table)) { Table = new AddOnlyList<long>(TableListSize); }
                         while(true)
                         {
                             using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -19,28 +20,34 @@ namespace twihash
 
         readonly long SortMask;
         readonly HashSet<long> NewHash;
-        readonly MergedEnumerator Reader;
-        readonly ReadBuffer<long> Buffer;
+        readonly MergedEnumerator Creator;
+        readonly MergeSortBuffer Reader;
+        readonly ArrayPool<long> Pool = ArrayPool<long>.Create();
 
         public MergeSortReader(int FileCount, long SortMask, HashSet<long> NewHash)
         {
             this.SortMask = SortMask;
             this.NewHash = NewHash;
-            Reader = new MergedEnumerator(FileCount, SortMask);
-            Buffer = new ReadBuffer<long>(Reader);
+            Creator = new MergedEnumerator(FileCount, SortMask);
+            Reader = Creator.Enumerator;
+            ReadBlockList = new AddOnlyList<long>(BlockElementsMin << 1);
+            OneBlockList = new AddOnlyList<long>(BlockElementsMin << 1);
             //最初に1個読んでおく
-            Buffer.MoveNext();
-            LastHash = Buffer.Current;
+            Reader.Read();
+            LastHash = Reader.Current;
         }
-        
-        readonly List<long> TempList = new List<long>();
+
+        readonly int BlockElementsMin = config.hash.MultipleSortBufferElements;
+        readonly AddOnlyList<long> ReadBlockList;
+        readonly AddOnlyList<long> OneBlockList;
         ///<summary>ReadBlock()をやり直すときにBuffer.Currentを読み直したくない</summary>
         long LastHash;
 
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
         ///長さ2以上でNewHashが含まれてるやつだけ返す
         ///最後まで読み終わったらnull</summary>
-        public long[] ReadBlock()
+        ///<returns>要素数,実際の要素,…,要素数,…,0 と繰り返すオレオレ配列</returns>
+        public long[] ReadBlocks()
         {
             //最後に読んだやつがCurrentに残ってるので読む
             long TempHash = LastHash;
@@ -48,24 +55,48 @@ namespace twihash
             {
                 //すでに全要素を読み込んだ後なら抜けてしまおう
                 //長さ1なら返さなくていいのでここで問題ない
-                if (!Buffer.MoveNext()) { return null; }
-                //MoveNext()したけどTempHashはまだ変わってないのでここで保存
-                TempList.Clear();
-                TempList.Add(TempHash);
-                //MaskしたやつがMaskedKeyと一致しなかったら終了
-                long MaskedKey = TempHash & SortMask;
+                if (!Reader.Read()) { break; }
                 do
-                {   //↑でMoveNext()したのでここの先頭ではやらない
-                    TempHash = Buffer.Current;
-                    if ((TempHash & SortMask) == MaskedKey) { TempList.Add(TempHash); }
-                    else { break; }
-                } while (Buffer.MoveNext());
-            } while (TempList.Count < 2 || (NewHash != null && !TempList.Any(h => NewHash.Contains(h))));
+                {
+                    //MoveNext()したけどTempHashはまだ変わってないのでここで保存
+                    OneBlockList.Clear();
+                    OneBlockList.Add(TempHash);
+                    //MaskしたやつがMaskedKeyと一致しなかったら終了
+                    long MaskedKey = TempHash & SortMask;
+                    do
+                    {   //↑でMoveNext()したのでここの先頭ではやらない
+                        TempHash = Reader.Current;
+                        if ((TempHash & SortMask) == MaskedKey) { OneBlockList.Add(TempHash); }
+                        else { break; }
+                    } while (Reader.Read());
+                }
+                while (OneBlockList.Count < 2 || (NewHash != null && !OneBlockList.AsEnumerable().Any(h => NewHash.Contains(h))));
+
+                //オレオレ配列1サイクル分を作る
+                ReadBlockList.Add(OneBlockList.Count);
+                ReadBlockList.AddRange(OneBlockList.Span);
+            } while (ReadBlockList.Count < BlockElementsMin);
+
+            //読み込み終了後の呼び出しならnullを返す必要がある
+            if(ReadBlockList.Count == 0) { return null; }
+            //オレオレ配列を完成させて返す
+            ReadBlockList.Add(0);
+            var values = Pool.Rent(ReadBlockList.Count);
+            Array.Copy(ReadBlockList.InnerArray, values, ReadBlockList.Count);
+            ReadBlockList.Clear();
+
+            //次回のためにTempHashを保存する
             LastHash = TempHash;
-            return TempList.ToArray();
+            return values; 
         }
 
-        public void Dispose() { Reader.Dispose(); }
+        public void ReturnArray(long[] array)
+        {
+            Pool.Return(array); 
+        }
+
+        //ReaderはCreator.Dispose()の中でDispose()されるので呼ぶ必要はない
+        public void Dispose() { Creator.Dispose(); }
     }
 
     ///<summary>IEnumeratorをそのまま使うのやめた
@@ -97,7 +128,7 @@ namespace twihash
             for(int i = 0; i < LastMasked.Length; i++) { LastMasked[i] = Enumerators[i].Read(); }
         }
 
-        ///<summary>ここでマージソートする</summary>
+        ///<summary>1要素進める 比較用の値が戻る 全部読んだらlong.MaxValue</summary>
         public override long Read()
         {
             long MinMasked = long.MaxValue;
@@ -113,13 +144,13 @@ namespace twihash
             }
             if (0 <= MinIndex)
             {
-                Current = Enumerators[MinIndex].Current;
-                LastMasked[MinIndex] = Enumerators[MinIndex].Read();
+                var MinEnumerator = Enumerators[MinIndex];
+                Current = MinEnumerator.Current;
+                LastMasked[MinIndex] = MinEnumerator.Read();
                 return MinMasked;
             }
             else { return long.MaxValue; }
         }
-
         public override void Dispose()
         {
             foreach (var e in Enumerators) { e.Dispose(); }
@@ -157,14 +188,14 @@ namespace twihash
 
 
     ///<summary>全ファイルをマージソートしながら読み込む</summary>
-    class MergedEnumerator : IEnumerator<long>, IEnumerable<long>
+    class MergedEnumerator
     {
         static readonly int MergeSortCompareUnit = Config.Instance.hash.MergeSortCompareUnit;
         readonly long SortMask;
         ///<summary>Dispose()時にDeleteFile()呼びたいから保持してるだけ</summary>
         readonly MergeSortFileReader[] Readers;
         ///<summary>マージソートの最終結果を出すやつ</summary>
-        readonly MergeSorterBase RootEnumerator;
+        public MergeSortBuffer Enumerator { get; }
 
         public MergedEnumerator(int FileCount, long SortMask)
         {
@@ -183,54 +214,51 @@ namespace twihash
             //きれいなマージソート階層を作るようにした(一応)
             while (1 < SorterQueue.Count)
             {
+                //1回でマージしきれないときはファイル数を均等に振って並列に処理したい
+                int temp = (SorterQueue.Count + MergeSortCompareUnit - 1) / MergeSortCompareUnit;
+                int CompareUnit = (FileCount + temp - 1) / temp;
                 while (1 < SorterQueue.Count)
                 {
-                    for (int i = 0; 0 < SorterQueue.Count && i < MergeSortCompareUnit; i++)
+                    for (int i = 0; 0 < SorterQueue.Count && i < CompareUnit; i++)
                     {
                         TempSorter.Add(SorterQueue.Dequeue());
                     }
-                    NextSorter.Add(new MergeSorter(TempSorter));
+                    if (2 <= TempSorter.Count){ NextSorter.Add(new MergeSorter(TempSorter)); }
+                    else { NextSorter.Add(TempSorter.First()); }
                     TempSorter.Clear();
                 }
-                SorterQueue = new Queue<MergeSorterBase>(NextSorter);
+                SorterQueue = new Queue<MergeSorterBase>(NextSorter); 
                 NextSorter.Clear();
             }
-            RootEnumerator = SorterQueue.Dequeue();
+            //マージ階層の最後はバッファーを噛ませて並列で処理するつもり
+            Enumerator = new MergeSortBuffer(SorterQueue.Dequeue());
         }
-
-        public long Current { get => RootEnumerator.Current; }
-        object IEnumerator.Current => Current;
-        public bool MoveNext() { return RootEnumerator.Read() != long.MaxValue; }
-        public void Reset() => throw new NotSupportedException();
-
-        public IEnumerator<long> GetEnumerator() => this;
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         ///<summary>ここでファイルを削除させる</summary>
         public void Dispose()
         {
             //これでReadersまで連鎖的にDispose()される
-            RootEnumerator.Dispose();
+            Enumerator.Dispose();
             //Dispose()後にファイル削除だけ別に行う #ウンコード
             foreach (var r in Readers) { r.DeleteFile(); }
         }
     }
 
-    ///<summary>バッファーを用意して別スレッドで読み込みたいだけ</summary>
-    class ReadBuffer<T> : IEnumerable<T>, IEnumerator<T> where T: struct
+    ///<summary>バッファーを用意して別スレッドで読み込ませる</summary>
+    class MergeSortBuffer : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
 
-        T[] Buf = new T[BufSize];
+        long[] Buf = new long[BufSize];
         int ActualBufSize;//Bufの有効なサイズ(要素単位であってバイト単位ではない)
         int BufCursor;  //bufの読み込み位置(要素単位であってバイト単位ではない)
-        T[] NextBuf = new T[BufSize];
-        IEnumerator<T> Source;
+        long[] NextBuf = new long[BufSize];
+        readonly MergeSorterBase Source;
         Task<int> FillNextBufTask;
 
-        public ReadBuffer(IEnumerable<T> Source)
+        public MergeSortBuffer(MergeSorterBase Source)
         {
-            this.Source = Source.GetEnumerator();
+            this.Source = Source;
             //最初はここで強制的に読ませる
             FillNextBuf();
             ActualReadAuto();
@@ -244,7 +272,7 @@ namespace twihash
                 int i;
                 for(i = 0; i < NextBuf.Length; i++)
                 {
-                    if (Source.MoveNext()) { NextBuf[i] = Source.Current; }
+                    if (Source.Read() != long.MaxValue) { NextBuf[i] = Source.Current; }
                     else { break; }
                 }
                 return i;
@@ -258,7 +286,7 @@ namespace twihash
                 //読み込みが終わってなかったらここで待機される
                 ActualBufSize = FillNextBufTask.Result;
                 if (ActualBufSize == 0) { Readable = false; }
-                T[] swap = Buf;
+                long[] swap = Buf;
                 Buf = NextBuf;
                 NextBuf = swap;
                 BufCursor = 0;
@@ -266,38 +294,27 @@ namespace twihash
             }
         }
 
-        ///<summary>続きのデータがあるかどうか</summary>
-        bool Readable  = true;
+        public long Current { get; private set; }
 
-        public T Current { get; private set; }
-        object IEnumerator.Current => Current;
+        ///続きのデータがあるかどうか
+        public bool Readable { get; private set; } = true;
 
-        public bool MoveNext()
+        public bool Read()
         {
             if (!Readable) { return false; }
             Current = Buf[BufCursor];
             BufCursor++;
             ActualReadAuto();
             return true;
-        }
+        }  
 
         public void Dispose()
         {
+            Source.Dispose();
             BufCursor = int.MaxValue;
             Readable = false;
+            Buf = null;
+            NextBuf = null;
         }
-
-        public void Reset()
-        {
-            Source.Reset();
-            BufCursor = 0;
-            Readable = true;
-            FillNextBuf();
-            ActualReadAuto();
-        }
-
-        public IEnumerator<T> GetEnumerator() => this;
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
-
 }

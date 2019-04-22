@@ -154,7 +154,7 @@ namespace twidownstream
 
         public enum NeedConnectResult
         {
-            StreamConnected,         //Stream接続済み→不要(Postponedもこれ)
+            StreamConnected,         //Stream接続済み→不要
             JustNeeded,       //必要だけど↓の各処理は不要
             First,       //初回(VerifyCredentialsしような
             RestOnly,    //TLが遅いからRESTだけにして

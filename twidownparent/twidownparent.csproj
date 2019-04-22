@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CoreTweet" Version="1.0.0.483" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySqlConnector" Version="0.48.2" />
+    <PackageReference Include="MySqlConnector" Version="0.53.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
   </ItemGroup>
 

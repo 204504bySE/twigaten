@@ -159,6 +159,7 @@ namespace twitenlib
             public int InitialSortConcurrency { get; }
             public int MergeSortCompareUnit { get; }
             public int ZipBufferElements { get; }
+            public int MultipleSortBufferElements { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
@@ -171,7 +172,8 @@ namespace twitenlib
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
                 InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
                 MergeSortCompareUnit = int.Parse(data["hash"][nameof(MergeSortCompareUnit)] ?? "2");
-                ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "8192");
+                ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "32768");
+                MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "30000");
             }
             public void NewLastUpdate(long time)
             {

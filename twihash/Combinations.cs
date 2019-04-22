@@ -8,8 +8,11 @@ namespace twihash
 {
     class Combinations : IEnumerable<int[]>
     {
+        ///<summary>nCxのn</summary>
         public int Count { get; }
+        ///<summary>nCxのx</summary>
         public int Select { get; }
+        ///<summary>組合せの個数</summary>
         public int Length { get; }
 
         public Combinations(int _Count, int _Select)

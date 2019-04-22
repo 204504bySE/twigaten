@@ -17,11 +17,12 @@ namespace twihash
 
         public const string AllHashFileName = "allhash";
         public const string SortFilePrefix = "sort";
+        public const string FileExtension = ".zst";
         public static string AllHashFilePath { get { return HashFilePath(AllHashFileName); } }
-        public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName);
+        public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName + FileExtension);
         
         ///<summary>ソート過程のファイル名規則</summary>
-        public static string SortingFilePath(int index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index.ToString());
+        public static string SortingFilePath(int index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index.ToString() + FileExtension);
 
         ///<summary>ブロックソートをLINQに投げる用</summary>
         class BlockSortComparer : IComparer<long>
@@ -55,6 +56,8 @@ namespace twihash
         ///分轄されたファイルをマージソートすると完全なソート済み列が得られる</summary>
         public static async Task<int> QuickSortAll(long SortMask, long HashCount)
         {
+            //↓ベンチマーク用に古いファイルを使う時用(数字はファイル数に合わせて変える)
+            //return 57;
             int FileCount = 0;
             using (var reader = new BufferedLongReader(AllHashFilePath))
             {
@@ -74,7 +77,7 @@ namespace twihash
                     //書き込みは並列で行う
                     using (var writer = new BufferedLongWriter(t.WriteFilePath))
                     {
-                        for (int j = 0; j < t.Length; j++) { writer.Write(t.ToSort[j]); }
+                        await writer.Write(t.ToSort, t.Length).ConfigureAwait(false);
                     }
                     LongPool.Enqueue(t.ToSort);
                 }, new ExecutionDataflowBlockOptions()
@@ -84,16 +87,11 @@ namespace twihash
                     BoundedCapacity = config.hash.InitialSortConcurrency
                 });
                 //読み込み過ぎてメモリを食い潰さないように進める
-                while (reader.MoveNext())
+                for(; reader.Readable; FileCount++)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
-
-                    ToSort[0] = reader.Current;//While()で読んでしまったので保存
-                    int i = 1;  //というわけで1から始める
-                    for (; i < ToSort.Length && reader.MoveNext(); i++) { ToSort[i] = reader.Current; }
-
-                    await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, i)).ConfigureAwait(false);
-                    FileCount++;
+                    int ToSortLength = await reader.Read(ToSort).ConfigureAwait(false);
+                    await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength)).ConfigureAwait(false);
                 }
                 FirstSortBlock.Complete();
                 await FirstSortBlock.Completion.ConfigureAwait(false);

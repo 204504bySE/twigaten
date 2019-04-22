@@ -18,6 +18,8 @@ namespace twidownstream
 
             twitenlib.Config config = twitenlib.Config.Instance;
             //結局Minを超えると死ぬのでMinを大きくしておくしかない
+            //User streamを使うときだけ対応する
+            if(config.crawl.StreamSpeedSeconds > 0)
             {
                 //ThreadPool.GetMinThreads(out int MinThreads, out int CompletionThreads);
                 ThreadPool.GetMaxThreads(out int MaxThreads, out int CompletionThreads);

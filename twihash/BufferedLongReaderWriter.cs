@@ -35,9 +35,30 @@ namespace twihash
             ActualReadAuto();
         }
 
+        long LastRead; //差分取る用
         void FillNextBuf()
         {
-            FillNextBufTask = zip.ReadAsync(NextBuf, 0, NextBuf.Length);
+            FillNextBufTask = Task.Run(async () =>
+            {
+                int ReadBytes = await zip.ReadAsync(NextBuf, 0, NextBuf.Length).ConfigureAwait(false);
+                int ReadElements = ReadBytes / sizeof(long);
+                if (ReadElements == 0) { return 0; }
+
+                //差分をとるようにしてちょっと圧縮しやすくしてみよう
+                //Spanを使いたかったのでローカル関数に隔離
+                void TakeDiff()
+                {
+                    var NextBufAsLong = Unsafe.As<byte[], long[]>(ref NextBuf).AsSpan(0, ReadElements);
+                    long LastBefore = LastRead;
+                    for (int i = 0; i < NextBufAsLong.Length; i++)
+                    {
+                        LastBefore = (NextBufAsLong[i] ^= LastBefore);
+                    }
+                    LastRead = LastBefore;
+                }
+                TakeDiff();
+                return ReadElements;
+            });
         }
 
         void ActualReadAuto()
@@ -45,7 +66,7 @@ namespace twihash
             if (BufCursor >= ActualBufElements)
             {
                 //読み込みが終わってなかったらここで待機される
-                ActualBufElements = FillNextBufTask.Result / sizeof(long);
+                ActualBufElements = FillNextBufTask.Result;
                 if (ActualBufElements == 0) { Readable = false; }
                 byte[] swap = Buf;
                 Buf = NextBuf;
@@ -57,7 +78,7 @@ namespace twihash
         }
 
         ///<summary>続きのデータがあるかどうか 内部処理用</summary>
-        bool Readable = true;
+        public bool Readable { get; private set; } = true;
 
         public long Current { get; private set; }
         object IEnumerator.Current => Current;
@@ -66,11 +87,32 @@ namespace twihash
         public bool MoveNext()
         {
             if (!Readable) { return false; }
-            //差分をとるようにしてちょっと圧縮しやすくしてみよう
-            Current += BufAsLong[BufCursor];
+            
+            Current = BufAsLong[BufCursor];
             BufCursor++;
             ActualReadAuto();
             return true;
+        }
+
+        /// <summary>
+        /// まとめて読む用 こっちを使うとCurrentは更新されない
+        /// </summary>
+        /// <param name="Values">読み込み結果を格納する配列</param>
+        /// <returns>読み込んだ要素数</returns>
+        public async Task<int> Read(long[] Values)
+        {
+            int ValuesCursor = 0;
+            while(Readable && ValuesCursor < Values.Length)
+            {
+                int CopySize = Math.Min(Values.Length - ValuesCursor, ActualBufElements - BufCursor);
+                BufAsLong.AsSpan(BufCursor, CopySize).CopyTo(Values.AsSpan(ValuesCursor, CopySize));
+                BufCursor += CopySize;
+                ValuesCursor += CopySize;
+                //ActualReadAuto内ではResultで待機しちゃうのでここでawait
+                if (FillNextBufTask != null) { await FillNextBufTask.ConfigureAwait(false); }
+                ActualReadAuto();
+            }
+            return ValuesCursor;
         }
 
         public void Dispose()
@@ -100,68 +142,65 @@ namespace twihash
         readonly FileStream file;
         readonly ZstandardStream zip;
         byte[] Buf = new byte[BufSize * sizeof(long)];
-        long[] BufAsLong;        
         int BufCursor;  //こいつはlong単位で動かすからな
         byte[] WriteBuf = new byte[BufSize * sizeof(long)];
         Task ActualWriteTask;
+
 
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
             zip = new ZstandardStream(file, 1);
-            //↓自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
-            BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
         }
 
-        long LastValue;
-        public void Write(long Value)
+        public async Task Write(long[] Values, int Length)
         {
-            //差分をとるようにしてちょっと圧縮しやすくしてみよう
-            BufAsLong[BufCursor] = Value - LastValue;
-            LastValue = Value;
-            BufCursor++;
-            if (BufCursor >= BufSize) { ActualWrite(); }
-        }
+            int ValuesCursor = 0;
+            while (ValuesCursor < Length)
+            {
+                int CopySize = Math.Min(Length - ValuesCursor, BufSize - BufCursor);
+                Values.AsSpan(ValuesCursor, CopySize).CopyTo(Unsafe.As<byte[], long[]>(ref Buf).AsSpan(BufCursor, CopySize));
+                BufCursor += CopySize;
 
-        void ActualWrite()
+                if (BufCursor >= BufSize) { await ActualWrite().ConfigureAwait(false); }
+                ValuesCursor += CopySize;
+            }
+        }
+        
+        long LastWritten; //差分取る用
+        async Task ActualWrite()
         {
-            ActualWriteTask?.Wait();
+            if(ActualWriteTask != null) { await ActualWriteTask.ConfigureAwait(false); }
             byte[] swap = Buf;
             Buf = WriteBuf;
             WriteBuf = swap;
-            BufAsLong = Unsafe.As<byte[], long[]>(ref Buf);
+
+            //差分をとるようにしてちょっと圧縮しやすくしてみよう
+            //Spanを使いたかったのでローカル関数に隔離
+            void TakeDiff()
+            {
+                var WriteBufAsLong = Unsafe.As<byte[], long[]>(ref WriteBuf).AsSpan(0, BufCursor);
+                long LastBefore = LastWritten;
+                for (int i = 0; i < WriteBufAsLong.Length; i++)
+                {
+                    long NextLastBefore = WriteBufAsLong[i];
+                    WriteBufAsLong[i] ^= LastBefore;
+                    LastBefore = NextLastBefore;
+                }
+                LastWritten = LastBefore;
+            }
+            TakeDiff();
             ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long));
             BufCursor = 0;
         }
 
         public void Dispose()
         {
-            ActualWrite();
+            if (BufCursor > 0) { ActualWrite().Wait(); }
             ActualWriteTask.Wait();
-            zip.Flush();
+            zip.Flush();    //Flush()せずにDispose()すると読み込み時にUnknown Frame descriptorされる
             zip.Dispose();
             file.Dispose();
         }
     }
-
-    ///<summary>DBから読んだ全Hashをファイルに書くやつ</summary>
-    class AllHashFileWriter : IDisposable
-    {
-        readonly BufferedLongWriter writer;
-        public AllHashFileWriter()
-        {
-            writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath);
-        }
-
-        public void Write(IEnumerable<long> Values)
-        {
-            foreach (long v in Values) { writer.Write(v); }
-        }
-
-        public void Dispose()
-        {
-            writer.Dispose();
-        }
-    }
-
 }
