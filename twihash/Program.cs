@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using twitenlib;
 using System.IO;
+using System.Buffers;
 
 namespace twihash
 {
@@ -13,7 +14,12 @@ namespace twihash
         static async Task Main(string[] args)
         {
             //CheckOldProcess.CheckandExit();
+
             Config config = Config.Instance;
+            AddOnlyList<long>.Pool = ArrayPool<long>.Create(
+                Math.Max(32767, config.hash.MultipleSortBufferElements),
+                Environment.ProcessorCount << 2 | Environment.ProcessorCount);
+
             DBHandler db = new DBHandler();
             Stopwatch sw = new Stopwatch();
             
@@ -25,7 +31,7 @@ namespace twihash
             //ベンチマーク用に古いAllHashを使う奴
             //long NewLastUpdate = config.hash.LastUpdate;
             //long Count = config.hash.LastHashCount;
-
+            
             HashSet<long> NewHash = null;
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {

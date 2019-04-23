@@ -153,7 +153,6 @@ namespace twitenlib
             public int ExtraBlocks { get; }
             public long LastUpdate { get; }
             public long LastHashCount { get; }
-            public int HashCountOffset { get; }
             public string TempDir { get; }
             public int InitialSortFileSize { get; }
             public int InitialSortConcurrency { get; }
@@ -167,13 +166,12 @@ namespace twitenlib
                 ExtraBlocks = int.Parse(data["hash"][nameof(ExtraBlocks)] ?? "1");
                 LastUpdate = long.Parse(data["hash"][nameof(LastUpdate)] ?? "0");
                 LastHashCount = long.Parse(data["hash"][nameof(LastHashCount)] ?? "0");
-                HashCountOffset = int.Parse(data["hash"][nameof(HashCountOffset)] ?? "5000000");
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
                 InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
                 MergeSortCompareUnit = int.Parse(data["hash"][nameof(MergeSortCompareUnit)] ?? "2");
                 ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "32768");
-                MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "30000");
+                MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "25000");
             }
             public void NewLastUpdate(long time)
             {

@@ -63,19 +63,17 @@ namespace twihash
             {
                 using (var writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath))
                 {
-                    //large heapに入れたくなかったら64 + "10~11" - ~~~ くらい
-                    int HashUnitBits = Math.Min(63, 64 + 16 - (int)Math.Log(config.hash.LastHashCount, 2));
+                    //tableをlarge heapに入れたくなかったら64 + "9" - ~~~ が限度
+                    //ArrayPool使ってるからもう関係ないけど
+                    int HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(Math.Max(1, config.hash.LastHashCount), 2));
                     //とりあえず平均より十分大きめに
-                    int TableListSize = (int)Math.Max(16, config.hash.LastHashCount >> (63 - HashUnitBits) << 1);
+                    int TableListSize = (int)Math.Max(4096, config.hash.LastHashCount >> (63 - HashUnitBits) << 2);
 
-                    //これに読み込み用のListを入れてメモリ割り当てを減らしてみる
-                    var LongPool = new ConcurrentQueue<AddOnlyList<long>>();
                     var WriterBlock = new ActionBlock<AddOnlyList<long>>(
                         async (table) => 
                         {
                             await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
-                            table.Clear();
-                            LongPool.Enqueue(table);
+                            table.Dispose();
                         },
                         new ExecutionDataflowBlockOptions()
                         {
@@ -87,7 +85,7 @@ namespace twihash
 
                     var LoadHashBlock = new ActionBlock<long>(async (i) =>
                     {
-                        if (!LongPool.TryDequeue(out var Table)) { Table = new AddOnlyList<long>(TableListSize); }
+                        var table = new AddOnlyList<long>(TableListSize);
                         while(true)
                         {
                             using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
@@ -97,16 +95,16 @@ GROUP BY dcthash;"))
                             {
                                 Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
                                 Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = unchecked(((i + 1) << HashUnitBits) - 1);
-                                if( await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
-                                else { Table.Clear(); }
+                                if( await ExecuteReader(Cmd, (r) => table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
+                                else { table.Clear(); }
                             }
                         }
-                        Interlocked.Add(ref TotalHashCount, Table.Count);
-                        await WriterBlock.SendAsync(Table).ConfigureAwait(false);
+                        Interlocked.Add(ref TotalHashCount, table.Count);
+                        await WriterBlock.SendAsync(table).ConfigureAwait(false);
                     }, new ExecutionDataflowBlockOptions()
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,
-                        BoundedCapacity = Environment.ProcessorCount << 1,
+                        BoundedCapacity = Environment.ProcessorCount << 2,
                         SingleProducerConstrained = true
                     });
 

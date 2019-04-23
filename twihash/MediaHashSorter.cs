@@ -80,6 +80,8 @@ namespace twihash
                 (int db, int sort) = await MultipleSortUnit(i).ConfigureAwait(false);
                 sw.Stop();
                 Console.WriteLine("{0}\t{1}, {2}\t{3}ms ", i, db, sort, sw.ElapsedMilliseconds);
+                Console.WriteLine("＼(^o^)／");
+                Console.ReadLine();
             }
         }
 
@@ -107,83 +109,93 @@ namespace twihash
                 new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
             PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-            using (var Reader = new MergeSortReader(SortedFileCount, SortMask, NewHash))
+            var MultipleSortBlock = new ActionBlock<AddOnlyList<long>>((BlockList) =>
             {
+                int PairCount = 0;  //見つけた組合せの数を数える
+                int BlockIndex = 0;
+                int CurrentBlockLength;
+                var Block = BlockList.InnerArray;
 
-                var MultipleSortBlock = new ActionBlock<long[]>((Block) =>
+                //要素数,実際の要素,…,要素数,…,0 という配列を読み込んでいく
+                for (; (CurrentBlockLength = (int)Block[BlockIndex]) > 0; BlockIndex += CurrentBlockLength + 1)
                 {
-                    int PairCount = 0;  //見つけた組合せの数を数える
-                    int BlockIndex = 0;
-                    int CurrentBlockLength;
-
-                    //要素数,実際の要素,…,要素数,…,0 という配列を読み込んでいく
-                    for (; (CurrentBlockLength = (int)Block[BlockIndex]) > 0; BlockIndex += CurrentBlockLength + 1)
+                    //「実際の要素」1個分を取り出す
+                    var SortedSpan = Block.AsSpan(BlockIndex + 1, CurrentBlockLength);
+                    
+                    //新しい値を含まないやつは省略
+                    if(NewHash != null)
                     {
-                        //「実際の要素」1個分を取り出す
-                        var SortedSpan = Block.AsSpan(BlockIndex + 1, CurrentBlockLength);
-
-                        for (int i = 0; i < SortedSpan.Length; i++)
+                        int i;
+                        for(i = 0; i < SortedSpan.Length; i++)
                         {
-                            bool NeedInsert_i = NewHash?.Contains(SortedSpan[i]) ?? true;
-                            long maskedhash_i = SortedSpan[i] & SortMask;
-                            for (int j = i + 1; j < SortedSpan.Length; j++)
+                            if (NewHash.Contains(SortedSpan[i])) { break; }
+                        }
+                        if(i == SortedSpan.Length) { continue; }
+                    }
+
+                    for (int i = 0; i < SortedSpan.Length; i++)
+                    {
+                        bool NeedInsert_i = NewHash?.Contains(SortedSpan[i]) ?? true;
+                        long maskedhash_i = SortedSpan[i] & SortMask;
+                        for (int j = i + 1; j < SortedSpan.Length; j++)
+                        {
+                            //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
+                            //すでにDBに入っているペアは処理しない
+                            if ((NeedInsert_i || NewHash.Contains(SortedSpan[j]))    //NewHashがnullなら後者は処理されないからセーフ
+                                                                                        //ブロックソートで一致した組のハミング距離を測る
+                                && HammingDistance(SortedSpan[i], SortedSpan[j]) <= MaxHammingDistance)
                             {
-                                //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
-                                //すでにDBに入っているペアは処理しない
-                                if ((NeedInsert_i || NewHash.Contains(SortedSpan[j]))    //NewHashがnullなら後者は処理されないからセーフ
-                                                                                         //ブロックソートで一致した組のハミング距離を測る
-                                    && HammingDistance(SortedSpan[i], SortedSpan[j]) <= MaxHammingDistance)
+                                //一致したペアが見つかる最初の組合せを調べる
+                                int matchblockindex = 0;
+                                int x;
+                                for (x = 0; x < UnMasks.Length && x < StartBlock && matchblockindex < BaseBlocks.Length; x++)
                                 {
-                                    //一致したペアが見つかる最初の組合せを調べる
-                                    int matchblockindex = 0;
-                                    int x;
-                                    for (x = 0; x < UnMasks.Length && x < StartBlock && matchblockindex < BaseBlocks.Length; x++)
+                                    if (BaseBlocks.Contains(x))
                                     {
-                                        if (BaseBlocks.Contains(x))
+                                        if (x < BaseBlocks[matchblockindex]) { break; }
+                                        matchblockindex++;
+                                    }
+                                    else
+                                    {
+                                        if ((SortedSpan[i] & UnMasks[x]) == (SortedSpan[j] & UnMasks[x]))
                                         {
                                             if (x < BaseBlocks[matchblockindex]) { break; }
                                             matchblockindex++;
                                         }
-                                        else
-                                        {
-                                            if ((SortedSpan[i] & UnMasks[x]) == (SortedSpan[j] & UnMasks[x]))
-                                            {
-                                                if (x < BaseBlocks[matchblockindex]) { break; }
-                                                matchblockindex++;
-                                            }
-                                        }
                                     }
-                                    //最初の組合せだったときだけ入れる
-                                    if (x == StartBlock)
-                                    {
-                                        PairCount++;
-                                        PairBatchBlock.Post(new MediaPair(SortedSpan[i], SortedSpan[j]));
-                                    }
+                                }
+                                //最初の組合せだったときだけ入れる
+                                if (x == StartBlock)
+                                {
+                                    PairCount++;
+                                    PairBatchBlock.Post(new MediaPair(SortedSpan[i], SortedSpan[j]));
                                 }
                             }
                         }
                     }
-                    Reader.ReturnArray(Block);
-                    if (0 < PairCount) { Interlocked.Add(ref ret, PairCount); }
-                }, new ExecutionDataflowBlockOptions()
-                {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount,
-                    BoundedCapacity = Environment.ProcessorCount << 2,
-                    SingleProducerConstrained = true
-                });
+                }
+                BlockList.Dispose();
+                if (0 < PairCount) { Interlocked.Add(ref ret, PairCount); }
+            }, new ExecutionDataflowBlockOptions()
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
+                BoundedCapacity = Environment.ProcessorCount << 2,
+                SingleProducerConstrained = true
+            });
 
-
-                long[] Sorted;
+            using (var Reader = new MergeSortReader(SortedFileCount, SortMask, NewHash))
+            {
+                AddOnlyList<long> Sorted;
                 while ((Sorted = Reader.ReadBlocks()) != null)
                 {
                     //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない
                     await MultipleSortBlock.SendAsync(Sorted).ConfigureAwait(false);
                 }
-                //余りをDBに入れる
-                MultipleSortBlock.Complete(); await MultipleSortBlock.Completion.ConfigureAwait(false);
             }
-            //余りをDBに入れる(続き)
+            //余りをDBに入れる
+            MultipleSortBlock.Complete(); await MultipleSortBlock.Completion.ConfigureAwait(false);
             PairBatchBlock.Complete(); await PairStoreBlock.Completion.ConfigureAwait(false);
+
             return (dbcount, ret);
         }
 

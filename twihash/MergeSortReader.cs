@@ -30,27 +30,27 @@ namespace twihash
             this.NewHash = NewHash;
             Creator = new MergedEnumerator(FileCount, SortMask);
             Reader = Creator.Enumerator;
-            ReadBlockList = new AddOnlyList<long>(BlockElementsMin << 1);
-            OneBlockList = new AddOnlyList<long>(BlockElementsMin << 1);
+            OneBlockList = new AddOnlyList<long>(BlockElementsMin);
             //最初に1個読んでおく
             Reader.Read();
             LastHash = Reader.Current;
         }
 
         readonly int BlockElementsMin = config.hash.MultipleSortBufferElements;
-        readonly AddOnlyList<long> ReadBlockList;
+        readonly int ReadBlockListSize = (int)Math.Pow(2, Math.Ceiling(Math.Log(config.hash.MultipleSortBufferElements, 2)));
         readonly AddOnlyList<long> OneBlockList;
         ///<summary>ReadBlock()をやり直すときにBuffer.Currentを読み直したくない</summary>
         long LastHash;
 
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
-        ///長さ2以上でNewHashが含まれてるやつだけ返す
+        ///長さ2以上のやつは全部返す(NewHashが含まれてなくても返す)
         ///最後まで読み終わったらnull</summary>
         ///<returns>要素数,実際の要素,…,要素数,…,0 と繰り返すオレオレ配列</returns>
-        public long[] ReadBlocks()
+        public AddOnlyList<long> ReadBlocks()
         {
             //最後に読んだやつがCurrentに残ってるので読む
             long TempHash = LastHash;
+            var ReadBlockList = new AddOnlyList<long>(ReadBlockListSize);
             do
             {
                 //すでに全要素を読み込んだ後なら抜けてしまおう
@@ -70,29 +70,24 @@ namespace twihash
                         else { break; }
                     } while (Reader.Read());
                 }
-                while (OneBlockList.Count < 2 || (NewHash != null && !OneBlockList.AsEnumerable().Any(h => NewHash.Contains(h))));
-
+                while (OneBlockList.Count < 2);
                 //オレオレ配列1サイクル分を作る
                 ReadBlockList.Add(OneBlockList.Count);
-                ReadBlockList.AddRange(OneBlockList.Span);
+                ReadBlockList.AddRange(OneBlockList.AsSpan());
             } while (ReadBlockList.Count < BlockElementsMin);
 
             //読み込み終了後の呼び出しならnullを返す必要がある
-            if(ReadBlockList.Count == 0) { return null; }
+            if(ReadBlockList.Count == 0)
+            {
+                ReadBlockList.Dispose();
+                return null;
+            }
             //オレオレ配列を完成させて返す
             ReadBlockList.Add(0);
-            var values = Pool.Rent(ReadBlockList.Count);
-            Array.Copy(ReadBlockList.InnerArray, values, ReadBlockList.Count);
-            ReadBlockList.Clear();
 
             //次回のためにTempHashを保存する
             LastHash = TempHash;
-            return values; 
-        }
-
-        public void ReturnArray(long[] array)
-        {
-            Pool.Return(array); 
+            return ReadBlockList; 
         }
 
         //ReaderはCreator.Dispose()の中でDispose()されるので呼ぶ必要はない
@@ -172,7 +167,7 @@ namespace twihash
         }
         
         ///<summary>ファイルを消すのはDispose()後 #ウンコード</summary>
-        public void DeleteFile() { File.Delete(FilePath); }
+        public void DeleteFile() { return; File.Delete(FilePath); }
         
         public override long Read()
         {
