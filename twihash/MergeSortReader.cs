@@ -37,13 +37,11 @@ namespace twihash
         readonly int BlockElementsMin = config.hash.MultipleSortBufferElements;
         readonly int ReadBlockListSize = (int)Math.Pow(2, Math.Ceiling(Math.Log(config.hash.MultipleSortBufferElements, 2)));
 
-        ///<summary>これにソート後の結果が入る 要素数はSortedValuesLengthに入る</summary>
-        long[] SortedValues;
-        ///<summary>SortedValuesの要素数</summary>
-        int SortedValuesLength;
+        ///<summary>これにソート後の結果を読み込む</summary>
+        Memory<long> SortedMemory;
         ///<summary>ソートするやつからまとめて読み込む</summary>
-        void ActualRead() { SortedValuesLength = Reader.Read(out SortedValues); }
-        //ReadBlocks()を抜けたときの読み込み位置を覚えておく
+        void ActualRead() { SortedMemory = Reader.Read(); }
+        //ReadBlocks()を抜けたときのSortedMemoryの読み込み位置を覚えておく
         int LastIndex;
 
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
@@ -62,10 +60,10 @@ namespace twihash
             long MaskedKey = -1;
 
             int ValueIndex = LastIndex;
-            while (0 < SortedValuesLength)
+            while (0 < SortedMemory.Length)
             {
-                var Values = SortedValues.AsSpan(0, SortedValuesLength);
-                for(; ValueIndex < Values.Length; ValueIndex++)
+                var SortedValues = SortedMemory.Span;
+                for(; ValueIndex < SortedValues.Length; ValueIndex++)
                 {
                     long Value = SortedValues[ValueIndex];
                     long MaskedValue = Value & SortMask;
@@ -304,22 +302,17 @@ namespace twihash
             });
         }
 
-        public int Read(out long[] values)
+        ///<summary>まとめて読み込む
+        ///ファイル末尾まで読んだら長さ0のMemoryが返る</summary>
+        public Memory<long> Read()
         {
             //読み込みが終わってなかったらここで待機される
             int ReadSize = FillNextBufTask.Result;
-            if (ReadSize == 0)
-            {
-                values = new long[0];
-                return 0;
-            }
             long[] swap = Buf;
             Buf = NextBuf;
             NextBuf = swap;
             FillNextBuf();
-
-            values = Buf;
-            return ReadSize;
+            return Buf.AsMemory(0, ReadSize);
         }
 
         public void Dispose()
