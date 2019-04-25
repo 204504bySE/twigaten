@@ -37,17 +37,29 @@ namespace twihash
                 InnerArray = NextArray;
             }
         }
+        ///<summary>末尾に要素を1個追加</summary>
         public void Add(T value)
         {
             ExpendIfNeccesary(Count);
             InnerArray[Count] = value;
             Count++;
         }
+        ///<summary>末尾に要素をまとめて追加</summary>
         public void AddRange(Span<T> values)
         {
             ExpendIfNeccesary(Count + values.Length);
             values.CopyTo(InnerArray.AsSpan(Count, values.Length));
             Count += values.Length;
+        }
+        ///<summary>末尾の要素を上書き</summary>
+        public void ReplaceTail(T value) { InnerArray[Count - 1] = value; }
+        ///<summary>末尾の要素を1個削除</summary>
+        public void Remove() { Count--; }
+        ///<summary>末尾の要素をcount個削除</summary>
+        public void Remove(int count)
+        {
+            if(Count < count) { throw new ArgumentOutOfRangeException(nameof(count)); }
+            Count -= count;
         }
         public void Clear() { Count = 0; }
         ///<summary>現時点のスナップショットとして使う</summary>

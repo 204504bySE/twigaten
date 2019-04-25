@@ -17,21 +17,22 @@ namespace twihash
 
             Config config = Config.Instance;
             AddOnlyList<long>.Pool = ArrayPool<long>.Create(
-                Math.Max(32767, config.hash.MultipleSortBufferElements),
-                Environment.ProcessorCount << 2 | Environment.ProcessorCount);
+                Math.Max(DBHandler.TableListSize, config.hash.MultipleSortBufferElements),
+                Environment.ProcessorCount << 4 + Environment.ProcessorCount);
 
             DBHandler db = new DBHandler();
             Stopwatch sw = new Stopwatch();
             
             Console.WriteLine("Loading hash");
             sw.Restart();
-            long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
-            long Count = await db.AllMediaHash().ConfigureAwait(false);
 
             //ベンチマーク用に古いAllHashを使う奴
             //long NewLastUpdate = config.hash.LastUpdate;
-            //long Count = config.hash.LastHashCount;
-            
+           // long Count = config.hash.LastHashCount;
+
+            long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;   //とりあえず10分前
+            long Count = await db.AllMediaHash().ConfigureAwait(false);
+
             HashSet<long> NewHash = null;
             if (config.hash.LastUpdate > 0) //これが0なら全ハッシュを追加処理対象とする
             {
@@ -55,6 +56,7 @@ namespace twihash
             await media.Proceed().ConfigureAwait(false);
             sw.Stop();
             Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
+
             File.Delete(SplitQuickSort.AllHashFilePath);
             config.hash.NewLastUpdate(NewLastUpdate);
         }

@@ -41,8 +41,8 @@ namespace twihash
             FillNextBufTask = Task.Run(async () =>
             {
                 int ReadBytes = await zip.ReadAsync(NextBuf, 0, NextBuf.Length).ConfigureAwait(false);
+                if (ReadBytes < sizeof(long)) { return 0; }
                 int ReadElements = ReadBytes / sizeof(long);
-                if (ReadElements == 0) { return 0; }
 
                 //差分をとるようにしてちょっと圧縮しやすくしてみよう
                 //Spanを使いたかったのでローカル関数に隔離
@@ -150,7 +150,7 @@ namespace twihash
         public BufferedLongWriter(string FilePath)
         {
             file = File.OpenWrite(FilePath);
-            zip = new ZstandardStream(file, 1);
+            zip = new ZstandardStream(file, 1, true);
         }
 
         public async Task Write(long[] Values, int Length)
@@ -198,8 +198,11 @@ namespace twihash
         {
             if (BufCursor > 0) { ActualWrite().Wait(); }
             ActualWriteTask.Wait();
-            zip.Flush();    //Flush()せずにDispose()すると読み込み時にUnknown Frame descriptorされる
+            //ZstdStreamは Flush()せずにDispose()すると読み込み時にUnknown Frame descriptorされる
+            zip.Flush();
             zip.Dispose();
+            //Flush()してもUnknown Frame descriptorされるときはされるのでおまじない #ウンコード
+            file.Flush(true);
             file.Dispose();
         }
     }

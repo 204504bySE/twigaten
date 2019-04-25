@@ -19,8 +19,6 @@ namespace twihash
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpair VALUES";
         public const int StoreMediaPairsUnit = 1000;
         static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 2, StoreMediaPairsHead);
-        static readonly MediaPair.OrderPri OrderPri = new MediaPair.OrderPri();
-        static readonly MediaPair.OrderSub OrderSub = new MediaPair.OrderSub();
 
         public async Task<int> StoreMediaPairs(MediaPair[] StorePairs)
         //類似画像のペアをDBに保存
@@ -31,7 +29,7 @@ namespace twihash
             {
                 int ret;
                 //まず昇順
-                Array.Sort(StorePairs, OrderPri);   //deadlock防止
+                Array.Sort(StorePairs, MediaPair.OrderPri);   //deadlock防止
                 using (MySqlCommand Cmd =  new MySqlCommand(
                     StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
                         : BulkCmdStr(StorePairs.Length, 2, StoreMediaPairsHead)))
@@ -44,7 +42,7 @@ namespace twihash
                     }
                     ret = await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                     //次に降順
-                    Array.Sort(StorePairs, OrderSub);   //deadlock防止
+                    Array.Sort(StorePairs, MediaPair.OrderSub);   //deadlock防止
                     for (int i = 0; i < StorePairs.Length; i++)
                     {
                         string numstr = i.ToString();
@@ -56,6 +54,12 @@ namespace twihash
             }
         }
 
+        //tableをlarge heapに入れたくなかったら64 + "9" - ~~~ が限度
+        //ArrayPool使ってるからもう関係ないけど
+        internal static readonly int HashUnitBits = Math.Min(63, 64 + 11 - (int) Math.Log(Math.Max(1, config.hash.LastHashCount), 2));
+        //とりあえず平均より十分大きめに
+        internal static int TableListSize = (int)Math.Max(4096, config.hash.LastHashCount >> (63 - HashUnitBits) << 2);
+
         ///<summary>DBから読み込んだハッシュをそのままファイルに書き出す</summary>
         public async Task<long> AllMediaHash()
         {
@@ -63,12 +67,6 @@ namespace twihash
             {
                 using (var writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath))
                 {
-                    //tableをlarge heapに入れたくなかったら64 + "9" - ~~~ が限度
-                    //ArrayPool使ってるからもう関係ないけど
-                    int HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(Math.Max(1, config.hash.LastHashCount), 2));
-                    //とりあえず平均より十分大きめに
-                    int TableListSize = (int)Math.Max(4096, config.hash.LastHashCount >> (63 - HashUnitBits) << 2);
-
                     var WriterBlock = new ActionBlock<AddOnlyList<long>>(
                         async (table) => 
                         {
@@ -104,7 +102,7 @@ GROUP BY dcthash;"))
                     }, new ExecutionDataflowBlockOptions()
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,
-                        BoundedCapacity = Environment.ProcessorCount << 2,
+                        BoundedCapacity = Environment.ProcessorCount << 4,
                         SingleProducerConstrained = true
                     });
 

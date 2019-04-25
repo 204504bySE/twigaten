@@ -30,17 +30,21 @@ namespace twihash
             this.NewHash = NewHash;
             Creator = new MergedEnumerator(FileCount, SortMask);
             Reader = Creator.Enumerator;
-            OneBlockList = new AddOnlyList<long>(BlockElementsMin);
-            //最初に1個読んでおく
-            Reader.Read();
-            LastHash = Reader.Current;
+            //最初はここで強制的に読ませる
+            ActualRead();
         }
 
         readonly int BlockElementsMin = config.hash.MultipleSortBufferElements;
         readonly int ReadBlockListSize = (int)Math.Pow(2, Math.Ceiling(Math.Log(config.hash.MultipleSortBufferElements, 2)));
-        readonly AddOnlyList<long> OneBlockList;
-        ///<summary>ReadBlock()をやり直すときにBuffer.Currentを読み直したくない</summary>
-        long LastHash;
+
+        ///<summary>これにソート後の結果が入る 要素数はSortedValuesLengthに入る</summary>
+        long[] SortedValues;
+        ///<summary>SortedValuesの要素数</summary>
+        int SortedValuesLength;
+        ///<summary>ソートするやつからまとめて読み込む</summary>
+        void ActualRead() { SortedValuesLength = Reader.Read(out SortedValues); }
+        //ReadBlocks()を抜けたときの読み込み位置を覚えておく
+        int LastIndex;
 
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
         ///長さ2以上のやつは全部返す(NewHashが含まれてなくても返す)
@@ -48,45 +52,76 @@ namespace twihash
         ///<returns>要素数,実際の要素,…,要素数,…,0 と繰り返すオレオレ配列</returns>
         public AddOnlyList<long> ReadBlocks()
         {
-            //最後に読んだやつがCurrentに残ってるので読む
-            long TempHash = LastHash;
             var ReadBlockList = new AddOnlyList<long>(ReadBlockListSize);
-            do
-            {
-                //すでに全要素を読み込んだ後なら抜けてしまおう
-                //長さ1なら返さなくていいのでここで問題ない
-                if (!Reader.Read()) { break; }
-                do
-                {
-                    //MoveNext()したけどTempHashはまだ変わってないのでここで保存
-                    OneBlockList.Clear();
-                    OneBlockList.Add(TempHash);
-                    //MaskしたやつがMaskedKeyと一致しなかったら終了
-                    long MaskedKey = TempHash & SortMask;
-                    do
-                    {   //↑でMoveNext()したのでここの先頭ではやらない
-                        TempHash = Reader.Current;
-                        if ((TempHash & SortMask) == MaskedKey) { OneBlockList.Add(TempHash); }
-                        else { break; }
-                    } while (Reader.Read());
-                }
-                while (OneBlockList.Count < 2);
-                //オレオレ配列1サイクル分を作る
-                ReadBlockList.Add(OneBlockList.Count);
-                ReadBlockList.AddRange(OneBlockList.AsSpan());
-            } while (ReadBlockList.Count < BlockElementsMin);
 
+            //ブロックソートで一致してる要素数
+            int BlockCount = 0;
+            //↑の値を入れるReadBlocks内の添字
+            int BlockCountIndex = 0;
+            //最初は絶対に一致させないように-1
+            long MaskedKey = -1;
+
+            int ValueIndex = LastIndex;
+            while (0 < SortedValuesLength)
+            {
+                var Values = SortedValues.AsSpan(0, SortedValuesLength);
+                for(; ValueIndex < Values.Length; ValueIndex++)
+                {
+                    long Value = SortedValues[ValueIndex];
+                    long MaskedValue = Value & SortMask;
+                    //Maskしたやつ同士が一致するなら普通に続きに加える
+                    if (MaskedKey == MaskedValue)
+                    {
+                        ReadBlockList.Add(Value);
+                        BlockCount++;
+                    }
+                    //Maskしたやつが一致しない場合はオレオレ配列1サイクル分終了
+                    else
+                    {
+                        MaskedKey = MaskedValue;
+                        //2要素以上あれば確定して次のサイクルに進む
+                        if (1 < BlockCount)
+                        {
+                            ReadBlockList.InnerArray[BlockCountIndex] = BlockCount;
+                            BlockCountIndex = ReadBlockList.Count;
+                            //とりあえず次のサイクルの要素数のダミーを入れる
+                            ReadBlockList.Add(0);
+                            //十分な要素数が入ってたらここで終了(↑のAdd(0)は終端を示す0になる)
+                            if (BlockElementsMin < ReadBlockList.Count)
+                            {
+                                //SortedValues[ValueIndex]の値を使わなかったので次回に回す
+                                LastIndex = ValueIndex;
+                                return ReadBlockList;
+                            }
+                            ReadBlockList.Add(Value);
+                            BlockCount = 1;
+                        }
+                        //1要素しかないものは無意味なので除外→次の要素で上書き
+                        else if (BlockCount == 1)
+                        {
+                            ReadBlockList.ReplaceTail(Value);
+                        }
+                        //最初だけ必ずここに入る
+                        else
+                        {
+                            ReadBlockList.Add(0);
+                            ReadBlockList.Add(Value);
+                            BlockCount = 1;
+                        }
+                    }
+                }
+                ActualRead();
+                ValueIndex = 0;
+            }
+            //ここに来るのはファイルの読み込みが終わったときだけ
             //読み込み終了後の呼び出しならnullを返す必要がある
             if(ReadBlockList.Count == 0)
             {
                 ReadBlockList.Dispose();
                 return null;
             }
-            //オレオレ配列を完成させて返す
+            //終端に0をつけて完成
             ReadBlockList.Add(0);
-
-            //次回のためにTempHashを保存する
-            LastHash = TempHash;
             return ReadBlockList; 
         }
 
@@ -128,6 +163,7 @@ namespace twihash
         {
             long MinMasked = long.MaxValue;
             int MinIndex = -1;
+            var LastMasked = this.LastMasked;
 
             for (int i = 0; i < LastMasked.Length; i++)
             {
@@ -166,9 +202,6 @@ namespace twihash
             this.FilePath = FilePath;
         }
         
-        ///<summary>ファイルを消すのはDispose()後 #ウンコード</summary>
-        public void DeleteFile() { return; File.Delete(FilePath); }
-        
         public override long Read()
         {
             if (Reader.MoveNext())
@@ -178,24 +211,24 @@ namespace twihash
             }
             else { return long.MaxValue; }
         }
-        public override void Dispose() => Reader.Dispose();
+        public override void Dispose()
+        {
+            Reader.Dispose();
+            File.Delete(FilePath);
+        }
     }
 
 
     ///<summary>全ファイルをマージソートしながら読み込む</summary>
-    class MergedEnumerator
+    class MergedEnumerator : IDisposable
     {
         static readonly int MergeSortCompareUnit = Config.Instance.hash.MergeSortCompareUnit;
-        readonly long SortMask;
-        ///<summary>Dispose()時にDeleteFile()呼びたいから保持してるだけ</summary>
-        readonly MergeSortFileReader[] Readers;
         ///<summary>マージソートの最終結果を出すやつ</summary>
         public MergeSortBuffer Enumerator { get; }
 
         public MergedEnumerator(int FileCount, long SortMask)
         {
-            this.SortMask = SortMask;   //これをnew MergeSortReader()より先にやらないとﾁｰﾝ
-            Readers = new MergeSortFileReader[FileCount];
+            var Readers = new MergeSortFileReader[FileCount];
             for (int i = 0; i < Readers.Length; i++)
             {
                 Readers[i] = new MergeSortFileReader(SplitQuickSort.SortingFilePath(i), SortMask);
@@ -234,19 +267,16 @@ namespace twihash
         {
             //これでReadersまで連鎖的にDispose()される
             Enumerator.Dispose();
-            //Dispose()後にファイル削除だけ別に行う #ウンコード
-            foreach (var r in Readers) { r.DeleteFile(); }
         }
     }
 
-    ///<summary>バッファーを用意して別スレッドで読み込ませる</summary>
+    ///<summary>バッファーを用意して別スレッドで読み込ませる
+    ///1要素ずつじゃなくてまとめて読み出すようにしたけど速くなったようには見えない</summary>
     class MergeSortBuffer : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements;
 
         long[] Buf = new long[BufSize];
-        int ActualBufSize;//Bufの有効なサイズ(要素単位であってバイト単位ではない)
-        int BufCursor;  //bufの読み込み位置(要素単位であってバイト単位ではない)
         long[] NextBuf = new long[BufSize];
         readonly MergeSorterBase Source;
         Task<int> FillNextBufTask;
@@ -256,7 +286,6 @@ namespace twihash
             this.Source = Source;
             //最初はここで強制的に読ませる
             FillNextBuf();
-            ActualReadAuto();
         }
 
         void FillNextBuf()
@@ -264,6 +293,7 @@ namespace twihash
             //ここでSourceから読み込めばおｋ
             FillNextBufTask = Task.Run(() =>
             {
+                var NextBuf = this.NextBuf;
                 int i;
                 for(i = 0; i < NextBuf.Length; i++)
                 {
@@ -274,40 +304,27 @@ namespace twihash
             });
         }
 
-        void ActualReadAuto()
+        public int Read(out long[] values)
         {
-            if (BufCursor >= ActualBufSize)
+            //読み込みが終わってなかったらここで待機される
+            int ReadSize = FillNextBufTask.Result;
+            if (ReadSize == 0)
             {
-                //読み込みが終わってなかったらここで待機される
-                ActualBufSize = FillNextBufTask.Result;
-                if (ActualBufSize == 0) { Readable = false; }
-                long[] swap = Buf;
-                Buf = NextBuf;
-                NextBuf = swap;
-                BufCursor = 0;
-                FillNextBuf();
+                values = new long[0];
+                return 0;
             }
+            long[] swap = Buf;
+            Buf = NextBuf;
+            NextBuf = swap;
+            FillNextBuf();
+
+            values = Buf;
+            return ReadSize;
         }
-
-        public long Current { get; private set; }
-
-        ///続きのデータがあるかどうか
-        public bool Readable { get; private set; } = true;
-
-        public bool Read()
-        {
-            if (!Readable) { return false; }
-            Current = Buf[BufCursor];
-            BufCursor++;
-            ActualReadAuto();
-            return true;
-        }  
 
         public void Dispose()
         {
             Source.Dispose();
-            BufCursor = int.MaxValue;
-            Readable = false;
             Buf = null;
             NextBuf = null;
         }

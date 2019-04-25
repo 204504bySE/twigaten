@@ -18,11 +18,12 @@ namespace twihash
         public const string AllHashFileName = "allhash";
         public const string SortFilePrefix = "sort";
         public const string FileExtension = ".zst";
+        ///<summary>DBから全ハッシュを読み込んだファイルの命名規則</summary>
         public static string AllHashFilePath { get { return HashFilePath(AllHashFileName); } }
-        public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName + FileExtension);
+        public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName) + FileExtension;
         
         ///<summary>ソート過程のファイル名規則</summary>
-        public static string SortingFilePath(int index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index.ToString() + FileExtension);
+        public static string SortingFilePath(int index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index.ToString()) + FileExtension;
 
         ///<summary>ブロックソートをLINQに投げる用</summary>
         class BlockSortComparer : IComparer<long>
@@ -102,63 +103,74 @@ namespace twihash
         ///<summary>配列の0~SortListLengthまでを並列ソート</summary>
         static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
         {
+            //クイックソート1再帰分
+            (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange)
+            {
+                if (SortRange.Begin >= SortRange.End) { return null; }
+                //十分に並列化されるか要素数が少なくなったらLINQに投げる
+                if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length >> ConcurrencyLog))
+                {
+                    Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
+                    return null;
+                }
+
+                //ふつーにピボットを選ぶ
+                long PivotA = SortList[SortRange.Begin] & SortMask;
+                long PivotB = SortList[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask;
+                long PivotC = SortList[SortRange.End] & SortMask;
+                long PivotMasked;
+                if (PivotA <= PivotB && PivotB <= PivotC || PivotA >= PivotB && PivotB >= PivotC) { PivotMasked = PivotB; }
+                else if (PivotA <= PivotC && PivotC <= PivotB || PivotA >= PivotC && PivotC >= PivotB) { PivotMasked = PivotC; }
+                else { PivotMasked = PivotA; }
+
+                int i = SortRange.Begin - 1; int j = SortRange.End + 1;
+                while (true)
+                {
+                    //do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
+                    for (i++; i < SortList.Length; i++) { if ((SortList[i] & SortMask) >= PivotMasked) { break; } }
+                    do { j--; } while ((SortList[j] & SortMask) > PivotMasked);
+                    if (i >= j) { break; }
+                    long SwapHash = SortList[i];
+                    SortList[i] = SortList[j];
+                    SortList[j] = SwapHash;
+                }
+                return (SortRange.Begin, j, j + 1, SortRange.End);
+            }
+
+            //処理中の要素があるかどうかをこれで数える
+            int ProcessingCount = 1;
             //順不同で処理させるための小細工 自分自身にはPost()できないからね
             var BufBlock = new BufferBlock<(int Begin, int End)>();
+
             var QuickSortBlock = new TransformBlock<(int Begin, int End), int>
                 (((int Begin, int End) SortRange) => {
-                    var next = QuickSortUnit(SortRange, SortMask, SortList, Comparer);
+                    var next = QuickSortUnit(SortRange);
                     if (next.HasValue)
                     {
                         BufBlock.Post((next.Value.Begin1, next.Value.End1));
                         BufBlock.Post((next.Value.Begin2, next.Value.End2));
-                        return 1;   //処理中の物は1個増える
+                        //処理中の物は1個増える
+                        return 1;
                     }
-                    else { return -1; } //処理中の物は1個減る
+                    else
+                    {
+                        //処理中の物は1個減る
+                        return -1;
+                    }
                 }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, SingleProducerConstrained = true });
 
             BufBlock.LinkTo(QuickSortBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             
             QuickSortBlock.Post((0, SortListLength - 1));
-            int ProcessingCount = 1;
             //処理が終わるまで待つだけ
             do { ProcessingCount += await QuickSortBlock.ReceiveAsync().ConfigureAwait(false); }
             while (ProcessingCount > 0);
             BufBlock.Complete();
             await QuickSortBlock.Completion.ConfigureAwait(false);
         }
-
+        ///<summary>Log2(CPUスレッド数) 小数切り上げ</summary>
         static readonly int ConcurrencyLog = (int)Math.Ceiling(Math.Log(Environment.ProcessorCount, 2));
-        static (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange, long SortMask, long[] SortList, IComparer<long> Comparer)
-        {
-            if (SortRange.Begin >= SortRange.End) { return null; }
-            //十分に並列化されるか要素数が少なくなったらLINQに投げる
-            if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length >> ConcurrencyLog))
-            {
-                Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
-                return null;
-            }
+        ///<summary>ソートの本体(それだけ)</summary>
 
-            //ふつーにピボットを選ぶ
-            long PivotA = SortList[SortRange.Begin] & SortMask;
-            long PivotB = SortList[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask;
-            long PivotC = SortList[SortRange.End] & SortMask;
-            long PivotMasked;
-            if (PivotA <= PivotB && PivotB <= PivotC || PivotA >= PivotB && PivotB >= PivotC) { PivotMasked = PivotB; }
-            else if (PivotA <= PivotC && PivotC <= PivotB || PivotA >= PivotC && PivotC >= PivotB) { PivotMasked = PivotC; }
-            else { PivotMasked = PivotA; }
-
-            int i = SortRange.Begin - 1; int j = SortRange.End + 1;
-            while (true)
-            {
-                //do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
-                for (i++; i < SortList.Length; i++) { if ((SortList[i] & SortMask) >= PivotMasked) { break; } }
-                do { j--; } while ((SortList[j] & SortMask) > PivotMasked);
-                if (i >= j) { break; }
-                long SwapHash = SortList[i];
-                SortList[i] = SortList[j];
-                SortList[j] = SwapHash;
-            }
-            return (SortRange.Begin, j, j + 1, SortRange.End);
-        }
     }
 }

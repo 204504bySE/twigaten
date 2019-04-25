@@ -14,7 +14,7 @@ using System.Buffers;
 
 namespace twihash
 {
-    //ハミング距離が一定以下のハッシュ値のペア
+    ///<summary>ハミング距離が一定以下のハッシュ値のペアを突っ込むやつ</summary>
     public readonly struct MediaPair
     {
         public readonly long media0;
@@ -25,34 +25,32 @@ namespace twihash
             media1 = _media1;
         }
 
-        //media0,media1順で比較
-        public class OrderPri : IComparer<MediaPair>
+        ///<summary>media0,media1順で比較</summary>
+        public static Comparison<MediaPair> OrderPri { get; } 
+            = ((a, b) =>
         {
-            public int Compare(MediaPair a, MediaPair b)
-            {
-                if (a.media0 < b.media0) { return -1; }
-                else if (a.media0 > b.media0) { return 1; }
-                else if (a.media1 < b.media1) { return -1; }
-                else if (a.media1 > b.media1) { return 1; }
-                else { return 0; }
-            }
-        }
-        //media1,media0順で比較
-        public class OrderSub : IComparer<MediaPair>
+            if (a.media0 < b.media0) { return -1; }
+            else if (a.media0 > b.media0) { return 1; }
+            else if (a.media1 < b.media1) { return -1; }
+            else if (a.media1 > b.media1) { return 1; }
+            else { return 0; }
+        });
+        ///<summary>//media1,media0順で比較</summary>
+        public static Comparison<MediaPair> OrderSub { get; }
+            = ((a, b) =>
         {
-            public int Compare(MediaPair a, MediaPair b)
-            {
-                if (a.media1 < b.media1) { return -1; }
-                else if (a.media1 > b.media1) { return 1; }
-                else if (a.media0 < b.media0) { return -1; }
-                else if (a.media0 > b.media0) { return 1; }
-                else { return 0; }
-            }
-        }
+            if (a.media1 < b.media1) { return -1; }
+            else if (a.media1 > b.media1) { return 1; }
+            else if (a.media0 < b.media0) { return -1; }
+            else if (a.media0 > b.media0) { return 1; }
+            else { return 0; }
+        });
     }
 
-    //複合ソート法による全ペア類似度検索 とかいうやつ
-    //http://d.hatena.ne.jp/tb_yasu/20091107/1257593519
+    /// <summary>
+    /// 複合ソート法による全ペア類似度検索 とかいうやつ
+    /// http://d.hatena.ne.jp/tb_yasu/20091107/1257593519
+    /// </summary>
     class MediaHashSorter
     {
         readonly DBHandler db;
@@ -73,29 +71,27 @@ namespace twihash
 
         public async Task Proceed()
         {
-            var sw = new Stopwatch();
             for (int i = 0; i < Combi.Length; i++)
             {
-                sw.Restart();
-                (int db, int sort) = await MultipleSortUnit(i).ConfigureAwait(false);
-                sw.Stop();
-                Console.WriteLine("{0}\t{1}, {2}\t{3}ms ", i, db, sort, sw.ElapsedMilliseconds);
-                Console.WriteLine("＼(^o^)／");
-                Console.ReadLine();
+                await MultipleSortUnit(i).ConfigureAwait(false);
             }
         }
 
 
         const int bitcount = sizeof(long) * 8;    //longのbit数
-        async Task<(int db, int sort)> MultipleSortUnit(int Index)
+        async Task MultipleSortUnit(int Index)
         {
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
-            long SortMask = UnMask(BaseBlocks, Combi.Count);            
-            int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
+            long SortMask = UnMask(BaseBlocks, Combi.Count);
 
-            int ret = 0;
-            int dbcount = 0;
+            var QuickSortSW = Stopwatch.StartNew();
+            int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
+            QuickSortSW.Stop();
+            Console.WriteLine("{0}\tFile Sort\t{1}ms ", Index, QuickSortSW.ElapsedMilliseconds);
+
+            int PairCount = 0;
+            int DBAddCount = 0;
             long[] UnMasks = Enumerable.Range(0, Combi.Count).Select(i => UnMask(i, Combi.Count)).ToArray();
 
             var PairBatchBlock = new BatchBlock<MediaPair>(DBHandler.StoreMediaPairsUnit);
@@ -104,14 +100,14 @@ namespace twihash
                 {
                     int AddCount;
                     do { AddCount = await db.StoreMediaPairs(p).ConfigureAwait(false); } while (AddCount < 0);    //失敗したら無限に再試行
-                    if (0 < AddCount) { Interlocked.Add(ref dbcount, AddCount); }
+                    if (0 < AddCount) { Interlocked.Add(ref DBAddCount, AddCount); }
                 },
                 new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
             PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
             var MultipleSortBlock = new ActionBlock<AddOnlyList<long>>((BlockList) =>
             {
-                int PairCount = 0;  //見つけた組合せの数を数える
+                int LocalPairCount = 0;  //見つけた組合せの数を数える
                 int BlockIndex = 0;
                 int CurrentBlockLength;
                 var Block = BlockList.InnerArray;
@@ -121,7 +117,8 @@ namespace twihash
                 {
                     //「実際の要素」1個分を取り出す
                     var SortedSpan = Block.AsSpan(BlockIndex + 1, CurrentBlockLength);
-                    
+                    var NewHash = this.NewHash;
+
                     //新しい値を含まないやつは省略
                     if(NewHash != null)
                     {
@@ -167,7 +164,7 @@ namespace twihash
                                 //最初の組合せだったときだけ入れる
                                 if (x == StartBlock)
                                 {
-                                    PairCount++;
+                                    LocalPairCount++;
                                     PairBatchBlock.Post(new MediaPair(SortedSpan[i], SortedSpan[j]));
                                 }
                             }
@@ -175,14 +172,15 @@ namespace twihash
                     }
                 }
                 BlockList.Dispose();
-                if (0 < PairCount) { Interlocked.Add(ref ret, PairCount); }
+                Interlocked.Add(ref PairCount, LocalPairCount);
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
-                BoundedCapacity = Environment.ProcessorCount << 2,
+                BoundedCapacity = Environment.ProcessorCount << 4,
                 SingleProducerConstrained = true
             });
 
+            var MultipleSortSW = Stopwatch.StartNew();
             using (var Reader = new MergeSortReader(SortedFileCount, SortMask, NewHash))
             {
                 AddOnlyList<long> Sorted;
@@ -195,8 +193,9 @@ namespace twihash
             //余りをDBに入れる
             MultipleSortBlock.Complete(); await MultipleSortBlock.Completion.ConfigureAwait(false);
             PairBatchBlock.Complete(); await PairStoreBlock.Completion.ConfigureAwait(false);
+            MultipleSortSW.Stop();
+            Console.WriteLine("{0}\tMerge+Comp\t{1}ms\t{2}, {3}", Index, MultipleSortSW.ElapsedMilliseconds, DBAddCount, PairCount);
 
-            return (dbcount, ret);
         }
 
         long UnMask(int block, int blockcount)
