@@ -209,10 +209,15 @@ namespace twihash
             }
             else { return long.MaxValue; }
         }
+        bool Disposed;
         public override void Dispose()
         {
-            Reader.Dispose();
-            File.Delete(FilePath);
+            if (!Disposed)
+            {
+                Disposed = true;
+                Reader.Dispose();
+                File.Delete(FilePath);
+            }
         }
     }
 

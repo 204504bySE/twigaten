@@ -147,7 +147,7 @@ LIMIT @limit;"))
             try
             {
                 var Table = new List<(long media_id, string media_url)>(BulkUnit);
-                while (drive.TotalFreeSpace < drive.TotalSize / 25)
+                while (drive.TotalFreeSpace < drive.TotalSize / 16)
                 {
                     using (MySqlCommand cmd = new MySqlCommand(@"(SELECT
 media_id, media_url
@@ -202,7 +202,7 @@ ORDER BY media_id;"))
             try
             {
                 var Table = new List<(long user_id, string profile_image_url, bool is_default_profile_image)>(BulkUnit);
-                while (drive.TotalFreeSpace < drive.TotalSize / 25)
+                while (drive.TotalFreeSpace < drive.TotalSize / 16)
                 {
                     using (MySqlCommand cmd = new MySqlCommand(@"SELECT
 user_id, profile_image_url, is_default_profile_image FROM user

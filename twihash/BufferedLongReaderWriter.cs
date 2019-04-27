@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using twitenlib;
@@ -48,7 +49,7 @@ namespace twihash
                 //Spanを使いたかったのでローカル関数に隔離
                 void TakeDiff()
                 {
-                    var NextBufAsLong = Unsafe.As<byte[], long[]>(ref NextBuf).AsSpan(0, ReadElements);
+                    var NextBufAsLong = MemoryMarshal.Cast<byte, long>(NextBuf).Slice(0, ReadElements);
                     long LastBefore = LastRead;
                     for (int i = 0; i < NextBufAsLong.Length; i++)
                     {
@@ -67,7 +68,13 @@ namespace twihash
             {
                 //読み込みが終わってなかったらここで待機される
                 ActualBufElements = FillNextBufTask.Result;
-                if (ActualBufElements == 0) { Readable = false; }
+
+                //ファイルを最後まで読んだらファイルを閉じてしまう
+                if (ActualBufElements == 0)
+                {
+                    Dispose();
+                    Readable = false;
+                }
                 byte[] swap = Buf;
                 Buf = NextBuf;
                 NextBuf = swap;
@@ -79,7 +86,6 @@ namespace twihash
 
         ///<summary>続きのデータがあるかどうか 内部処理用</summary>
         public bool Readable { get; private set; } = true;
-
         public long Current { get; private set; }
         object IEnumerator.Current => Current;
 
@@ -115,24 +121,22 @@ namespace twihash
             return ValuesCursor;
         }
 
+        bool Disposed;
         public void Dispose()
         {
-            zip.Dispose();
-            file.Dispose();
-            BufCursor = int.MaxValue;
+            if (!Disposed)
+            {
+                Disposed = true;
+                zip.Dispose();
+                file.Dispose();
+                BufCursor = -1;
+            }
         }
 
         public IEnumerator<long> GetEnumerator() => this;
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public void Reset()
-        {
-            zip.Seek(0, SeekOrigin.Begin);
-            BufCursor = 0;
-            Readable = true;
-            FillNextBuf();
-            ActualReadAuto();            
-        }
+        public void Reset() { throw new NotSupportedException(); }
     }
 
     ///<summary>WriteInt64()を普通に呼ぶと遅いのでまとめて書く</summary>
@@ -159,7 +163,7 @@ namespace twihash
             while (ValuesCursor < Length)
             {
                 int CopySize = Math.Min(Length - ValuesCursor, BufSize - BufCursor);
-                Values.AsSpan(ValuesCursor, CopySize).CopyTo(Unsafe.As<byte[], long[]>(ref Buf).AsSpan(BufCursor, CopySize));
+                Values.AsSpan(ValuesCursor, CopySize).CopyTo(MemoryMarshal.Cast<byte, long>(Buf).Slice(BufCursor, CopySize));
                 BufCursor += CopySize;
 
                 if (BufCursor >= BufSize) { await ActualWrite().ConfigureAwait(false); }
@@ -179,7 +183,7 @@ namespace twihash
             //Spanを使いたかったのでローカル関数に隔離
             void TakeDiff()
             {
-                var WriteBufAsLong = Unsafe.As<byte[], long[]>(ref WriteBuf).AsSpan(0, BufCursor);
+                var WriteBufAsLong = MemoryMarshal.Cast<byte, long>(WriteBuf).Slice(0, BufCursor);
                 long LastBefore = LastWritten;
                 for (int i = 0; i < WriteBufAsLong.Length; i++)
                 {

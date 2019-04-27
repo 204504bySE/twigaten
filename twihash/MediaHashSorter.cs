@@ -56,14 +56,12 @@ namespace twihash
         readonly DBHandler db;
         readonly HashSet<long> NewHash;
         readonly long MaxHammingDistance;
-        readonly int ExtraBlock;
         readonly long HashCount;
         readonly Combinations Combi;
         public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock, long HashCount)
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
             this.MaxHammingDistance = MaxHammingDistance;
-            this.ExtraBlock = ExtraBlock;
             this.db = db;
             this.HashCount = HashCount;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
@@ -107,17 +105,18 @@ namespace twihash
 
             var MultipleSortBlock = new ActionBlock<AddOnlyList<long>>((BlockList) =>
             {
+                var Block = BlockList.InnerArray;
+                var NewHash = this.NewHash;
+
                 int LocalPairCount = 0;  //見つけた組合せの数を数える
                 int BlockIndex = 0;
                 int CurrentBlockLength;
-                var Block = BlockList.InnerArray;
 
                 //要素数,実際の要素,…,要素数,…,0 という配列を読み込んでいく
                 for (; (CurrentBlockLength = (int)Block[BlockIndex]) > 0; BlockIndex += CurrentBlockLength + 1)
                 {
                     //「実際の要素」1個分を取り出す
                     var SortedSpan = Block.AsSpan(BlockIndex + 1, CurrentBlockLength);
-                    var NewHash = this.NewHash;
 
                     //新しい値を含まないやつは省略
                     if(NewHash != null)
