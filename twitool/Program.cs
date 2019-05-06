@@ -104,11 +104,15 @@ namespace twitool
                 do
                 {
                     Table.Clear();  //ループ判定が後ろにあるのでここでやるしかない
-                    using (MySqlCommand cmd = new MySqlCommand(@"SELECT media_id, media_url FROM media
+                    using (MySqlCommand cmd = new MySqlCommand(@"SELECT media_id, media_url
+FROM media
+LEFT JOIN media_downloaded_at USING (media_id)
 WHERE source_tweet_id IS NULL
+AND (downloaded_at IS NULL OR downloaded_at < @downloaded_at)
 ORDER BY media_id
 LIMIT @limit;"))
                     {
+                        cmd.Parameters.Add("@downloaded_at", DbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
                         if (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
                     }

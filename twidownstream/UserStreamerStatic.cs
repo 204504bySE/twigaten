@@ -103,7 +103,7 @@ namespace twidownstream
         }
         */
         static readonly RemoveOldSet<long> UserLock = new RemoveOldSet<long>(config.crawl.TweetLockSize);
-        static readonly ActionBlock<(Status, Tokens, bool)> TweetDistinctBlock
+        static readonly ActionBlock<(Status, Tokens, bool stream)> TweetDistinctBlock
             = new ActionBlock<(Status x, Tokens t, bool stream)>((m) =>
             {   //ここでLockする(1スレッドなのでHashSetでおｋ
                 if (TweetLock.Add(m.x.Id)/*await LockTweet(m.x.Id).ConfigureAwait(false)*/)
@@ -114,7 +114,7 @@ namespace twidownstream
                         m.x.RetweetedStatus?.User?.Id is long rtuser && UserLock.Add(rtuser)));
                 }
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
-        static readonly ActionBlock<(Status, Tokens, bool, bool, bool, bool)> HandleTweetBlock
+        static readonly ActionBlock<(Status, Tokens, bool stream, bool rtlocked, bool storeuser, bool storertuser)> HandleTweetBlock
             = new ActionBlock<(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)>(async m =>
         {
             //画像なしツイートは先に捨ててるのでここでは確認しない
@@ -279,6 +279,17 @@ namespace twidownstream
         {
             MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads,
         });
+
+        ///<summary>RestManger終了時に画像取得が終わるまで待つ</summary>
+        public static async Task Complete()
+        {
+            TweetDistinctBlock.Complete();
+            await TweetDistinctBlock.Completion.ConfigureAwait(false);
+            HandleTweetBlock.Complete();
+            await HandleTweetBlock.Completion.ConfigureAwait(false);
+            DownloadStoreMediaBlock.Complete();
+            await DownloadStoreMediaBlock.Completion.ConfigureAwait(false);
+        }
 
         //API制限対策用
         static readonly ConcurrentDictionary<Tokens, DateTimeOffset> OneTweetReset = new ConcurrentDictionary<Tokens, DateTimeOffset>();

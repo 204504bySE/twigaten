@@ -67,42 +67,42 @@ namespace twihash
             {
                 using (var writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath))
                 {
+                    long TotalHashCount = 0;
+
                     var WriterBlock = new ActionBlock<AddOnlyList<long>>(
                         async (table) => 
                         {
                             await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
+                            TotalHashCount += table.Count;
                             table.Dispose();
                         },
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
-                            BoundedCapacity = Environment.ProcessorCount + 1
+                            BoundedCapacity = Environment.ProcessorCount << 4
                         });
-
-                    long TotalHashCount = 0;
 
                     var LoadHashBlock = new ActionBlock<long>(async (i) =>
                     {
                         var table = new AddOnlyList<long>(TableListSize);
                         while(true)
                         {
-                            using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
+                            using (MySqlCommand Cmd = new MySqlCommand(@"SELECT DISTINCT dcthash
 FROM media
 WHERE dcthash BETWEEN @begin AND @end
 GROUP BY dcthash;"))
                             {
                                 Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
-                                Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = unchecked(((i + 1) << HashUnitBits) - 1);
+                                Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = ((i + 1) << HashUnitBits) - 1;
                                 if( await ExecuteReader(Cmd, (r) => table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
                                 else { table.Clear(); }
                             }
                         }
-                        Interlocked.Add(ref TotalHashCount, table.Count);
                         await WriterBlock.SendAsync(table).ConfigureAwait(false);
                     }, new ExecutionDataflowBlockOptions()
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,
-                        BoundedCapacity = Environment.ProcessorCount << 4,
+                        BoundedCapacity = Environment.ProcessorCount << 1,
                         SingleProducerConstrained = true
                     });
 

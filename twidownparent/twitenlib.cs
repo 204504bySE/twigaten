@@ -515,18 +515,6 @@ namespace twitenlib
         }
     }
     
-    static class CharCodes
-    {
-        static Encoding ascii = Encoding.GetEncoding(1252, new EncoderReplacementFallback(""), DecoderFallback.ReplacementFallback);
-        public static string KillNonASCII(string Str)
-        {
-            if (Str == null) { return null; }
-            //ASCII範囲外は消しちゃう(めんどくさい
-            byte[] bytes = ascii.GetBytes(Str);
-            return ascii.GetString(bytes);
-        }
-    }
-
     static class CheckOldProcess
     {
         public static void CheckandExit()

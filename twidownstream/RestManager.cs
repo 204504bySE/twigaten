@@ -43,16 +43,25 @@ namespace twidownstream
             foreach(var t in tokens)
             {
                 await RestProcess.SendAsync(t).ConfigureAwait(false);
-                if(sw.ElapsedMilliseconds > 60000)
+
+                while (true)
                 {
-                    Counter.PrintReset();
-                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
-                    GC.Collect();
-                    sw.Restart();
+                    if (sw.ElapsedMilliseconds > 60000)
+                    {
+                        Counter.PrintReset();
+                        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
+                        GC.Collect();
+                        sw.Restart();
+                    }
+                    //ツイートが詰まってたら休む                    
+                    if (UserStreamerStatic.NeedConnectPostpone()) { await Task.Delay(1000).ConfigureAwait(false); }
+                    else { break; }
                 }
             }
             RestProcess.Complete();
             await RestProcess.Completion.ConfigureAwait(false);
+            await UserStreamerStatic.Complete().ConfigureAwait(false);
+            Counter.PrintReset();
             return tokens.Length;
         }
     }
