@@ -78,22 +78,35 @@ SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
 JOIN user u USING (user_id)
-JOIN dcthashpair h ON h.hash_sub = m.dcthash
-WHERE h.hash_pri = (SELECT dcthash FROM media WHERE media_id = @media_id)
+JOIN dcthashpairslim h ON h.hash_large = m.dcthash
+WHERE h.hash_small = (SELECT dcthash FROM media WHERE media_id = @media_id)
+AND t.tweet_id < @tweet_id
+AND u.isprotected IS FALSE);"))
+            using (var mediacmd3 = new MySqlCommand(@"SELECT NOT EXISTS(
+SELECT * FROM media m
+JOIN tweet_media USING (media_id)
+JOIN tweet t USING (tweet_id)
+JOIN user u USING (user_id)
+JOIN dcthashpairslim h ON h.hash_small = m.dcthash
+WHERE h.hash_large = (SELECT dcthash FROM media WHERE media_id = @media_id)
 AND t.tweet_id < @tweet_id
 AND u.isprotected IS FALSE);"))
             {
                 mediacmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 mediacmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
+                mediacmd3.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 var mediaparam = mediacmd.Parameters.Add("@media_id", MySqlDbType.Int64);
                 var mediaparam2 = mediacmd2.Parameters.Add("@media_id", MySqlDbType.Int64);
+                var mediaparam3 = mediacmd3.Parameters.Add("@media_id", MySqlDbType.Int64);
                 foreach (long mid in media_id)
                 {
                     mediaparam.Value = mid;
                     mediaparam2.Value = mid;
+                    mediaparam3.Value = mid;
                     //「存在する」時だけ次の画像に進める
                     if (await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0
-                        && await SelectCount(mediacmd2, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0)
+                        && await SelectCount(mediacmd2, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0
+                        && await SelectCount(mediacmd3, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0)
                     { return false; }
                 }
                 return true;

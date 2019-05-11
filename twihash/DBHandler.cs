@@ -16,20 +16,18 @@ namespace twihash
     {
         public DBHandler() : base("hash", "", config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400) { }
         
-        const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpair VALUES";
+        const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpairslim VALUES";
         public const int StoreMediaPairsUnit = 1000;
         static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 2, StoreMediaPairsHead);
 
-        public async Task<int> StoreMediaPairs(MediaPair[] StorePairs)
+        public async Task<int> StoreMediaPairs(HashPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
             if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentOutOfRangeException(); }
             else if (StorePairs.Length == 0) { return 0; }
             else
             {
-                int ret;
-                //まず昇順
-                Array.Sort(StorePairs, MediaPair.OrderPri);   //deadlock防止
+                Array.Sort(StorePairs, HashPair.Comparison);   //deadlock防止
                 using (MySqlCommand Cmd =  new MySqlCommand(
                     StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
                         : BulkCmdStr(StorePairs.Length, 2, StoreMediaPairsHead)))
@@ -37,19 +35,10 @@ namespace twihash
                     for (int i = 0; i < StorePairs.Length; i++)
                     {
                         string numstr = i.ToString();
-                        Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = StorePairs[i].media0;
-                        Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = StorePairs[i].media1;
+                        Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = StorePairs[i].small;
+                        Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = StorePairs[i].large;
                     }
-                    ret = await ExecuteNonQuery(Cmd).ConfigureAwait(false);
-                    //次に降順
-                    Array.Sort(StorePairs, MediaPair.OrderSub);   //deadlock防止
-                    for (int i = 0; i < StorePairs.Length; i++)
-                    {
-                        string numstr = i.ToString();
-                        Cmd.Parameters["@a" + numstr].Value = StorePairs[i].media1;   //↑とは逆
-                        Cmd.Parameters["@b" + numstr].Value = StorePairs[i].media0;
-                    }
-                    return ret + await ExecuteNonQuery(Cmd).ConfigureAwait(false);
+                    return await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                 }
             }
         }

@@ -92,14 +92,6 @@ create table tweet_media(
 	unique (tweet_id, media_id)
 )engine=InnoDB row_format=COMPRESSED;
 
-create table dcthashpair(
-	hash_pri bigint not null,
-	hash_sub bigint not null,
-	primary key (hash_pri, hash_sub),
-	foreign key (hash_pri) references media(dcthash) on delete cascade,
-	foreign key (hash_sub) references media(dcthash) on delete cascade
-)engine=InnoDB row_format=COMPRESSED;
-
 create table dcthashpairslim(
 	hash_small bigint not null,
 	hash_large bigint not null,
@@ -134,7 +126,7 @@ grant select on twiten.tweet to view;
 grant select on twiten.media to view;
 grant select on twiten.media_downloaded_at to view;
 grant select on twiten.tweet_media to view;
-grant select on twiten.dcthashpair to view;
+grant select on twiten.dcthashpairslim to view;
 
 grant select on twiten.media to hash;
 grant select on twiten.media_downloaded_at to hash;

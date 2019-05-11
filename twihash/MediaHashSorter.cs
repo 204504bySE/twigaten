@@ -15,34 +15,33 @@ using System.Buffers;
 namespace twihash
 {
     ///<summary>ハミング距離が一定以下のハッシュ値のペアを突っ込むやつ</summary>
-    public readonly struct MediaPair
+    public readonly struct HashPair
     {
-        public readonly long media0;
-        public readonly long media1;
-        public MediaPair(long _media0, long _media1)
+        public readonly long small;
+        public readonly long large;
+        public HashPair(long _media0, long _media1)
         {
-            media0 = _media0;
-            media1 = _media1;
+            if (_media0 < _media1)
+            {
+                small = _media0;
+                large = _media1;
+            }
+            else if (_media1 < _media0)
+            {
+                small = _media1;
+                large = _media0;
+            }
+            else { throw new ArgumentException(nameof(_media0) + " == " + nameof(_media1)); }
         }
 
-        ///<summary>media0,media1順で比較</summary>
-        public static Comparison<MediaPair> OrderPri { get; } 
+        ///<summary>small, large順で比較</summary>
+        public static Comparison<HashPair> Comparison { get; } 
             = ((a, b) =>
         {
-            if (a.media0 < b.media0) { return -1; }
-            else if (a.media0 > b.media0) { return 1; }
-            else if (a.media1 < b.media1) { return -1; }
-            else if (a.media1 > b.media1) { return 1; }
-            else { return 0; }
-        });
-        ///<summary>//media1,media0順で比較</summary>
-        public static Comparison<MediaPair> OrderSub { get; }
-            = ((a, b) =>
-        {
-            if (a.media1 < b.media1) { return -1; }
-            else if (a.media1 > b.media1) { return 1; }
-            else if (a.media0 < b.media0) { return -1; }
-            else if (a.media0 > b.media0) { return 1; }
+            if (a.small < b.small) { return -1; }
+            else if (a.small > b.small) { return 1; }
+            else if (a.large < b.large) { return -1; }
+            else if (a.large > b.large) { return 1; }
             else { return 0; }
         });
     }
@@ -92,8 +91,8 @@ namespace twihash
             int DBAddCount = 0;
             long[] UnMasks = Enumerable.Range(0, Combi.Count).Select(i => UnMask(i, Combi.Count)).ToArray();
 
-            var PairBatchBlock = new BatchBlock<MediaPair>(DBHandler.StoreMediaPairsUnit);
-            var PairStoreBlock = new ActionBlock<MediaPair[]>(
+            var PairBatchBlock = new BatchBlock<HashPair>(DBHandler.StoreMediaPairsUnit);
+            var PairStoreBlock = new ActionBlock<HashPair[]>(
                 async (p) =>
                 {
                     int AddCount;
@@ -164,7 +163,7 @@ namespace twihash
                                 if (x == StartBlock)
                                 {
                                     LocalPairCount++;
-                                    PairBatchBlock.Post(new MediaPair(SortedSpan[i], SortedSpan[j]));
+                                    PairBatchBlock.Post(new HashPair(SortedSpan[i], SortedSpan[j]));
                                 }
                             }
                         }
