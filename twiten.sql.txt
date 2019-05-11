@@ -47,7 +47,14 @@ create table user(
 )engine=InnoDB row_format=COMPRESSED;
 	create index screen_name_index on user(screen_name);
 	create index updated_at_index on user(updated_at);
-	
+
+create table user_updated_at(
+	user_id bigint primary key,
+	updated_at bigint not null,
+	foreign key (user_id) references user(user_id) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+	create index updated_at_index on user_updated_at(updated_at);
+
 create table tweet(
 	tweet_id bigint primary key,
 	user_id bigint not null,
@@ -93,6 +100,14 @@ create table dcthashpair(
 	foreign key (hash_sub) references media(dcthash) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;
 
+create table dcthashpairslim(
+	hash_small bigint not null,
+	hash_large bigint not null,
+	primary key (hash_small, hash_large),
+	foreign key (hash_small) references media(dcthash) on delete cascade,
+	foreign key (hash_large) references media(dcthash) on delete cascade
+)engine=InnoDB row_format=COMPRESSED;
+
 create user token, crawl, hash, tool, view;
 
 grant select, insert, update on twiten.token to token;
@@ -104,12 +119,14 @@ grant select, insert, update, delete, drop on twiten.crawlprocess to crawl;
 grant select, insert, delete on twiten.friend to crawl;
 grant select, insert, delete on twiten.block to crawl;
 grant select, insert, update on twiten.user to crawl;
+grant select, insert, update on twiten.user_updated_at to crawl;
 grant select, insert, update, delete on twiten.tweet to crawl;
 grant select, insert, update on twiten.media to crawl;
 grant select, insert, update on twiten.media_downloaded_at to crawl;
 grant select, insert, update on twiten.tweet_media to crawl;
 
 grant select on twiten.user to view;
+grant select on twiten.user_updated_at to view;
 grant select, delete on twiten.viewlogin to view;
 grant select on twiten.friend to view;
 grant select on twiten.block to view;
@@ -121,11 +138,13 @@ grant select on twiten.dcthashpair to view;
 
 grant select on twiten.media to hash;
 grant select on twiten.media_downloaded_at to hash;
-grant insert on twiten.dcthashpair to hash;
+grant insert on twiten.dcthashpairslim to hash;
 
 grant select, delete on tweet to tool;
-grant select, update, delete on user to tool;
+grant select, delete on user to tool;
+grant select, delete on user_updated_at to tool;
 grant select, delete on twiten.media_downloaded_at to tool;
 grant select, insert, delete on tweet_media to tool;
 grant select, delete on media to tool;
+grant select, delete on dcthashpairslim to tool;
 grant select on token to tool;

@@ -17,8 +17,6 @@ namespace twidownstream
 {
     class DBHandler : twitenlib.DBHandler
     {
-        readonly int pid = Process.GetCurrentProcess().Id;
-
         private DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol, 10, (uint)Config.Instance.crawl.MaxDBConnections) { }
         private static readonly DBHandler _db = new DBHandler();
         //singletonはこれでインスタンスを取得して使う
@@ -27,7 +25,7 @@ namespace twidownstream
             get { return _db; }
         }
 
-        int Selfpid = Process.GetCurrentProcess().Id;
+        readonly int Selfpid = Process.GetCurrentProcess().Id;
 
         public enum SelectTokenMode
         {
@@ -184,7 +182,10 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
 
         public async Task<ProfileImageInfo> NeedtoDownloadProfileImage(long user_id, string NewProfileImageUrl)
         {
-            using (var cmd = new MySqlCommand(@"SELECT profile_image_url, updated_at, is_default_profile_image FROM user WHERE user_id = @user_id;"))
+            using (var cmd = new MySqlCommand(@"SELECT profile_image_url, updated_at, is_default_profile_image
+FROM user
+LEFT JOIN user_updated_at USING (user_id)
+WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.AddWithValue("@user_id", user_id);
                 bool HasRow = false;
@@ -225,29 +226,31 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
             
             if (x.Entities.Media == null) { return 0; }    //画像なしツイートは捨てる
             using (var cmd = new MySqlCommand())
+            using (var cmd2 = new MySqlCommand())
             {
-
-                if (IconDownloaded) {
+                if (IconDownloaded)
+                {
                     cmd.CommandText = @"INSERT
-INTO user (user_id, name, screen_name, isprotected, profile_image_url, updated_at, is_default_profile_image, location, description)
-VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @updated_at, @is_default_profile_image, @location, @description)
-ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@isprotected, profile_image_url=@profile_image_url, updated_at=@updated_at, is_default_profile_image=@is_default_profile_image, location=@location, description=@description;"; }
+INTO user (user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description)
+VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_default_profile_image, @location, @description)
+ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@isprotected, profile_image_url=@profile_image_url, is_default_profile_image=@is_default_profile_image, location=@location, description=@description;";
+
+                    cmd2.CommandText = @"INSERT INTO user_updated_at (user_id, updated_at) VALUES (@user_id, @updated_at) ON DUPLICATE KEY UPDATE updated_at=@updated_at;";
+                }
                 else if (ForceUpdate)
                 {
                     //アイコンを取得しなかった時用, insertは未保存アカウントかつアイコン取得失敗時のみ
                     cmd.CommandText = @"INSERT
 INTO user (user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description)
 VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_default_profile_image, @location, @description)
-ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@isprotected, 
-updated_at=(CASE
-WHEN updated_at IS NOT NULL THEN @updated_at
-ELSE NULL
-END),
-location=@location, description=@description;";
+ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@isprotected, location=@location, description=@description;";
+
+                    //updated_atが存在しない場合は放っておく(INSERTしない)
+                    cmd2.CommandText = @"UPDATE user_updated_at SET updated_at = @updated_at WHERE user_id = @user_id;";
                 }
                 else
                 {
-                    //RESTで取得した場合はアイコンが変わらない限り何も更新したくない
+                    //アイコンが変わらない限り何も更新したくないとき(というのはもうないのでは)
                     cmd.CommandText = @"INSERT IGNORE
 INTO user (user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description)
 VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_default_profile_image, @location, @description);";
@@ -258,13 +261,20 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_def
                 cmd.Parameters.Add("@isprotected", MySqlDbType.Byte).Value = x.User.IsProtected;
                 cmd.Parameters.Add("@location", MySqlDbType.TinyText).Value = x.User.Location;
                 cmd.Parameters.Add("@description", MySqlDbType.Text).Value = x.User.Description;
-                //卵アイコンではupdated_atは無意味なのでnullに
-                cmd.Parameters.Add("@updated_at", MySqlDbType.Int64).Value = x.User.IsDefaultProfileImage ? null as long? : DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 //↓アイコンを保存したときだけだけ更新される
                 cmd.Parameters.Add("@profile_image_url", MySqlDbType.Text).Value = x.User.ProfileImageUrlHttps ?? x.User.ProfileImageUrl;
                 cmd.Parameters.Add("@is_default_profile_image", MySqlDbType.Byte).Value = x.User.IsDefaultProfileImage;
 
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                //卵アイコンではupdated_atは無意味なのでnullに
+                if (!x.User.IsDefaultProfileImage
+                    //updated_atが必要なときだけ対応するコマンドを実行
+                    && (IconDownloaded || ForceUpdate))
+                {
+                    cmd2.Parameters.Add("@user_id", MySqlDbType.Int64).Value = x.User.Id;
+                    cmd2.Parameters.Add("@updated_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    return await ExecuteNonQuery(new MySqlCommand[] { cmd, cmd2 }).ConfigureAwait(false);
+                }
+                else { return await ExecuteNonQuery(cmd).ConfigureAwait(false); }
             }
         }
 

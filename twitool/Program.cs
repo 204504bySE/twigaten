@@ -200,7 +200,7 @@ ORDER BY media_id;"))
             DriveInfo drive = new DriveInfo(config.crawl.MountPointProfileImage);
             int RemovedCount = 0;
             const int BulkUnit = 1000;
-            const string head = @"UPDATE user SET updated_at = NULL WHERE user_id IN";
+            const string head = @"DELETE FROM user_updated_at WHERE user_id IN";
             string BulkUpdateCmd = BulkCmdStrIn(BulkUnit, head);
             //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
             try
@@ -209,8 +209,10 @@ ORDER BY media_id;"))
                 while (drive.TotalFreeSpace < drive.TotalSize / 16)
                 {
                     using (MySqlCommand cmd = new MySqlCommand(@"SELECT
-user_id, profile_image_url, is_default_profile_image FROM user
-WHERE updated_at IS NOT NULL AND profile_image_url IS NOT NULL
+user_id, profile_image_url, is_default_profile_image
+FROM user
+JOIN user_updated_at USING (user_id)
+WHERE profile_image_url IS NOT NULL
 ORDER BY updated_at LIMIT @limit;"))
                     {
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);

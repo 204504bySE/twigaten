@@ -133,7 +133,7 @@ namespace twidownstream
             {
                 await HandleTweet(x.RetweetedStatus, t, stream && rtlocked, false, storertuser, false).ConfigureAwait(false); 
             }
-            if (storeuser) { await db.StoreUser(x, await DownloadStoreProfileImage(x).ConfigureAwait(false), stream).ConfigureAwait(false); }
+            if (storeuser) { await db.StoreUser(x, await DownloadStoreProfileImage(x).ConfigureAwait(false), storeuser).ConfigureAwait(false); }
             if (stream) { Counter.TweetToStoreStream.Increment(); } else { Counter.TweetToStoreRest.Increment(); }
             for (int RetryCount = 0; RetryCount < 2; RetryCount++)
             {
