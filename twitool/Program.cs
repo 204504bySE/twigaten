@@ -20,12 +20,6 @@ namespace twitool
     {
         static async Task Main(string[] args)
         {
-            /*
-            await new RemovedMedia().DeleteRemovedTweet().ConfigureAwait(false);
-            Console.WriteLine("＼(^o^)／");
-            return;
-            */
-
             //CheckOldProcess.CheckandExit();
             Config config = Config.Instance;
             DBHandler db = new DBHandler();
@@ -34,58 +28,7 @@ namespace twitool
             await db.RemoveOrphanMedia();
             await db.RemoveOldProfileImage();
         }
-        /*
-        static void CompareHash()
-        {
-            foreach (string file in Directory.EnumerateFiles(@"D:\data\ぬるい", "*.jpg", SearchOption.AllDirectories))
-            {
-                long gdi;
-                long mono;
-                var req = HttpWebRequest.Create(@"http://172.29.0.233:5000/hash/dct");
-                using (var mem = new MemoryStream())
-                {
-                    File.OpenRead(file).CopyTo(mem);
-                    mem.Seek(0, SeekOrigin.Begin);
-                    gdi = PictHash.DCTHash(mem).Value;
-                    mem.Seek(0, SeekOrigin.Begin);
-
-                    req.Method = "POST";
-                    req.ContentType = "application/x-www-form-urlencoded";
-                    var data = new ASCIIEncoding().GetBytes("=" + Convert.ToBase64String(mem.ToArray()).TrimEnd('=').Replace('+', '-').Replace('/', '_'));
-                    req.ContentLength = data.Length;
-                    using (var post = req.GetRequestStream())
-                    {
-                        post.Write(data.ToArray(), 0, data.Length);
-                    }
-                    
-                        var res = req.GetResponse();
-                        using (var monostream = res.GetResponseStream())
-                        using (var mem2 = new MemoryStream())
-                        {
-                            monostream.CopyTo(mem2);
-                            monostream.Close();
-                            mem2.Seek(0, SeekOrigin.Begin);
-
-                            //Console.WriteLine(new UTF8Encoding().GetString(mem2.ToArray()));
-                            mono = long.Parse(new UTF8Encoding().GetString(mem2.ToArray()));
-                        }
-                        Console.WriteLine("{0}\t{1:X16}\t{2:X16}\t{3:X16}\t{4}", HammingDistance((ulong)gdi, (ulong)mono), gdi ^ mono, gdi, mono, file);
-                }
-            }
-        }
-        static int HammingDistance(ulong a, ulong b)
-        {
-            //xorしてpopcnt
-            ulong value = a ^ b;
-
-            //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
-            ulong result = value - ((value >> 1) & 0x5555555555555555UL);
-            result = (result & 0x3333333333333333UL) + ((result >> 2) & 0x3333333333333333UL);
-            return (int)(unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
-        }
-        */
-        }
-
+    }
 
     public class DBHandler : twitenlib.DBHandler
     {

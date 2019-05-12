@@ -9,7 +9,7 @@ create table token(
 
 create table viewlogin(
 	user_id bigint primary key,
-	logintoken varchar(88) character set ascii not null,
+	logintoken varchar(44) character set ascii not null,
 	foreign key (user_id) references token(user_id) on delete cascade
 );
 
