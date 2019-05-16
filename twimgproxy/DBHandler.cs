@@ -10,7 +10,7 @@ namespace twimgproxy
 {
     public class DBHandlerView : twitenlib.DBHandler
     {
-        public DBHandlerView() : base("view", "", "localhost", MySqlConnectionProtocol.Tcp, 20, (uint)Math.Min(Environment.ProcessorCount, 40)) { }
+        public DBHandlerView() : base("view", "", config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40)) { }
 
         public struct MediaInfo
         {

@@ -34,7 +34,7 @@ namespace twitenlib
                 hash = new _hash(iniPath, ini, data);
                 database = new _database(data);
             }
-            catch { }   //twiviewではこのconfigクラスは使用しない
+            catch { Console.WriteLine("FAILED TO LOAD twiten.ini"); }   //twiviewではこのconfigクラスは使用しない
         }
 
         //singletonはこれでインスタンスを取得して使う

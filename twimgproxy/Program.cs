@@ -32,9 +32,10 @@ namespace twimgproxy
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .ConfigureLogging((hostingContext, logging) => {
-                    logging.ClearProviders();
                     logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    logging.AddFilter("Microsoft.AspNetCore.Mvc", LogLevel.Error);
+                    logging.SetMinimumLevel(LogLevel.Error);
+                    logging.AddConsole();
+                    logging.AddDebug();
                 })
                 .Build();
     }
