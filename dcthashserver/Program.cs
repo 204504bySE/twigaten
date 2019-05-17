@@ -23,19 +23,21 @@ namespace aspcoretest
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-                .UseKestrel(options => 
+                .UseKestrel(options =>
                 {
                     options.Listen(IPAddress.Any, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
                     options.Listen(IPAddress.IPv6Any, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
                 })
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
-                //.UseUrls("http://*:12305/")
-                
-                .ConfigureLogging((hostingContext, logging) => {
+                //.UseUrls("http://*:12305/")     
+                .ConfigureLogging((hostingContext, logging) =>
+                {
                     logging.ClearProviders();
                     logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    logging.AddFilter("Microsoft.AspNetCore.Mvc", LogLevel.Error);
+                    logging.SetMinimumLevel(LogLevel.Error);
+                    logging.AddConsole();
+                    logging.AddDebug();
                 })
                 .Build();
     }
