@@ -20,7 +20,7 @@ namespace twidownparent
             var config = Config.Instance;
             var db = new DBHandler();
 
-            await db.InitTruncate();
+            await db.NullifyPidAll();
             var child = new ChildProcessHandler();
             //LockerHandler.CheckAndStart();
 
@@ -39,22 +39,10 @@ namespace twidownparent
                     while (NeedProcessCount > child.Count)
                     {
                         int newpid = child.Start();
-                        if (newpid < 0) { await Task.Delay(1000).ConfigureAwait(false); continue; }    //雑すぎるエラー処理
+                        if (newpid < 0) { await Task.Delay(60000).ConfigureAwait(false); continue; }    //雑すぎるエラー処理
                     }
-
-                    int usersIndex = 0;
-                    for (; usersIndex < users.Length; usersIndex++)
-                    {
-                        int pid = await db.SelectBestpid();
-                        if (pid < 0)
-                        {
-                            int newpid = child.Start();
-                            if (newpid < 0) { await Task.Delay(1000).ConfigureAwait(false); }    //雑すぎるエラー処理
-                            pid = newpid;
-                            await db.Insertpid(pid).ConfigureAwait(false);
-                        }
-                        await db.Assigntoken(users[usersIndex], pid, GetMyTweet).ConfigureAwait(false);
-                    }
+                    //あとはボコボコ突っ込む
+                    await child.AssignToken(users, GetMyTweet).ConfigureAwait(false);
                 }
                 GetMyTweet = true;
 

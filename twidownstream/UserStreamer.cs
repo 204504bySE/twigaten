@@ -17,11 +17,15 @@ namespace twidownstream
         // 各TokenのUserstreamを受信したり仕分けたりする
         
         public Tokens Token { get; }
-        public bool NeedRestMyTweet { get; set; }   //次のconnect時にRESTでツイートを取得する
+        ///<summary>trueにすると次のconnect時にRESTでuser_timelineを取得する</summary>
+        public bool NeedRestMyTweet { get; set; }
+        ///<summary>取得した最新のツイート…のID</summary>
+        public long LastReceivedTweetId { get; private set; }
         IDisposable StreamSubscriber;
-        long LastReceivedTweetId;
         readonly TweetTimeList TweetTime = new TweetTimeList();
-        DateTimeOffset LastMessageTime = DateTimeOffset.UtcNow; //RESTでも使う
+        ///<summary>最後にstreamingで何かを受信した時刻
+        ///またはRESTで拾ったLastReceivedTweetIdのツイートの時刻</summary>
+        DateTimeOffset LastMessageTime = DateTimeOffset.UtcNow; 
 
         //Singleton
         static readonly Config config = Config.Instance;
@@ -34,10 +38,23 @@ namespace twidownstream
             UseCompressionOnStreaming = true
         };
 
-        public UserStreamer(Tokens t)
+        public readonly struct UserStreamerSetting
         {
-            Token = t;
+            public Tokens Token { get; }
+            public long last_status_id { get; } 
+
+            public UserStreamerSetting(Tokens Token, long last_status_id)
+            {
+                this.Token = Token;
+                this.last_status_id = last_status_id;
+            }
+        }
+
+        public UserStreamer(UserStreamerSetting setting)
+        {
+            Token = setting.Token;
             Token.ConnectionOptions = TokenOptions;
+            LastReceivedTweetId = setting.last_status_id;
         }
 
         public void Dispose()
@@ -311,6 +328,10 @@ namespace twidownstream
                 foreach(Status s in Timeline)
                 {
                     UserStreamerStatic.HandleTweetRest(s, Token);
+
+                    //つまり前回の取得から200ツイート以上過ぎていたら
+                    //ずるずると取得範囲が遅れていくことになる
+                    //そして3200件遅れになるとTwitterから最新のツイートを叩きつけられてごっそり取得漏れする
                     if(s.Id > LastReceivedTweetId) { LastReceivedTweetId = s.Id; }
                     TweetTime.Add(s.CreatedAt);
                 }

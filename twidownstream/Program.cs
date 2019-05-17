@@ -38,20 +38,24 @@ namespace twidownstream
             }
 
             var manager = await UserStreamerManager.Create().ConfigureAwait(false);
-            var sw = new Stopwatch();
+            var sw = Stopwatch.StartNew();
             while (true)
             {
-                sw.Restart();
                 int Connected = await manager.ConnectStreamers().ConfigureAwait(false);
                 Console.WriteLine("App: {0} / {1} Accounts Streaming.", Connected, manager.Count);
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                 GC.Collect();
                 sw.Stop();
                 long Elapsed = sw.ElapsedMilliseconds;
-                if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
+                if (Elapsed < 60000)
+                {
+                    await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false);
+                    await manager.StoreLastReceivedTweetId().ConfigureAwait(false);
+                }
                 //↓再読み込みしても一部しか反映されないけどね
                 config.Reload();
                 await manager.AddAll().ConfigureAwait(false);
+                sw.Restart();
             }
         }
     }

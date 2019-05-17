@@ -227,8 +227,8 @@ namespace twitenlib
             return new MySqlConnection(ConnectionStr);
         }
 
-        //"(@a0,@b0),(@a1,@b1),(@a2,@b2)…;" という文字列を出すだけ
-        //bulk insertとかこれ使おうな
+        ///<summary>head + "(@a0,@b0),(@a1,@b1),(@a2,@b2)…;" という文字列を生成する
+        ///"INSERT INTO ... VALUES" など</summary>
         protected static string BulkCmdStr(int count, int unit, string head)
         {
             if(26 < unit) { throw new ArgumentOutOfRangeException("26 < unit"); }
@@ -251,7 +251,8 @@ namespace twitenlib
             return BulkCmd.ToString();
         }
 
-        //(@0,@1,@2,@3…);  という文字列
+        ///<summary>head + "(@0,@1,@2,@3…);" という文字列を生成する
+        ///"SELECT ... WHERE ... IN"など</summary>
         protected static string BulkCmdStrIn(int count, string head)
         {
             var BulkCmd = new StringBuilder(head);
@@ -264,6 +265,29 @@ namespace twitenlib
             BulkCmd.Remove(BulkCmd.Length - 2, 2);
             BulkCmd.Append(");");
             return BulkCmd.ToString();
+        }
+        ///<summary>head + "ELT(FIELD(keyname,@0,@1…)@v0,@v1…) WHERE keyname IN(@0,@1…) という文字列を生成する
+        ///"UPDATE ... SET keyname =" など</summary>>
+        public static string BulkCmdStrUpdate(int count, string head, string keyname)
+        {
+            var BulkCmd = new StringBuilder(head);
+            BulkCmd.Append("ELT(FIELD(");
+            BulkCmd.Append(keyname);
+            for(int i = 0; i < count; i++)
+            {
+                BulkCmd.Append(",@");
+                BulkCmd.Append(i.ToString());
+            }
+            BulkCmd.Append(")");
+            for (int i = 0; i < count; i++)
+            {
+                BulkCmd.Append(",@v");
+                BulkCmd.Append(i.ToString());
+            }
+            BulkCmd.Append(") WHERE ");
+            BulkCmd.Append(keyname);
+            BulkCmd.Append(" IN");
+            return BulkCmdStrIn(count, BulkCmd.ToString());
         }
 
         protected async Task<DataTable> SelectTable(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
@@ -387,7 +411,7 @@ namespace twitenlib
                     }
                 }
             }
-            catch { }
+            catch (Exception e) { Console.WriteLine(e); }
             return -1;
         }
     }

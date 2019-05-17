@@ -12,6 +12,7 @@ using CoreTweet.Streaming;
 using twitenlib;
 using System.Diagnostics;
 using System.Threading;
+using static twidownstream.UserStreamer;
 
 namespace twidownstream
 {
@@ -29,24 +30,28 @@ namespace twidownstream
 
         public enum SelectTokenMode
         {
+            ///<summary>文字通り全部</summary>
             All,
+            ///<summary>このプロセスのpidが割り当てられてるやつ</summary>
             CurrentProcess,
+            ///<summary>CurrentProcess && user_timelineの取得が必要</summary>
             RestInStreamer
         }
 
-        public async Task<Tokens[]> Selecttoken(SelectTokenMode Mode)
+        ///<summary>いろいろ条件付きでTokenを取得する</summary>
+        public async Task<IEnumerable<UserStreamerSetting>> Selecttoken(SelectTokenMode Mode)
         {
             string cmdstr = @"SELECT
-user_id, token, token_secret
+user_id, token, token_secret, last_status_id
 FROM token
-NATURAL JOIN crawlprocess
+JOIN crawlprocess USING (user_id)
 ";
             switch (Mode)
             {
                 case SelectTokenMode.CurrentProcess:
                     cmdstr += "WHERE pid = @pid;"; break;
                 case SelectTokenMode.RestInStreamer:
-                    cmdstr += "WHERE rest_needed IS TRUE;"; break;
+                    cmdstr += "WHERE rest_my_tweet IS TRUE;"; break;
                 case SelectTokenMode.All:
                     cmdstr += ";"; break;
             }
@@ -54,79 +59,89 @@ NATURAL JOIN crawlprocess
             {
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = Selfpid;
 
-                var ret = new List<Tokens>();
+                var ret = new List<UserStreamerSetting>();
                 if (await ExecuteReader(cmd, (r) =>
                  {
-                     ret.Add(Tokens.Create(config.token.ConsumerKey,
+                     ret.Add(new UserStreamerSetting(Tokens.Create(config.token.ConsumerKey,
                          config.token.ConsumerSecret,
                          r.GetString(1),
                          r.GetString(2),
-                         r.GetInt64(0)));
+                         r.GetInt64(0)), r.GetInt64(3)));
                  }).ConfigureAwait(false)) { return ret.ToArray(); }
-                else { return new Tokens[0]; }//一応全取得に成功しない限り返さない
+                else { return Enumerable.Empty<UserStreamerSetting>(); }//一応全取得に成功しない限り返さない
             }
-
         }
 
-        public async Task<Tokens[]> SelectAlltoken()
-        //全tokenを返す
+
+        ///<summary>最新の処理済みツイートのIDをDBに保存</summary>
+        public Task<int> StoreLastReceivedTweetId(IEnumerable<KeyValuePair<long, long>> UserId_tweetId)
         {
-            using (var cmd = new MySqlCommand(@"SELECT
-user_id, token, token_secret
-FROM token
-NATURAL JOIN crawlprocess
-WHERE pid = @pid;"))
-            {
-                cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value =  Selfpid;
+            const string head = @"UPDATE crawlprocess SET last_status_id = ";
+            const string keyname = "user_id";
+            const int BulkUnit = 1000;
 
-                var ret = new List<Tokens>();
-                if (await ExecuteReader(cmd, (r) =>
+            var cmdList = new List<MySqlCommand>();
+            var users = UserId_tweetId.ToArray();
+
+            string BulkUpdateStr = "";
+            int i;
+            for (i = 0; i < users.Length / BulkUnit; i++)
+            {
+                if (i == 0) { BulkUpdateStr = BulkCmdStrUpdate(BulkUnit, head, keyname); }
+                var cmdtmp = new MySqlCommand(BulkUpdateStr);
+                for (int j = 0; j < BulkUnit; j++)
                 {
-                    ret.Add(Tokens.Create(config.token.ConsumerKey,
-                        config.token.ConsumerSecret,
-                        r.GetString(1),
-                        r.GetString(2),
-                        r.GetInt64(0)));
-                }).ConfigureAwait(false)) { return ret.ToArray(); }
-                else { return new Tokens[0]; }//一応全取得に成功しない限り返さない
+                    var u = users[BulkUnit * i + j];
+                    cmdtmp.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
+                    cmdtmp.Parameters.Add("@v" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
+                }
+                cmdList.Add(cmdtmp);
             }
-        }
+            if (users.Length % BulkUnit != 0)
+            {
+                var cmdtmp = new MySqlCommand(BulkCmdStrUpdate(users.Length % BulkUnit, head, keyname));
+                for (int j = 0; j < users.Length % BulkUnit; j++)
+                {
+                    var u = users[BulkUnit * i + j];
+                    cmdtmp.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
+                    cmdtmp.Parameters.Add("@v" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
+                }
+                cmdList.Add(cmdtmp);
+            }
+            return ExecuteNonQuery(cmdList);
+        } 
+
         ///<summary>twidownrestでツイートを取得して欲しいやつ
         ///と思ったが毎日無条件で取得してる上にどこからも使われてない</summary>
-        public async Task<int> StoreRestNeedtoken(long user_id)
+        public Task<int> StoreRestNeedtoken(long user_id)
         {
-            using (var cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = TRUE WHERE user_id = @user_id;"))
+            using (var cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_my_tweet = TRUE WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id",MySqlDbType.Int64).Value =  user_id;
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                return ExecuteNonQuery(cmd);
             }
         }
         ///<summary>こっちは新規登録直後のトークンのREST取得後にちゃんと使ってる</summary>
-        public async Task<int> StoreRestDonetoken(long user_id)
+        public Task<int> StoreRestDonetoken(long user_id)
         {
-            using (var cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_needed = FALSE WHERE user_id = @user_id;"))
+            using (var cmd = new MySqlCommand(@"UPDATE crawlprocess SET rest_my_tweet = FALSE WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                return ExecuteNonQuery(cmd);
             }
         }
 
         ///<summary>無効化されたっぽいTokenを消す</summary>
-        public async Task<int> DeleteToken(long user_id)
+        public Task<int> DeleteToken(long user_id)
         {
-            using (var cmd = new MySqlCommand(@"DELETE FROM crawlprocess WHERE user_id = @user_id;"))
-            {
-                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                await ExecuteNonQuery(cmd).ConfigureAwait(false);
-            }
             using (var cmd = new MySqlCommand(@"DELETE FROM token WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                return ExecuteNonQuery(cmd);
             }
         }
 
-        ///<summary>本文の短縮URLを全て展開する</summary>
+        ///<summary>本文を適切に取り出した上で短縮URLを全て展開する</summary>
         static string ExpandUrls(Status x)
         {
             string ret;
@@ -146,7 +161,7 @@ WHERE pid = @pid;"))
             return ret;
         }
 
-        public async Task<int> StoreUserProfile(UserResponse ProfileResponse)
+        public Task<int> StoreUserProfile(UserResponse ProfileResponse)
         //ログインユーザー自身のユーザー情報を格納
         //Tokens.Account.VerifyCredentials() の戻り値を投げて使う
         {
@@ -163,7 +178,7 @@ ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@ispro
                 cmd.Parameters.Add("@location", MySqlDbType.TinyText).Value = ProfileResponse.Location;
                 cmd.Parameters.Add("@description", MySqlDbType.Text).Value = ProfileResponse.Description;
 
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                return ExecuteNonQuery(cmd);
             }
         }
 
@@ -365,31 +380,30 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             return StoreFriends(x.Friends, UserID);
         }
 
+        ///<summary>UserStream接続時のフォローしている一覧を保存する
+        ///自分自身も入れる</summary>
         public async Task<int> StoreFriends(long[] x, long UserID)
-        //<summary>
-        //UserStream接続時のフォローしている一覧を保存する
-        //自分自身も入れる
+
         {
             const int BulkUnit = 1000;
             const string head = @"INSERT IGNORE INTO friend (user_id, friend_id) VALUES";
-            List<MySqlCommand> cmdList = new List<MySqlCommand>();
-            MySqlCommand cmdtmp;
-            int i, j;
+            var cmdList = new List<MySqlCommand>();
 
-            MySqlCommand deletecmd = new MySqlCommand(@"DELETE FROM friend WHERE user_id = @user_id;");
+            var deletecmd = new MySqlCommand(@"DELETE FROM friend WHERE user_id = @user_id;");
             deletecmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = UserID;
             cmdList.Add(deletecmd);
 
-            MySqlCommand selfcmd = new MySqlCommand(@"INSERT IGNORE INTO friend (user_id, friend_id) VALUES (@user, @user);");
+            var selfcmd = new MySqlCommand(@"INSERT IGNORE INTO friend (user_id, friend_id) VALUES (@user, @user);");
             selfcmd.Parameters.Add("@user", MySqlDbType.Int64).Value = UserID;
             cmdList.Add(selfcmd);
 
             string BulkInsertCmdFull = "";
+            int i;
             for (i = 0; i < x.Length / BulkUnit; i++)
             {
                 if (i == 0) { BulkInsertCmdFull = BulkCmdStr(BulkUnit, 2, head); }
-                cmdtmp = new MySqlCommand(BulkInsertCmdFull);
-                for (j = 0; j < BulkUnit; j++)
+                var cmdtmp = new MySqlCommand(BulkInsertCmdFull);
+                for (int j = 0; j < BulkUnit; j++)
                 {
                     cmdtmp.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = UserID;
                     cmdtmp.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = x[BulkUnit * i + j];
@@ -398,8 +412,8 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             }
             if (x.Length % BulkUnit != 0)
             {
-                cmdtmp = new MySqlCommand(BulkCmdStr(x.Length % BulkUnit, 2, head));
-                for (j = 0; j < x.Length % BulkUnit; j++)
+                var cmdtmp = new MySqlCommand(BulkCmdStr(x.Length % BulkUnit, 2, head));
+                for (int j = 0; j < x.Length % BulkUnit; j++)
                 {
                     cmdtmp.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = UserID;
                     cmdtmp.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = x[BulkUnit * i + j];
@@ -409,26 +423,24 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             return await ExecuteNonQuery(cmdList).ConfigureAwait(false);
         }
 
-        public async Task<int> StoreBlocks(long[] x, long UserID)
-        //<summary>
-        //ブロックしている一覧を保存する
+        ///<summary>ブロックしている一覧を保存する</summary>
+        public Task<int> StoreBlocks(long[] x, long UserID)
         {
             const int BulkUnit = 1000;
             const string head = @"INSERT IGNORE INTO block (user_id, target_id) VALUES";
-            List<MySqlCommand> cmdList = new List<MySqlCommand>();
-            MySqlCommand cmdtmp;
-            int i, j;
+            var cmdList = new List<MySqlCommand>();
 
-            MySqlCommand deletecmd = new MySqlCommand(@"DELETE FROM block WHERE user_id = @user_id;");
+            var deletecmd = new MySqlCommand(@"DELETE FROM block WHERE user_id = @user_id;");
             deletecmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = UserID;
             cmdList.Add(deletecmd);
 
             string BulkInsertCmdFull = "";
+            int i;
             for (i = 0; i < x.Length / BulkUnit; i++)
             {
                 if (i == 0) { BulkInsertCmdFull = BulkCmdStr(BulkUnit, 2, head); }
-                cmdtmp = new MySqlCommand(BulkInsertCmdFull);
-                for (j = 0; j < BulkUnit; j++)
+                var cmdtmp = new MySqlCommand(BulkInsertCmdFull);
+                for (int j = 0; j < BulkUnit; j++)
                 {
                     cmdtmp.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = UserID;
                     cmdtmp.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = x[BulkUnit * i + j];
@@ -437,15 +449,15 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             }
             if (x.Length % BulkUnit != 0)
             {
-                cmdtmp = new MySqlCommand(BulkCmdStr(x.Length % BulkUnit, 2, head));
-                for (j = 0; j < x.Length % BulkUnit; j++)
+                var cmdtmp = new MySqlCommand(BulkCmdStr(x.Length % BulkUnit, 2, head));
+                for (int j = 0; j < x.Length % BulkUnit; j++)
                 {
                     cmdtmp.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = UserID;
                     cmdtmp.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = x[BulkUnit * i + j];
                 }
                 cmdList.Add(cmdtmp);
             }
-            return await ExecuteNonQuery(cmdList).ConfigureAwait(false);
+            return ExecuteNonQuery(cmdList);
         }
 
         public async Task<bool> ExistTweet(long tweet_id)
@@ -492,7 +504,7 @@ WHERE media_id = @media_id;"))
             }
         }
 
-        public async Task<int> StoreMedia(MediaEntity m, Status x, long hash)
+        public async Task<bool> StoreMedia(MediaEntity m, Status x, long hash)
         {
             MySqlCommand[] cmd = new MySqlCommand[] { new MySqlCommand(@"INSERT IGNORE 
 INTO media (media_id, source_tweet_id, type, media_url, dcthash) 
@@ -512,17 +524,16 @@ VALUES(@media_id, @downloaded_at)") };
             cmd[1].Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmd[1].Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            int ret = await ExecuteNonQuery(cmd).ConfigureAwait(false) >> 1;
-            return ret + await Storetweet_media(x.Id, m.Id).ConfigureAwait(false);
+            return await ExecuteNonQuery(cmd).ConfigureAwait(false) >= 0 | await Storetweet_media(x.Id, m.Id).ConfigureAwait(false) > 0;
         }
 
-        public async Task<int> Storetweet_media(long tweet_id, long media_id)
+        public Task<int> Storetweet_media(long tweet_id, long media_id)
         {
             using (var cmd = new MySqlCommand(@"INSERT IGNORE INTO tweet_media VALUES(@tweet_id, @media_id)"))
             {
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                return ExecuteNonQuery(cmd);
             }
         }
 
@@ -558,7 +569,7 @@ VALUES(@media_id, @downloaded_at)") };
         }
 
         static readonly int ThisPid = Process.GetCurrentProcess().Id;
-        //MySQLが落ちてpidが消えてたら自殺したい
+        ///<summary>自分のpidにtokenの割り当てがなかったら自殺する</summary>
         public async Task<bool> ExistThisPid()
         {
             using(MySqlCommand cmd = new MySqlCommand("SELECT EXISTS(SELECT * FROM crawlprocess WHERE pid = @pid);"))

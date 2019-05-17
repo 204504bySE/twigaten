@@ -17,8 +17,14 @@ namespace twidownparent
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = new DBHandler();
         ChildWatchDog WatchDog = new ChildWatchDog();
-        readonly Dictionary<int, Process> Children = new Dictionary<int, Process>();
 
+        ///<summary>Key=pid, Value=起動したtwidownのProcess</summary>
+        readonly Dictionary<int, Process> ProcessInfo = new Dictionary<int, Process>();
+        ///<summary>Key=pid, Value=割り当てたアカウントの数</summary>
+        readonly Dictionary<int, int> TokenCount = new Dictionary<int, int>();
+
+        ///<summary>新しいtwidownを起動する</summary>
+        ///<returns>新しいtwidownのpid 失敗したら-1</returns>
         public int Start()
         {
             try
@@ -35,7 +41,8 @@ namespace twidownparent
                 })
                 {
                     retProcess.Start();
-                    Children[retProcess.Id] = retProcess;
+                    ProcessInfo[retProcess.Id] = retProcess;
+                    TokenCount[retProcess.Id] = 0;
                     WatchDog.Add(retProcess.Id);
                     return retProcess.Id;
                 }
@@ -44,10 +51,42 @@ namespace twidownparent
             catch { return -1; }
         }
 
+        ///<summary>一番空いてるっぽいプロセスにアカウントを割り当てる
+        ///各プロセスのアカウント数の上限は関知しない</summary>
+        public async Task AssignToken(IEnumerable<long> user_id, bool GetMyTweet)
+        {
+            //プロセスは事前に起動してくれ
+            if(TokenCount.Count == 0) { return; }
+
+            var assigns = new List<(long user_id, int pid)>();
+
+            //アカウントの割り当てを作っていく
+            foreach(long u in user_id)
+            {
+                var minProcess = TokenCount.OrderBy(t => t.Value).First();
+                assigns.Add((u, minProcess.Key));
+                //対応するプロセスのTokenCountを当然のように足す
+                TokenCount[minProcess.Key]++;
+            }
+
+            //DBにまとめて書き込む
+            if (!await db.AssignTokens(assigns, GetMyTweet).ConfigureAwait(false))
+            {
+                //失敗したらTokenCountを元に戻す
+                foreach(var t in TokenCount.Keys)
+                {
+                    TokenCount[t] -= assigns.Where(a => a.pid == t).Count();
+                }
+            }
+
+        }
+
+        ///<summary>死んでるっぽいプロセスにkillを送っていなかったことにする</summary>
+        ///<returns>死んだことにしたプロセスの数</returns>
         public async ValueTask<int> DeleteDead()
         {
             int count = 0;
-            foreach (var p in Children.ToArray())
+            foreach (var p in ProcessInfo.ToArray())
             {
                 try
                 {
@@ -57,9 +96,12 @@ namespace twidownparent
                         || (DateTimeOffset.Now - watch.Value).TotalSeconds > config.crawlparent.WatchDogTimeout
                         || !p.Value.Responding)
                     {
-                        //try { p.Value.Kill(); } catch(Exception e) { Console.WriteLine(e); }
-                        count += await db.Deletepid(p.Key);
+                        try { p.Value.Kill(); } catch(Exception e) { Console.WriteLine(e); }
+                        count += await db.Deletepid(p.Key).ConfigureAwait(false);
                         WatchDog.Remove(p.Key);
+
+                        ProcessInfo.Remove(p.Key);
+                        TokenCount.Remove(p.Key);
                     }
                 }
                 catch { }
@@ -67,7 +109,7 @@ namespace twidownparent
             return count;
         }
 
-        public int Count => Children.Count;
+        public int Count => ProcessInfo.Count;
     }
 
     class ChildWatchDog : IDisposable

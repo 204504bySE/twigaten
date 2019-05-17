@@ -251,7 +251,7 @@ namespace twidownstream
                                     {
                                         byte[] mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                                         long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
-                                        if (dcthash != null && (await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false)) > 0)
+                                        if (dcthash != null && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
                                         {
                                             using (var file = File.Create(LocalPaththumb))
                                             {
@@ -268,7 +268,7 @@ namespace twidownstream
                                 }
                             }
                         }
-                        catch (Exception e) { /*Console.WriteLine(e);*/ continue; }
+                        catch { continue; }
                     }
                     //URL転載元もペアを記録する
                     if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }

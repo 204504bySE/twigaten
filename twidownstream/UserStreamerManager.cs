@@ -38,7 +38,7 @@ namespace twidownstream
             //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
             foreach (var t in tokenRest)
             {            
-                if (Add(t) && Streamers.TryGetValue(t.UserId, out UserStreamer s)) { s.NeedRestMyTweet = true; }
+                if (Add(t) && Streamers.TryGetValue(t.Token.UserId, out UserStreamer s)) { s.NeedRestMyTweet = true; }
             }
             foreach (var t in token)
             {
@@ -46,10 +46,10 @@ namespace twidownstream
             }
         }
 
-        bool Add(Tokens t)
+        bool Add(UserStreamer.UserStreamerSetting setting)
         {
-            if (t == null) { return false; }
-            if (Streamers.ContainsKey(t.UserId))
+            if (setting.Token == null) { return false; }
+            if (Streamers.ContainsKey(setting.Token.UserId))
             {
                 //Console.WriteLine("{0} {1}: Already running.", DateTime.Now, t.UserId);
                 return false;
@@ -57,8 +57,8 @@ namespace twidownstream
             else
             {
                 //Console.WriteLine("{0} {1}: Assigned.", DateTime.Now, t.UserId);
-                UserStreamer s = new UserStreamer(t);
-                return Streamers.TryAdd(t.UserId, s);
+                UserStreamer s = new UserStreamer(setting);
+                return Streamers.TryAdd(setting.Token.UserId, s);
             }
         }
 
@@ -186,12 +186,20 @@ namespace twidownstream
             return ActiveStreamers;
         }
 
-        ///<summary>Revokeされた後の処理</summary>
+        ///<summary>各streamerで処理した最後のツイートIDをDBに保存する</summary>
+        public Task StoreLastReceivedTweetId()
+        {
+            return db.StoreLastReceivedTweetId(Streamers.Select(s => new KeyValuePair<long, long>(s.Key, s.Value.LastReceivedTweetId)));
+        }
+
+
+        ///<summary>Revokeされた後の処理
+        //Streamerを停止してStreamersから外すだけ</summary>
         void RemoveStreamer(UserStreamer Streamer)
         {
-            Streamer.Dispose();
-            Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);  //つまり死んだStreamerは除外される
+            Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);
             Console.WriteLine("{0}: Streamer removed", Streamer.Token.UserId);
+            Streamer.Dispose();
         }
 
         private void SetMaxConnections(int basecount, bool Force = false)
