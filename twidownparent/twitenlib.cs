@@ -58,9 +58,7 @@ namespace twitenlib
         public class _crawl
         {
             public string PictPathProfileImage { get; }
-            public string MountPointProfileImage { get; }
             public string PictPaththumb { get; }
-            public string MountPointthumb { get; }
             public int StreamSpeedSeconds { get; }
             public int StreamSpeedTweets { get; }
             public int StreamSpeedHysteresis { get; }
@@ -80,9 +78,7 @@ namespace twitenlib
             public _crawl(IniData data)
             {
                 PictPathProfileImage = data["crawl"][nameof(PictPathProfileImage)] ?? Path.Combine(Directory.GetCurrentDirectory(), @"pict\profile_image\");
-                MountPointProfileImage = data["crawl"][nameof(MountPointProfileImage)] ?? PictPathProfileImage?.Substring(0,1) ?? "";
                 PictPaththumb = data["crawl"][nameof(PictPaththumb)] ?? Path.Combine(Directory.GetCurrentDirectory(), @"pict\thumb\");
-                MountPointthumb = data["crawl"][nameof(MountPointthumb)] ?? PictPaththumb?.Substring(0,1) ?? "";
                 StreamSpeedSeconds = int.Parse(data["crawl"][nameof(StreamSpeedSeconds)] ?? "180");
                 StreamSpeedTweets = int.Parse(data["crawl"][nameof(StreamSpeedTweets)] ?? "50");
                 StreamSpeedHysteresis = int.Parse(data["crawl"][nameof(StreamSpeedHysteresis)] ?? "16");

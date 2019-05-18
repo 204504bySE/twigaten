@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <Compile Include="..\twidownparent\twitenlib.cs" Link="twitenlib.cs" />
+    <Compile Include="..\twidownparent\MediaFolderPath.cs" Link="MediaFolderPath.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -15,9 +16,9 @@
 
   <ItemGroup>
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.2.4" />
+    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.2.5" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.App" Version="2.2.4" />
+    <PackageReference Include="Microsoft.AspNetCore.App" Version="2.2.5" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
     <PackageReference Include="MySqlConnector" Version="0.54.0" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.9.0" />

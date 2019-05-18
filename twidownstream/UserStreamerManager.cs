@@ -189,12 +189,14 @@ namespace twidownstream
         ///<summary>各streamerで処理した最後のツイートIDをDBに保存する</summary>
         public Task StoreLastReceivedTweetId()
         {
-            return db.StoreLastReceivedTweetId(Streamers.Select(s => new KeyValuePair<long, long>(s.Key, s.Value.LastReceivedTweetId)));
+            return db.StoreLastReceivedTweetId(Streamers
+                .Where(s => s.Value.LastReceivedTweetId != 0)
+                .Select(s => new KeyValuePair<long, long>(s.Key, s.Value.LastReceivedTweetId)));
         }
 
 
         ///<summary>Revokeされた後の処理
-        //Streamerを停止してStreamersから外すだけ</summary>
+        ///Streamerを停止してStreamersから外すだけ</summary>
         void RemoveStreamer(UserStreamer Streamer)
         {
             Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);

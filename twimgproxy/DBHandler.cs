@@ -113,15 +113,15 @@ AND u.isprotected IS FALSE);"))
             }
         }
 
-        public async Task<(string Url, string Referer)?> SelectProfileImageUrl(long user_id)
+        public async Task<(string Url, string Referer, bool is_default_profile_image)?> SelectProfileImageUrl(long user_id)
         {
-            (string Url, string Referer)? ret = null;
-            using (var cmd = new MySqlCommand(@"SELECT profile_image_url, screen_name
+            (string Url, string Referer, bool is_default_profile_image)? ret = null;
+            using (var cmd = new MySqlCommand(@"SELECT profile_image_url, screen_name, is_default_profile_image
 FROM user
 WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                await ExecuteReader(cmd, (r) => ret = (r.GetString(0), "https://twitter.com/" + r.GetString(1)), IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                await ExecuteReader(cmd, (r) => ret = (r.GetString(0), "https://twitter.com/" + r.GetString(1), r.GetBoolean(2)), IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
             //つまりDBのアクセスに失敗したりしてもnull
             return ret;

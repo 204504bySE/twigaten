@@ -161,10 +161,8 @@ namespace twidownstream
             DBHandler.ProfileImageInfo d = await db.NeedtoDownloadProfileImage(x.User.Id.Value, ProfileImageUrl).ConfigureAwait(false);
             if (!d.NeedDownload) { return false; }
 
-            //新しいアイコンの保存先 卵アイコンは'_'をつけただけの名前で保存するお
-            string LocalPath = x.User.IsDefaultProfileImage ?
-                config.crawl.PictPathProfileImage + '_' + Path.GetFileName(ProfileImageUrl) :
-                config.crawl.PictPathProfileImage + x.User.Id.ToString() + Path.GetExtension(ProfileImageUrl);
+            //新しいアイコンの保存先
+            string LocalPath = MediaFolderPath.ProfileImagePath(x.User.Id.Value, x.User.IsDefaultProfileImage, ProfileImageUrl);
 
             bool DownloadOK = false; 
             if (!x.User.IsDefaultProfileImage || !File.Exists(LocalPath))
@@ -196,13 +194,14 @@ namespace twidownstream
                     catch { continue; }
                 }
             }
-            else { DownloadOK = true; } //卵アイコンのダウンロード不要でもtrue
+            else { DownloadOK = true; } //初期アイコンのダウンロード不要でもtrue
             if (DownloadOK)
             {
+                //古いアイコンと拡張子が違うなら古いアイコンを明示的に消す
                 string oldext = Path.GetExtension(d.OldProfileImageUrl);
                 string newext = Path.GetExtension(ProfileImageUrl);
                 if (!d.isDefaultProfileImage && oldext != null && oldext != newext)  //卵アイコンはこのパスじゃないしそもそも消さない
-                { File.Delete(config.crawl.PictPathProfileImage + x.User.Id.ToString() + oldext); }
+                { File.Delete(MediaFolderPath.ProfileImagePath(x.User.Id.Value, false, d.OldProfileImageUrl)); }
             }
             return DownloadOK;
         }
@@ -234,8 +233,12 @@ namespace twidownstream
                             if (OtherSourceTweet && RestId.Value.Add(a.x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, a.t).ConfigureAwait(false); }    //コピペつらい
                             break;   //画像の情報がないときだけダウンロードする
                     }
+
+                    //m.Urlとm.MediaUrlは違う
                     string MediaUrl = m.MediaUrlHttps ?? m.MediaUrl;
-                    string LocalPaththumb = config.crawl.PictPaththumb + m.Id.ToString() + Path.GetExtension(MediaUrl);  //m.Urlとm.MediaUrlは違う
+
+                    //画像の保存先パスを生成しておく
+                    string LocalPaththumb = MediaFolderPath.ThumbPath(m.Id, MediaUrl);
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
                     Counter.MediaToStore.Increment();
                     for (int RetryCount = 0; RetryCount < 3; RetryCount++)

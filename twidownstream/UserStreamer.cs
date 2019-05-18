@@ -19,7 +19,9 @@ namespace twidownstream
         public Tokens Token { get; }
         ///<summary>trueにすると次のconnect時にRESTでuser_timelineを取得する</summary>
         public bool NeedRestMyTweet { get; set; }
-        ///<summary>取得した最新のツイート…のID</summary>
+        ///<summary>取得した最新のツイート…のID
+        ///取得したことがなければ0
+        ///Revokeされても0になる</summary>
         public long LastReceivedTweetId { get; private set; }
         IDisposable StreamSubscriber;
         readonly TweetTimeList TweetTime = new TweetTimeList();
@@ -60,6 +62,7 @@ namespace twidownstream
         public void Dispose()
         {
             DisconnectStream();
+            LastReceivedTweetId = 0;
             GC.SuppressFinalize(this);
         }
 

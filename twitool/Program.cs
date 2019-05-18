@@ -63,7 +63,7 @@ LIMIT @limit;"))
 
                     foreach (var row in Table)
                     {
-                        File.Delete(Path.Combine(config.crawl.PictPaththumb, row.media_id.ToString() + Path.GetExtension(row.media_url)));
+                        File.Delete(MediaFolderPath.ThumbPath(row.media_id, row.media_url));
                     }
 
                     if (Table.Count < BulkUnit)
@@ -87,7 +87,7 @@ LIMIT @limit;"))
 
         public async Task RemoveOldMedia()
         {
-            DriveInfo drive = new DriveInfo(config.crawl.MountPointthumb);
+            DriveInfo drive = new DriveInfo(config.crawl.PictPaththumb);
             int RemovedCountFile = 0;
             const int BulkUnit = 1000;
             //Console.WriteLine("{0} / {0} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
@@ -111,7 +111,7 @@ ORDER BY media_id;"))
 
                     foreach (var row in Table)
                     {
-                        File.Delete(Path.Combine(config.crawl.PictPaththumb, (row.media_id.ToString() + Path.GetExtension(row.media_url))));
+                        File.Delete(MediaFolderPath.ThumbPath(row.media_id, row.media_url));
                     }
 
                     MySqlCommand[] Cmd = new MySqlCommand[] {
@@ -140,7 +140,7 @@ ORDER BY media_id;"))
         //しばらくツイートがないアカウントのprofile_imageを消す
         public async Task RemoveOldProfileImage()
         {
-            DriveInfo drive = new DriveInfo(config.crawl.MountPointProfileImage);
+            DriveInfo drive = new DriveInfo(config.crawl.PictPathProfileImage);
             int RemovedCount = 0;
             const int BulkUnit = 1000;
             const string head = @"DELETE FROM user_updated_at WHERE user_id IN";
@@ -167,7 +167,7 @@ ORDER BY updated_at LIMIT @limit;"))
                     {
                         if (!row.is_default_profile_image)
                         {
-                            File.Delete(Path.Combine(config.crawl.PictPathProfileImage, row.user_id.ToString() + Path.GetExtension(row.profile_image_url)));
+                            File.Delete(MediaFolderPath.ProfileImagePath(row.user_id, row.is_default_profile_image, row.profile_image_url));
                         }
                     }
                     using (MySqlCommand upcmd = new MySqlCommand(BulkUpdateCmd))
@@ -240,7 +240,7 @@ ORDER BY tweet_id DESC;"))
             }
         }
 
-
+        /*
         //ツイートが削除されて参照されなくなったユーザーを消す
         public async Task<int> RemoveOrphanUser()
         {
@@ -310,15 +310,6 @@ AND NOT EXISTS (SELECT user_id FROM token WHERE token.user_id = user.user_id);")
             }
             RemoveBlock.Complete();
             await RemoveBlock.Completion;
-        }
-        /*
-        public void Nullify_updated_at()
-        {
-            const int BulkUnit = 10000;
-            MySqlCommand cmd = new MySqlCommand(@"UPDATE user SET updated_at = null WHERE updated_at < @time LIMIT @limit;");
-            cmd.Parameters.AddWithValue("@time", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-            cmd.Parameters.AddWithValue("@limit", BulkUnit);
-            while (ExecuteNonQuery(cmd) > 0) { Console.WriteLine(DateTime.Now); }
         }
         */
         /*

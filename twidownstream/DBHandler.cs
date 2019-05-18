@@ -74,41 +74,41 @@ JOIN crawlprocess USING (user_id)
 
 
         ///<summary>最新の処理済みツイートのIDをDBに保存</summary>
-        public Task<int> StoreLastReceivedTweetId(IEnumerable<KeyValuePair<long, long>> UserId_tweetId)
+        public async Task<int> StoreLastReceivedTweetId(IEnumerable<KeyValuePair<long, long>> UserId_tweetId)
         {
             const string head = @"UPDATE crawlprocess SET last_status_id = ";
             const string keyname = "user_id";
             const int BulkUnit = 1000;
 
-            var cmdList = new List<MySqlCommand>();
-            var users = UserId_tweetId.ToArray();
-
+            //user_id順で並べておく
+            var users = UserId_tweetId.OrderBy(u => u.Key).ToArray();
+            int ret = 0;
             string BulkUpdateStr = "";
             int i;
             for (i = 0; i < users.Length / BulkUnit; i++)
             {
                 if (i == 0) { BulkUpdateStr = BulkCmdStrUpdate(BulkUnit, head, keyname); }
-                var cmdtmp = new MySqlCommand(BulkUpdateStr);
+                var cmd = new MySqlCommand(BulkUpdateStr);
                 for (int j = 0; j < BulkUnit; j++)
                 {
                     var u = users[BulkUnit * i + j];
-                    cmdtmp.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
-                    cmdtmp.Parameters.Add("@v" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
+                    cmd.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
+                    cmd.Parameters.Add("@v" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
                 }
-                cmdList.Add(cmdtmp);
+                ret += await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
             if (users.Length % BulkUnit != 0)
             {
-                var cmdtmp = new MySqlCommand(BulkCmdStrUpdate(users.Length % BulkUnit, head, keyname));
+                var cmd = new MySqlCommand(BulkCmdStrUpdate(users.Length % BulkUnit, head, keyname));
                 for (int j = 0; j < users.Length % BulkUnit; j++)
                 {
                     var u = users[BulkUnit * i + j];
-                    cmdtmp.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
-                    cmdtmp.Parameters.Add("@v" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
+                    cmd.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
+                    cmd.Parameters.Add("@v" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
                 }
-                cmdList.Add(cmdtmp);
+                ret += await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
-            return ExecuteNonQuery(cmdList);
+            return ret;
         } 
 
         ///<summary>twidownrestでツイートを取得して欲しいやつ

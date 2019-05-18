@@ -14,7 +14,12 @@ namespace twimgproxy
             UseCookies = false,
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12
         });
-        public static readonly FileExtensionContentTypeProvider ExtMime = new FileExtensionContentTypeProvider();
+        static readonly FileExtensionContentTypeProvider ExtMime = new FileExtensionContentTypeProvider();
+        public static string GetMime(string FileName)
+        {
+            if (ExtMime.TryGetContentType(FileName, out string mime)) { return mime; }
+            else { return "application/octet-stream"; };
+        }
         public static readonly DBHandlerView DB = new DBHandlerView();
         public static readonly DBHandlerCrawl DBCrawl = new DBHandlerCrawl();
         public static readonly RemovedMedia Removed = new RemovedMedia();

@@ -20,9 +20,13 @@ namespace twidownparent
             var config = Config.Instance;
             var db = new DBHandler();
 
-            await db.NullifyPidAll();
+            await db.NullifyPidAll().ConfigureAwait(false);
             var child = new ChildProcessHandler();
+
+            //子プロセスが複数あったらいるかもしれないけど今は無用(´・ω・`)
             //LockerHandler.CheckAndStart();
+            //画像保存用フォルダはここで作る
+            MediaFolderPath.MkdirAll();
 
             bool GetMyTweet = false;    //後から追加されたアカウントはstreamer側で自分のツイートを取得させる
             Stopwatch LoopWatch = new Stopwatch();
@@ -50,7 +54,7 @@ namespace twidownparent
                 //ここでプロセス間通信を監視して返事がなかったら再起動する
                 do
                 {
-                    await child.DeleteDead();
+                    await child.DeleteDead().ConfigureAwait(false);
                     //LockerHandler.CheckAndStart();
                     await Task.Delay(10000).ConfigureAwait(false);
                 } while (LoopWatch.ElapsedMilliseconds < 60000);
