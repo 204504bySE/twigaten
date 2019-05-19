@@ -262,27 +262,36 @@ namespace twitenlib
             BulkCmd.Append(");");
             return BulkCmd.ToString();
         }
-        ///<summary>head + "ELT(FIELD(keyname,@0,@1…)@v0,@v1…) WHERE keyname IN(@0,@1…) という文字列を生成する
-        ///"UPDATE ... SET keyname =" など</summary>>
-        public static string BulkCmdStrUpdate(int count, string head, string keyname)
+        ///<summary>head + "fields[0] = ELT(FIELD(keyname,@0,@1…)@a0,@a1…), fields[1] = ELT(FIELD(keyname,@0,@1…)@b0,@b1…) WHERE keyname IN (@0,@1…) という文字列を生成する
+        ///"UPDATE ... SET" など</summary>>
+        public static string BulkCmdStrUpdate(int count, string head, string keyname, params string[] fields)
         {
             var BulkCmd = new StringBuilder(head);
-            BulkCmd.Append("ELT(FIELD(");
-            BulkCmd.Append(keyname);
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < fields.Length; i++)
             {
-                BulkCmd.Append(",@");
-                BulkCmd.Append(i.ToString());
+                if (0 < i) { BulkCmd.Append(", "); }
+                else { BulkCmd.Append(' '); }
+
+                BulkCmd.Append(fields[i]);
+                BulkCmd.Append(" = ELT(FIELD(");
+                BulkCmd.Append(keyname);
+                for (int j = 0; j < count; j++)
+                {
+                    BulkCmd.Append(",@");
+                    BulkCmd.Append(j.ToString());
+                }
+                BulkCmd.Append(')');
+                for (int j = 0; j < count; j++)
+                {
+                    BulkCmd.Append(",@");
+                    BulkCmd.Append(Convert.ToChar(0x61 + i));
+                    BulkCmd.Append(j.ToString());
+                }
+                BulkCmd.Append(')');
             }
-            BulkCmd.Append(")");
-            for (int i = 0; i < count; i++)
-            {
-                BulkCmd.Append(",@v");
-                BulkCmd.Append(i.ToString());
-            }
-            BulkCmd.Append(") WHERE ");
+            BulkCmd.Append(" WHERE ");
             BulkCmd.Append(keyname);
-            BulkCmd.Append(" IN");
+            BulkCmd.Append(" IN ");
             return BulkCmdStrIn(count, BulkCmd.ToString());
         }
 
@@ -403,11 +412,11 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return ret;
                         }
-                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (MySqlException e) { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
-            catch (Exception e) { Console.WriteLine(e); }
+            catch { }
             return -1;
         }
     }

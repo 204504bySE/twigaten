@@ -17,8 +17,8 @@ namespace twidownstream
     class UserStreamerManager
     //UserStreamerの追加, 保持, 削除をこれで行う
     {
-        readonly ConcurrentDictionary<long, UserStreamer> Streamers = new ConcurrentDictionary<long, UserStreamer>();   //longはUserID
-        readonly ConcurrentDictionary<long, byte> RevokeRetryUserID = new ConcurrentDictionary<long, byte>();
+        ///<summary>ここにUserStreamerを格納しておく KeyはUserID</summary>
+        readonly ConcurrentDictionary<long, UserStreamer> Streamers = new ConcurrentDictionary<long, UserStreamer>();
 
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
@@ -31,21 +31,17 @@ namespace twidownstream
             return ret;
         }
 
+        ///<summary>DBからtokenを適切に読み込んでUserStreamerを追加する</summary>
         public async Task AddAll()
         {
-            var token = await db.Selecttoken(DBHandler.SelectTokenMode.CurrentProcess).ConfigureAwait(false);
-            var tokenRest = await db.Selecttoken(DBHandler.SelectTokenMode.RestInStreamer).ConfigureAwait(false);
-            //Console.WriteLine("{0} App: {1} tokens loaded.", DateTime.Now, token.Length);
-            foreach (var t in tokenRest)
-            {            
-                if (Add(t) && Streamers.TryGetValue(t.Token.UserId, out UserStreamer s)) { s.NeedRestMyTweet = true; }
-            }
-            foreach (var t in token)
+            var setting = await db.SelectUserStreamerSetting(DBHandler.SelectTokenMode.CurrentProcess).ConfigureAwait(false);
+            foreach (var t in setting)
             {
                 Add(t);
             }
         }
 
+        ///<summary>UserStreamerを生成して追加する</summary>
         bool Add(UserStreamer.UserStreamerSetting setting)
         {
             if (setting.Token == null) { return false; }
@@ -64,16 +60,20 @@ namespace twidownstream
 
         public int Count { get { return Streamers.Count; } }
 
-        async Task RevokeRetry(UserStreamer Streamer)
+
+        ///<summary>再試行にも失敗したらtrue KeyはUserID</summary>
+        readonly ConcurrentDictionary<long, bool> RevokeRetryUserID = new ConcurrentDictionary<long, bool>();
+        ///<summary>Revoke直後→再試行マーク 2連続Revoked→Token削除</summary>
+        void MarkRevoked(UserStreamer Streamer)
         {
-            if (RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
+            if (RevokeRetryUserID.TryGetValue(Streamer.Token.UserId, out bool b))
             {
-                await db.DeleteToken(Streamer.Token.UserId).ConfigureAwait(false);
-                RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte z);
-                RemoveStreamer(Streamer);
+                if (!b) { RevokeRetryUserID[Streamer.Token.UserId] = true; }
             }
-            else { RevokeRetryUserID.TryAdd(Streamer.Token.UserId, 0); }    //次回もRevokeされてたら消えてもらう
+            else { RevokeRetryUserID[Streamer.Token.UserId] = false; }    //次回もRevokeされてたら消えてもらう
         }
+        ///<summary>ツイート取得等に成功したTokenをRevoke再試行対象から外す</summary>
+        bool UnmarkRevoked(UserStreamer streamer) { return RevokeRetryUserID.TryRemove(streamer.Token.UserId, out _); }
 
         static readonly UdpClient WatchDogUdp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.WatchDogPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
         static readonly IPEndPoint WatchDogEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.WatchDogPort);
@@ -103,11 +103,11 @@ namespace twidownstream
                             case UserStreamer.TokenStatus.Locked:
                                 Streamer.PostponeConnect(); return;
                             case UserStreamer.TokenStatus.Revoked:
-                                await RevokeRetry(Streamer).ConfigureAwait(false); return;
+                                MarkRevoked(Streamer); return;
                             case UserStreamer.TokenStatus.Failure:
                                 return;
                             case UserStreamer.TokenStatus.Success:
-                                RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out byte gomi);
+                                UnmarkRevoked(Streamer);
                                 NeedConnect = UserStreamer.NeedConnectResult.JustNeeded;    //無理矢理接続処理に突っ込む #ウンコード
                                 break;
                         }
@@ -127,19 +127,18 @@ namespace twidownstream
                             case UserStreamer.TokenStatus.Locked:
                                 Streamer.PostponeConnect(); break;
                             case UserStreamer.TokenStatus.Revoked:
-                                await RevokeRetry(Streamer).ConfigureAwait(false); break;
+                                MarkRevoked(Streamer); break;
                             default:
                                 UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
                                 if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Interlocked.Increment(ref ActiveStreamers); }
                                 //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
                                 if (Streamer.NeedRestMyTweet)
                                 {
-                                    Streamer.NeedRestMyTweet = false;
                                     await Streamer.RestMyTweet().ConfigureAwait(false);
                                     //User streamに繋がない場合はこっちでフォローを取得する必要がある
                                     if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend().ConfigureAwait(false); }
                                     await Streamer.RestBlock().ConfigureAwait(false);
-                                    await db.StoreRestDonetoken(Streamer.Token.UserId).ConfigureAwait(false);
+                                    Streamer.NeedRestMyTweet = false;
                                 }
                                 break;
                         }
@@ -149,7 +148,7 @@ namespace twidownstream
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
-                BoundedCapacity = config.crawl.ReconnectThreads << 1,    //これでもawaitする
+                BoundedCapacity = config.crawl.ReconnectThreads << 4,    //これでもawaitする
                 SingleProducerConstrained = true,
             });
 
@@ -186,22 +185,26 @@ namespace twidownstream
             return ActiveStreamers;
         }
 
-        ///<summary>各streamerで処理した最後のツイートIDをDBに保存する</summary>
-        public Task StoreLastReceivedTweetId()
+        ///<summary>crawlprocessの値を更新したりRevokeされたTokenを消したりする</summary>
+        public async Task UpdateStreamers()
         {
-            return db.StoreLastReceivedTweetId(Streamers
-                .Where(s => s.Value.LastReceivedTweetId != 0)
-                .Select(s => new KeyValuePair<long, long>(s.Key, s.Value.LastReceivedTweetId)));
-        }
-
-
-        ///<summary>Revokeされた後の処理
-        ///Streamerを停止してStreamersから外すだけ</summary>
-        void RemoveStreamer(UserStreamer Streamer)
-        {
-            Streamers.TryRemove(Streamer.Token.UserId, out UserStreamer z);
-            Console.WriteLine("{0}: Streamer removed", Streamer.Token.UserId);
-            Streamer.Dispose();
+            //先にRevokeされたTokenを削除する
+            foreach(var r in RevokeRetryUserID.Where(r => r.Value).OrderBy(r => r.Key).ToArray())
+            {
+                if (await db.DeleteToken(r.Key).ConfigureAwait(false) >= 0
+                    && RevokeRetryUserID.TryRemove(r.Key, out _))
+                {
+                    if (Streamers.TryRemove(r.Key, out var streamer))
+                    {
+                        streamer.Dispose();
+                        Console.WriteLine("{0}: Streamer removed", streamer.Token.UserId);
+                    }
+                    //Streamersからの削除に失敗したらちゃんと再試行する
+                    else { RevokeRetryUserID[r.Key] = true; }
+                }
+            }
+            //DBにいろいろ保存する
+            await db.StoreUserStreamerSetting(Streamers.Select(s => s.Value.Setting)).ConfigureAwait(false);
         }
 
         private void SetMaxConnections(int basecount, bool Force = false)

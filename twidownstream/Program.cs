@@ -46,16 +46,16 @@ namespace twidownstream
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                 GC.Collect();
                 sw.Stop();
+                //早く終わったときだけ休む(home_timelineの15/15min取得制限に準ずる)
                 long Elapsed = sw.ElapsedMilliseconds;
-                if (Elapsed < 60000)
-                {
-                    await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false);
-                    await manager.StoreLastReceivedTweetId().ConfigureAwait(false);
-                }
+                if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
+
+                sw.Restart();
+                await manager.UpdateStreamers().ConfigureAwait(false);
+
                 //↓再読み込みしても一部しか反映されないけどね
                 config.Reload();
                 await manager.AddAll().ConfigureAwait(false);
-                sw.Restart();
             }
         }
     }

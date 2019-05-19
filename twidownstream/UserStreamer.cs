@@ -20,8 +20,7 @@ namespace twidownstream
         ///<summary>trueにすると次のconnect時にRESTでuser_timelineを取得する</summary>
         public bool NeedRestMyTweet { get; set; }
         ///<summary>取得した最新のツイート…のID
-        ///取得したことがなければ0
-        ///Revokeされても0になる</summary>
+        ///取得したことがなければ0</summary>
         public long LastReceivedTweetId { get; private set; }
         IDisposable StreamSubscriber;
         readonly TweetTimeList TweetTime = new TweetTimeList();
@@ -40,16 +39,13 @@ namespace twidownstream
             UseCompressionOnStreaming = true
         };
 
-        public readonly struct UserStreamerSetting
+        ///<summary>コンストラクタに設定を渡す用</summary>
+        public struct UserStreamerSetting
         {
-            public Tokens Token { get; }
-            public long last_status_id { get; } 
-
-            public UserStreamerSetting(Tokens Token, long last_status_id)
-            {
-                this.Token = Token;
-                this.last_status_id = last_status_id;
-            }
+            public Tokens Token { get; set; }
+            public long user_id { get; set; }
+            public long last_status_id { get; set; } 
+            public bool rest_my_tweet { get; set; }
         }
 
         public UserStreamer(UserStreamerSetting setting)
@@ -59,10 +55,23 @@ namespace twidownstream
             LastReceivedTweetId = setting.last_status_id;
         }
 
+        ///<summary>update用</summary>
+        public UserStreamerSetting Setting
+        {
+            get
+            {
+                return new UserStreamerSetting()
+                {
+                    Token = Token,
+                    rest_my_tweet = NeedRestMyTweet,
+                    last_status_id = LastReceivedTweetId
+                };
+            }
+        }
+
         public void Dispose()
         {
             DisconnectStream();
-            LastReceivedTweetId = 0;
             GC.SuppressFinalize(this);
         }
 

@@ -14,11 +14,11 @@ namespace twidownparent
     {
         public DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol) { }
 
-        public Task<long> CountToken()
+        public async Task<long> CountToken()
         {
             using(var cmd = new MySqlCommand("SELECT COUNT(user_id) FROM token;"))
             {
-                return SelectCount(cmd, IsolationLevel.ReadUncommitted);
+                return await SelectCount(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
         }
 
@@ -47,12 +47,11 @@ WHERE pid IS NULL;"))
                 var cmd = new MySqlCommand(@"INSERT
 INTO crawlprocess (user_id, pid, rest_my_tweet)
 VALUES (@user_id, @pid, @rest_my_tweet)
-ON DUPLICATE KEY UPDATE pid=@pid, rest_my_tweet=@rest_my_tweet;");
+ON DUPLICATE KEY UPDATE pid=@pid;");
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = t.user_id;
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = t.pid;
-                cmd.Parameters.Add("@rest_my_tweet", MySqlDbType.Byte).Value = RestMyTweet ? 1 : 0;
+                cmd.Parameters.Add("@rest_my_tweet", MySqlDbType.Bool).Value = RestMyTweet;
                 cmdList.Add(cmd);
-                //Console.WriteLine("{0} Assign: {1} to {2}", DateTime.Now, user_id, pid);
             }
             return await ExecuteNonQuery(cmdList).ConfigureAwait(false) > 0;
         }

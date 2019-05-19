@@ -44,7 +44,7 @@ create table user(
 	profile_image_url text character set ascii,
 	updated_at bigint,
 	is_default_profile_image bool not null default false,
-	location tinytext,
+	location text,
 	description text
 )engine=InnoDB row_format=COMPRESSED;
 	create index screen_name_index on user(screen_name);

@@ -25,11 +25,11 @@ namespace twidownstream
 
         public async Task<int> Proceed()
         {
-            var tokens = (await db.Selecttoken(DBHandler.SelectTokenMode.All).ConfigureAwait(false)).ToArray();
+            var tokens = (await db.SelectUserStreamerSetting(DBHandler.SelectTokenMode.All).ConfigureAwait(false)).ToArray();
             if (tokens.Length > 0) { Console.WriteLine("App: {0} Accounts to REST", tokens.Length); }
             var RestProcess = new ActionBlock<Tokens>(async (t) => 
             {
-                var s = new UserStreamer(new UserStreamer.UserStreamerSetting(t, 0));
+                var s = new UserStreamer(new UserStreamer.UserStreamerSetting() { Token = t });
                 await s.RestFriend().ConfigureAwait(false);
                 await s.RestBlock().ConfigureAwait(false);
                 await s.RestMyTweet().ConfigureAwait(false);
