@@ -68,12 +68,33 @@ namespace twidownstream
         {
             if (RevokeRetryUserID.TryGetValue(Streamer.Token.UserId, out bool b))
             {
+                //再試行にも失敗した→削除対象にする
                 if (!b) { RevokeRetryUserID[Streamer.Token.UserId] = true; }
             }
-            else { RevokeRetryUserID[Streamer.Token.UserId] = false; }    //次回もRevokeされてたら消えてもらう
+            //初めてRevokedにされた→再試行する
+            else { RevokeRetryUserID[Streamer.Token.UserId] = false; }
         }
         ///<summary>ツイート取得等に成功したTokenをRevoke再試行対象から外す</summary>
         bool UnmarkRevoked(UserStreamer streamer) { return RevokeRetryUserID.TryRemove(streamer.Token.UserId, out _); }
+        ///<summary>RevokeされたTokenを全部StreamersとDBから消す</summary>
+        async Task RemoveRevokedTokens()
+        {
+            foreach (var r in RevokeRetryUserID.Where(r => r.Value).OrderBy(r => r.Key).ToArray())
+            {
+                if (await db.DeleteToken(r.Key).ConfigureAwait(false) >= 0
+                    && RevokeRetryUserID.TryRemove(r.Key, out _))
+                {
+                    if (Streamers.TryRemove(r.Key, out var streamer))
+                    {
+                        streamer.Dispose();
+                        Console.WriteLine("{0}: Streamer removed", streamer.Token.UserId);
+                    }
+                    //Streamersからの削除に失敗したらちゃんと再試行する
+                    else { RevokeRetryUserID[r.Key] = true; }
+                }
+            }
+        }
+
 
         static readonly UdpClient WatchDogUdp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.WatchDogPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
         static readonly IPEndPoint WatchDogEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.WatchDogPort);
@@ -182,30 +203,15 @@ namespace twidownstream
             ConnectBlock.Complete();
             await ConnectBlock.Completion.ConfigureAwait(false);
             await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
+
+            //Revoke後再試行にも失敗したTokenはここで消す
+            await RemoveRevokedTokens().ConfigureAwait(false);
+
             return ActiveStreamers;
         }
 
-        ///<summary>crawlprocessの値を更新したりRevokeされたTokenを消したりする</summary>
-        public async Task UpdateStreamers()
-        {
-            //先にRevokeされたTokenを削除する
-            foreach(var r in RevokeRetryUserID.Where(r => r.Value).OrderBy(r => r.Key).ToArray())
-            {
-                if (await db.DeleteToken(r.Key).ConfigureAwait(false) >= 0
-                    && RevokeRetryUserID.TryRemove(r.Key, out _))
-                {
-                    if (Streamers.TryRemove(r.Key, out var streamer))
-                    {
-                        streamer.Dispose();
-                        Console.WriteLine("{0}: Streamer removed", streamer.Token.UserId);
-                    }
-                    //Streamersからの削除に失敗したらちゃんと再試行する
-                    else { RevokeRetryUserID[r.Key] = true; }
-                }
-            }
-            //DBにいろいろ保存する
-            await db.StoreUserStreamerSetting(Streamers.Select(s => s.Value.Setting)).ConfigureAwait(false);
-        }
+        ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>
+        public async Task StoreCrawlStatus() { await db.StoreUserStreamerSetting(Streamers.Select(s => s.Value.Setting)).ConfigureAwait(false); }
 
         private void SetMaxConnections(int basecount, bool Force = false)
         {

@@ -48,11 +48,14 @@ namespace twidownstream
                 sw.Stop();
                 //早く終わったときだけ休む(home_timelineの15/15min取得制限に準ずる)
                 long Elapsed = sw.ElapsedMilliseconds;
-                if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
-
-                sw.Restart();
-                await manager.UpdateStreamers().ConfigureAwait(false);
-
+                if (Elapsed < 60000)
+                {
+                    await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false);
+                    sw.Restart();
+                    //ついでにその時だけ最後に取得したツイート等をDBに保存する
+                    await manager.StoreCrawlStatus().ConfigureAwait(false);
+                }
+                else { sw.Restart(); }
                 //↓再読み込みしても一部しか反映されないけどね
                 config.Reload();
                 await manager.AddAll().ConfigureAwait(false);
