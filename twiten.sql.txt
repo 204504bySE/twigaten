@@ -69,6 +69,12 @@ create table tweet(
 	foreign key (retweet_id) references tweet(tweet_id) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;
 
+create table tweet_text(
+	tweet_id bigint not null,
+	text text not null,
+	primary key (tweet_id) comment 'cfname=tweet_text'
+)engine=RocksDB;
+
 create table media(
 	media_id bigint primary key,
 	source_tweet_id bigint,

@@ -226,7 +226,7 @@ ORDER BY tweet_id DESC;"))
                 DataTable Table = GetTweetBlock.Receive();
                 if (Table.Rows.Count > 0)
                 {
-                    using (MySqlCommand delcmd = new MySqlCommand(BulkCmdStrIn(Table.Rows.Count, head)))
+                    using (var delcmd = new MySqlCommand(BulkCmdStrIn(Table.Rows.Count, head)))
                     {
                         for (int n = 0; n < Table.Rows.Count; n++)
                         {

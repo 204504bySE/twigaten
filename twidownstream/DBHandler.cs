@@ -283,32 +283,37 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_def
         public async Task<int> StoreTweet(Status x, bool update)
         {
             if (x.Entities.Media == null) { return 0; }    //画像なしツイートは捨てる
-            using (var cmd = new MySqlCommand())
+            var cmd = new MySqlCommand();
+            
+            if (update) //同じツイートがあったらふぁぼRT数を更新する
             {
-                if (update) //同じツイートがあったらふぁぼRT数を更新する
-                {
-                    cmd.CommandText = @"INSERT
-INTO tweet (tweet_id, user_id, created_at, text, retweet_id, retweet_count, favorite_count)
-VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @favorite_count)
+                cmd.CommandText = @"INSERT
+INTO tweet (tweet_id, user_id, created_at, retweet_id, retweet_count, favorite_count)
+VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_count)
 ON DUPLICATE KEY UPDATE retweet_count=@retweet_count, favorite_count=@favorite_count;";
-                }
-                else
-                {
-                    cmd.CommandText = @"INSERT IGNORE
-INTO tweet (tweet_id, user_id, created_at, text, retweet_id, retweet_count, favorite_count)
-VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @favorite_count);";
-                }
-
-                cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = x.Id;
-                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = x.User.Id;
-                cmd.Parameters.Add("@created_at", MySqlDbType.Int64).Value = x.CreatedAt.ToUnixTimeSeconds();
-                cmd.Parameters.Add("@text", MySqlDbType.Text).Value = x.RetweetedStatus == null ? ExpandUrls(x) : null;
-                cmd.Parameters.Add("@retweet_id", MySqlDbType.Int64).Value = x.RetweetedStatus == null ? null as long? : x.RetweetedStatus.Id;
-                cmd.Parameters.Add("@retweet_count", MySqlDbType.Int32).Value = x.RetweetCount;
-                cmd.Parameters.Add("@favorite_count", MySqlDbType.Int32).Value = x.FavoriteCount;
-
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
+            else
+            {
+                cmd.CommandText = @"INSERT IGNORE
+INTO tweet (tweet_id, user_id, created_at, retweet_id, retweet_count, favorite_count)
+VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_count);";
+            }
+
+            cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = x.Id;
+            cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = x.User.Id;
+            cmd.Parameters.Add("@created_at", MySqlDbType.Int64).Value = x.CreatedAt.ToUnixTimeSeconds();
+            cmd.Parameters.Add("@retweet_id", MySqlDbType.Int64).Value = x.RetweetedStatus == null ? null as long? : x.RetweetedStatus.Id;
+            cmd.Parameters.Add("@retweet_count", MySqlDbType.Int32).Value = x.RetweetCount;
+            cmd.Parameters.Add("@favorite_count", MySqlDbType.Int32).Value = x.FavoriteCount;
+
+            if (x.RetweetedStatus == null)
+            {
+                var cmdText = new MySqlCommand(@"INSERT IGNORE INTO tweet_text (tweet_id, text) VALUES (@tweet_id, @text);");
+                cmdText.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = x.Id;
+                cmdText.Parameters.Add("@text", MySqlDbType.Text).Value = ExpandUrls(x);
+                return await ExecuteNonQuery(new[] { cmd, cmdText }).ConfigureAwait(false);
+            }
+            else { return await ExecuteNonQuery(cmd).ConfigureAwait(false); }
         }
         ///<summary> 消されたツイートをDBから消す 戻り値は削除に失敗したツイート Counterもここで処理する</summary>
         public async Task<List<long>> StoreDelete(long[] DeleteID)
@@ -316,7 +321,7 @@ VALUES(@tweet_id, @user_id, @created_at, @text, @retweet_id, @retweet_count, @fa
             List<long> ret = new List<long>();
             if (DeleteID == null || DeleteID.Length == 0) { return ret; }
             const int BulkUnit = 100;
-            const string head = @"DELETE FROM tweet WHERE tweet_id IN";
+            const string head = @"DELETE FROM tweet, tweet_text WHERE tweet_id IN";
             int i = 0, j;
             Counter.TweetToDelete.Add(DeleteID.Length);
             Array.Sort(DeleteID);

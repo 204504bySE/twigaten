@@ -254,6 +254,8 @@ namespace twidownstream
                                     {
                                         byte[] mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                                         long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
+                                        //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
+                                        //つまりdownloaded_atは画像の保存に失敗しても値が入る
                                         if (dcthash != null && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
                                         {
                                             using (var file = File.Create(LocalPaththumb))

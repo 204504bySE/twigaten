@@ -399,7 +399,7 @@ namespace twitenlib
                 using (var conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
-                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false))
+                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel.ReadCommitted).ConfigureAwait(false))
                     {
                         try
                         {
@@ -412,7 +412,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return ret;
                         }
-                        catch (MySqlException e) { await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (MySqlException) { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
@@ -481,6 +481,7 @@ namespace twitenlib
         }
     }
 
+    ///<summary>Twittter Snowflakeを計算する</summary>
     static class SnowFlake
     {
         public const long msinSnowFlake = 0x400000L;   //1msはこれだ
