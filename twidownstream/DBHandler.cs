@@ -494,25 +494,31 @@ WHERE media_id = @media_id;"))
 
         public async Task<bool> StoreMedia(MediaEntity m, Status x, long hash)
         {
-            MySqlCommand[] cmd = new MySqlCommand[] { new MySqlCommand(@"INSERT IGNORE 
+            var cmd = new MySqlCommand(@"INSERT IGNORE 
 INTO media (media_id, source_tweet_id, type, media_url, dcthash) 
 VALUES(@media_id, @source_tweet_id, @type, @media_url, @dcthash) 
 ON DUPLICATE KEY UPDATE
 source_tweet_id = if (EXISTS (SELECT * FROM tweet WHERE tweet_id = @source_tweet_id), @source_tweet_id, source_tweet_id),
-dcthash = @dcthash;"),
-            new MySqlCommand(@"INSERT IGNORE
+dcthash = @dcthash;");
+            cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
+            cmd.Parameters.Add("@source_tweet_id", MySqlDbType.Int64).Value = m.SourceStatusId ?? x.Id;
+            cmd.Parameters.Add("@type", MySqlDbType.VarChar).Value = m.Type;
+            cmd.Parameters.Add("@media_url", MySqlDbType.Text).Value = m.MediaUrlHttps ?? m.MediaUrl;
+            cmd.Parameters.Add("@dcthash", MySqlDbType.Int64).Value = hash;
+
+            var cmdText = new MySqlCommand(@"INSERT IGNORE
+INTO media_text (media_id, type, media_url)
+VALUES (@media_id, @type, @media_url);");
+            cmdText.Parameters.Add("@type", MySqlDbType.VarChar).Value = m.Type;
+            cmdText.Parameters.Add("@media_url", MySqlDbType.Text).Value = m.MediaUrlHttps ?? m.MediaUrl;
+
+            var cmdDownload = new MySqlCommand(@"INSERT IGNORE
 INTO media_downloaded_at
-VALUES(@media_id, @downloaded_at)") };
-            cmd[0].Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
-            cmd[0].Parameters.Add("@source_tweet_id", MySqlDbType.Int64).Value = m.SourceStatusId ?? x.Id;
-            cmd[0].Parameters.Add("@type", MySqlDbType.VarChar).Value = m.Type;
-            cmd[0].Parameters.Add("@media_url", MySqlDbType.Text).Value = m.MediaUrlHttps ?? m.MediaUrl;
-            cmd[0].Parameters.Add("@dcthash", MySqlDbType.Int64).Value = hash;
+VALUES(@media_id, @downloaded_at)");
+            cmdDownload.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
+            cmdDownload.Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            cmd[1].Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
-            cmd[1].Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-            return await ExecuteNonQuery(cmd).ConfigureAwait(false) >= 0 | await Storetweet_media(x.Id, m.Id).ConfigureAwait(false) > 0;
+            return await ExecuteNonQuery(new [] { cmd, cmdText, cmdDownload }).ConfigureAwait(false) >= 0 | await Storetweet_media(x.Id, m.Id).ConfigureAwait(false) > 0;
         }
 
         public async Task<int> Storetweet_media(long tweet_id, long media_id)

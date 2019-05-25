@@ -70,7 +70,7 @@ create table tweet(
 )engine=InnoDB row_format=COMPRESSED;
 
 create table tweet_text(
-	tweet_id bigint not null,
+	tweet_id bigint,
 	text text not null,
 	primary key (tweet_id) comment 'cfname=tweet_text'
 )engine=RocksDB;
@@ -84,6 +84,13 @@ create table media(
 	foreign key (source_tweet_id) references tweet(tweet_id) on delete set null
 )engine=InnoDB row_format=COMPRESSED;
 	create index dcthash_index on media(dcthash);
+
+create table media_text(
+	media_id bigint,
+	type varchar(15) character set ascii not null default 'photo',
+	media_url text character set ascii not null,
+	primary key (media_id) comment 'cfname=media_text'
+)engine=RocksDB;
 
 create table media_downloaded_at(
 media_id bigint primary key,
@@ -121,7 +128,9 @@ grant select, insert, delete on twiten.block to crawl;
 grant select, insert, update on twiten.user to crawl;
 grant select, insert, update on twiten.user_updated_at to crawl;
 grant select, insert, update, delete on twiten.tweet to crawl;
+grant select, insert, delete on twiten.tweet_text to crawl;
 grant select, insert, update on twiten.media to crawl;
+grant select, insert on twiten.media_text to crawl;
 grant select, insert, update on twiten.media_downloaded_at to crawl;
 grant select, insert, update on twiten.tweet_media to crawl;
 
@@ -131,7 +140,9 @@ grant select, delete on twiten.viewlogin to view;
 grant select on twiten.friend to view;
 grant select on twiten.block to view;
 grant select on twiten.tweet to view;
+grant select on twiten.tweet_text to view;
 grant select on twiten.media to view;
+grant select on twiten.media_text to crawl;
 grant select on twiten.media_downloaded_at to view;
 grant select on twiten.tweet_media to view;
 grant select on twiten.dcthashpairslim to view;
@@ -141,10 +152,12 @@ grant select on twiten.media_downloaded_at to hash;
 grant insert on twiten.dcthashpairslim to hash;
 
 grant select, delete on tweet to tool;
+grant select, delete on tweet_text to tool;
 grant select, delete on user to tool;
 grant select, delete on user_updated_at to tool;
 grant select, delete on twiten.media_downloaded_at to tool;
 grant select, insert, delete on tweet_media to tool;
 grant select, delete on media to tool;
+grant select, delete on media_text to tool;
 grant select, delete on dcthashpairslim to tool;
 grant select on token to tool;

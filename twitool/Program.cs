@@ -39,8 +39,8 @@ namespace twitool
         {
             int RemovedCount = 0;
             const int BulkUnit = 1000;
-            const string head = @"DELETE FROM media WHERE media_id IN";
-            string BulkDeleteCmd = BulkCmdStrIn(BulkUnit, head);
+            const string head = @"DELETE FROM media, media_text WHERE media_id IN";
+            string BulkDeleteCmdStr = BulkCmdStrIn(BulkUnit, head);
             try
             {
                 var Table = new List<(long media_id, string media_url)>(BulkUnit);
@@ -50,6 +50,7 @@ namespace twitool
                     using (MySqlCommand cmd = new MySqlCommand(@"SELECT media_id, media_url
 FROM media
 LEFT JOIN media_downloaded_at USING (media_id)
+JOIN media_text USING (media_id)
 WHERE source_tweet_id IS NULL
 AND (downloaded_at IS NULL OR downloaded_at < @downloaded_at)
 ORDER BY media_id
@@ -68,9 +69,9 @@ LIMIT @limit;"))
 
                     if (Table.Count < BulkUnit)
                     {
-                        BulkDeleteCmd = BulkCmdStrIn(Table.Count, head);
+                        BulkDeleteCmdStr = BulkCmdStrIn(Table.Count, head);
                     }
-                    using (MySqlCommand delcmd = new MySqlCommand(BulkDeleteCmd))
+                    using (var delcmd = new MySqlCommand(BulkDeleteCmdStr))
                     {
                         for (int n = 0; n < Table.Count; n++)
                         {
@@ -99,13 +100,13 @@ LIMIT @limit;"))
                     using (MySqlCommand cmd = new MySqlCommand(@"(SELECT
 media_id, media_url
 FROM media_downloaded_at
-NATURAL JOIN media
+JOIN media USING (media_id)
 ORDER BY downloaded_at
 LIMIT @limit)
 ORDER BY media_id;"))
                     {
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
-                        if(!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
+                        if (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
                     }
                     if (Table.Count < BulkUnit) { break; }
 
@@ -114,19 +115,14 @@ ORDER BY media_id;"))
                         File.Delete(MediaFolderPath.ThumbPath(row.media_id, row.media_url));
                     }
 
-                    MySqlCommand[] Cmd = new MySqlCommand[] {
-                        new MySqlCommand(BulkCmdStrIn(Table.Count, @"DELETE FROM media_downloaded_at WHERE media_id IN")),
-                        new MySqlCommand(BulkCmdStrIn(Table.Count, @"DELETE FROM media WHERE source_tweet_id IS NULL AND media_id IN")) };
-                    for (int n = 0; n < Table.Count; n++)
+                    using (var Cmd = new MySqlCommand(BulkCmdStrIn(Table.Count, @"DELETE FROM media_downloaded_at WHERE media_id IN")))
                     {
-                        string atNum = '@' + n.ToString();
-                        for (int i = 0; i < Cmd.Length; i++)
+                        for (int i = 0; i < Table.Count; i++)
                         {
-                            Cmd[i].Parameters.Add(atNum, DbType.Int64).Value = Table[n].media_id;
+                            Cmd.Parameters.Add('@' + i.ToString(), DbType.Int64).Value = Table[i].media_id;
                         }
+                        await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                     }
-                    await ExecuteNonQuery(Cmd);
-                    foreach(MySqlCommand c in Cmd) { c.Dispose(); }
                     RemovedCountFile += Table.Count;
                     //Console.WriteLine("{0} Media removed", RemovedCountFile);
                     //Console.WriteLine("{0} / {1} MB Free.", drive.AvailableFreeSpace >> 20, drive.TotalSize >> 20);
@@ -151,7 +147,7 @@ ORDER BY media_id;"))
                 var Table = new List<(long user_id, string profile_image_url, bool is_default_profile_image)>(BulkUnit);
                 while (drive.TotalFreeSpace < drive.TotalSize / 16)
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(@"SELECT
+                    using (var cmd = new MySqlCommand(@"SELECT
 user_id, profile_image_url, is_default_profile_image
 FROM user
 JOIN user_updated_at USING (user_id)
@@ -170,7 +166,7 @@ ORDER BY updated_at LIMIT @limit;"))
                             File.Delete(MediaFolderPath.ProfileImagePath(row.user_id, row.is_default_profile_image, row.profile_image_url));
                         }
                     }
-                    using (MySqlCommand upcmd = new MySqlCommand(BulkUpdateCmd))
+                    using (var upcmd = new MySqlCommand(BulkUpdateCmd))
                     {
                         for (int n = 0; n < Table.Count; n++)
                         {
@@ -188,8 +184,7 @@ ORDER BY updated_at LIMIT @limit;"))
         }
 
 
-
-
+/*
         //画像が削除されて意味がなくなったツイートを消す
         //URL転載したやつの転載元ツイートが消された場合
         public int RemoveOrphanTweet()
@@ -240,7 +235,6 @@ ORDER BY tweet_id DESC;"))
             }
         }
 
-        /*
         //ツイートが削除されて参照されなくなったユーザーを消す
         public async Task<int> RemoveOrphanUser()
         {
