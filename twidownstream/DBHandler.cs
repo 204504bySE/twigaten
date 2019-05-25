@@ -502,8 +502,9 @@ source_tweet_id = if (EXISTS (SELECT * FROM tweet WHERE tweet_id = @source_tweet
 dcthash = @dcthash;");
             cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmd.Parameters.Add("@source_tweet_id", MySqlDbType.Int64).Value = m.SourceStatusId ?? x.Id;
-            cmd.Parameters.Add("@type", MySqlDbType.VarChar).Value = m.Type;
-            cmd.Parameters.Add("@media_url", MySqlDbType.Text).Value = m.MediaUrlHttps ?? m.MediaUrl;
+            //こいつらをDROPするまで空白を入れておく
+            cmd.Parameters.Add("@type", MySqlDbType.VarChar).Value = "";
+            cmd.Parameters.Add("@media_url", MySqlDbType.Text).Value = "";
             cmd.Parameters.Add("@dcthash", MySqlDbType.Int64).Value = hash;
 
             var cmdText = new MySqlCommand(@"INSERT IGNORE
