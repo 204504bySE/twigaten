@@ -142,7 +142,7 @@ grant select on twiten.block to view;
 grant select on twiten.tweet to view;
 grant select on twiten.tweet_text to view;
 grant select on twiten.media to view;
-grant select on twiten.media_text to crawl;
+grant select on twiten.media_text to view;
 grant select on twiten.media_downloaded_at to view;
 grant select on twiten.tweet_media to view;
 grant select on twiten.dcthashpairslim to view;

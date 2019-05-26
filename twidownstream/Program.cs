@@ -27,7 +27,6 @@ namespace twidownstream
                 //ThreadPool.SetMaxThreads(MaxThreads, CompletionThreads);
                 //Console.WriteLine("App: ThreadPool: {0}, {1}", MinThreads, CompletionThreads);
             }
-            await Task.Delay(10000).ConfigureAwait(false);
 
             if (args.Length >= 1 && args[0] == "/REST")
             {
@@ -37,6 +36,7 @@ namespace twidownstream
                 return;
             }
 
+            await Task.Delay(10000).ConfigureAwait(false);
             var manager = await UserStreamerManager.Create().ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
             while (true)

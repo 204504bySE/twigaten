@@ -44,6 +44,7 @@ namespace twidownparent
                     {
                         int newpid = child.Start();
                         if (newpid < 0) { await Task.Delay(60000).ConfigureAwait(false); continue; }    //雑すぎるエラー処理
+                        Console.WriteLine("New PID: {0}", newpid);
                     }
                     //あとはボコボコ突っ込む
                     await child.AssignToken(users, GetMyTweet).ConfigureAwait(false);

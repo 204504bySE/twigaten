@@ -38,7 +38,7 @@ WHERE media_id = @media_id;"))
                     source_tweet_id = r.GetInt64(0),
                     screen_name = r.GetString(2),
                     media_url = r.GetString(1)
-                }, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                }).ConfigureAwait(false);
             }
             //つまりDBのアクセスに失敗したりしてもnull
             return ret;
@@ -134,9 +134,11 @@ WHERE user_id = @user_id;"))
         public async Task<int> RemoveDeletedTweet(long tweet_id)
         {
             using (var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;"))
+            using (var cmd2 = new MySqlCommand(@"DELETE FROM tweet_text WHERE tweet_id = @tweet_id;"))
             {
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
-                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
+                return await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false) >> 1;
             }
         }
     }

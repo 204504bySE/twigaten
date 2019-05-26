@@ -321,7 +321,8 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
             List<long> ret = new List<long>();
             if (DeleteID == null || DeleteID.Length == 0) { return ret; }
             const int BulkUnit = 100;
-            const string head = @"DELETE FROM tweet, tweet_text WHERE tweet_id IN";
+            const string head = @"DELETE FROM tweet WHERE tweet_id IN";
+            const string head2 = @"DELETE FROM tweet_text WHERE tweet_id IN";
             int i = 0, j;
             Counter.TweetToDelete.Add(DeleteID.Length);
             Array.Sort(DeleteID);
@@ -329,18 +330,21 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
             if (DeleteID.Length >= BulkUnit)
             {
                 using (var cmd = new MySqlCommand(BulkCmdStrIn(BulkUnit, head)))
+                using (var cmd2 = new MySqlCommand(BulkCmdStrIn(BulkUnit, head2)))
                 {
                     for (j = 0; j < BulkUnit; j++)
                     {
                         cmd.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64);
+                        cmd2.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64);
                     }                    
                     for (i = 0; i < DeleteID.Length / BulkUnit; i++)
                     {
                         for (j = 0; j < BulkUnit; j++)
                         {
                             cmd.Parameters["@" + j.ToString()].Value = DeleteID[BulkUnit * i + j];
+                            cmd2.Parameters["@" + j.ToString()].Value = DeleteID[BulkUnit * i + j];
                         }
-                        int DeletedCount = await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                        int DeletedCount = await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false);
                         if (DeletedCount >= 0) { Counter.TweetDeleted.Add(DeletedCount); }
                         else { foreach (long f in DeleteID.Skip(BulkUnit * i).Take(BulkUnit)) { ret.Add(f); } }
                         
@@ -350,12 +354,14 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
             if (DeleteID.Length % BulkUnit != 0)
             {
                 using (var cmd = new MySqlCommand(BulkCmdStrIn(DeleteID.Length % BulkUnit, head)))
+                using (var cmd2 = new MySqlCommand(BulkCmdStrIn(DeleteID.Length % BulkUnit, head2)))
                 {
                     for (j = 0; j < DeleteID.Length % BulkUnit; j++)
                     {
                         cmd.Parameters.Add('@' + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
+                        cmd2.Parameters.Add('@' + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
                     }
-                    int DeletedCount = await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                    int DeletedCount = await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false);
                     if (DeletedCount >= 0) { Counter.TweetDeleted.Add(DeletedCount); }
                     else { foreach (long f in DeleteID.Skip(BulkUnit * i)) { ret.Add(f); } }
                 }
@@ -495,21 +501,19 @@ WHERE media_id = @media_id;"))
         public async Task<bool> StoreMedia(MediaEntity m, Status x, long hash)
         {
             var cmd = new MySqlCommand(@"INSERT IGNORE 
-INTO media (media_id, source_tweet_id, type, media_url, dcthash) 
-VALUES(@media_id, @source_tweet_id, @type, @media_url, @dcthash) 
+INTO media (media_id, source_tweet_id, dcthash) 
+VALUES(@media_id, @source_tweet_id, @dcthash) 
 ON DUPLICATE KEY UPDATE
 source_tweet_id = if (EXISTS (SELECT * FROM tweet WHERE tweet_id = @source_tweet_id), @source_tweet_id, source_tweet_id),
 dcthash = @dcthash;");
             cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmd.Parameters.Add("@source_tweet_id", MySqlDbType.Int64).Value = m.SourceStatusId ?? x.Id;
-            //こいつらをDROPするまで空白を入れておく
-            cmd.Parameters.Add("@type", MySqlDbType.VarChar).Value = "";
-            cmd.Parameters.Add("@media_url", MySqlDbType.Text).Value = "";
             cmd.Parameters.Add("@dcthash", MySqlDbType.Int64).Value = hash;
 
             var cmdText = new MySqlCommand(@"INSERT IGNORE
 INTO media_text (media_id, type, media_url)
 VALUES (@media_id, @type, @media_url);");
+            cmdText.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmdText.Parameters.Add("@type", MySqlDbType.VarChar).Value = m.Type;
             cmdText.Parameters.Add("@media_url", MySqlDbType.Text).Value = m.MediaUrlHttps ?? m.MediaUrl;
 

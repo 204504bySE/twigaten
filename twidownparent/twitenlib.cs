@@ -317,7 +317,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return ret;
                         }
-                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (MySqlException) { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
@@ -346,7 +346,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return true;
                         }
-                        catch { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (MySqlException) { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
@@ -373,7 +373,7 @@ namespace twitenlib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return ret;
                         }
-                        catch { await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (MySqlException) { await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }
