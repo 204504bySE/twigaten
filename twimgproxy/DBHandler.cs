@@ -24,7 +24,7 @@ namespace twimgproxy
         public async Task<MediaInfo?> SelectThumbUrl(long media_id)
         {
             MediaInfo? ret = null;
-            using (var cmd = new MySqlCommand(@"SELECT m.source_tweet_id ,COALESCE(mt.media_url, m.media_url), u.screen_name
+            using (var cmd = new MySqlCommand(@"SELECT m.source_tweet_id ,mt.media_url, u.screen_name
 FROM media m
 LEFT JOIN media_text mt USING (media_id)
 JOIN tweet t ON m.source_tweet_id = t.tweet_id
