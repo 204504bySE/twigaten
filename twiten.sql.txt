@@ -61,7 +61,6 @@ create table tweet(
 	tweet_id bigint primary key,
 	user_id bigint not null,
 	created_at bigint not null,
-	text text,
 	retweet_id bigint,
 	retweet_count int not null,
 	favorite_count int not null,
@@ -78,8 +77,6 @@ create table tweet_text(
 create table media(
 	media_id bigint primary key,
 	source_tweet_id bigint,
-	type varchar(15) character set ascii not null default 'photo',
-	media_url text character set ascii not null,
 	dcthash bigint not null,
 	foreign key (source_tweet_id) references tweet(tweet_id) on delete set null
 )engine=InnoDB row_format=COMPRESSED;
