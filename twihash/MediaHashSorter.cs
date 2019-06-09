@@ -114,7 +114,7 @@ namespace twihash
                 //要素数,実際の要素,…,要素数,…,0 という配列を読み込んでいく
                 for (; (CurrentBlockLength = (int)Block[BlockIndex]) > 0; BlockIndex += CurrentBlockLength + 1)
                 {
-                    //「実際の要素」1個分を取り出す
+                    //「実際の要素」1セット分を取り出す
                     var SortedSpan = Block.AsSpan(BlockIndex + 1, CurrentBlockLength);
 
                     //新しい値を含まないやつは省略

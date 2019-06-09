@@ -8,6 +8,7 @@ using System.IO;
 using twitenlib;
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Numerics;
 
 namespace twihash
 {
@@ -60,9 +61,9 @@ namespace twihash
             //↓ベンチマーク用に古いファイルを使う時用(数字はファイル数に合わせて変える)
             //return 57;
             int FileCount = 0;
-            using (var reader = new BufferedLongReader(AllHashFilePath))
+            using (var reader = new UnbufferedLongReader(AllHashFilePath))
             {
-                int InitialSortUnit = (int)(config.hash.InitialSortFileSize / sizeof(long));
+                int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long) / Vector<long>.Count * Vector<long>.Count;
 
                 var SortComp = new BlockSortComparer(SortMask);
 
@@ -76,9 +77,9 @@ namespace twihash
                     //Array.Sort(t.ToSort, SortComp);
 
                     //書き込みは並列で行う
-                    using (var writer = new BufferedLongWriter(t.WriteFilePath))
+                    using (var writer = new UnbufferedLongWriter(t.WriteFilePath))
                     {
-                        await writer.Write(t.ToSort, t.Length).ConfigureAwait(false);
+                        writer.WriteDestructive(t.ToSort, t.Length);
                     }
                     LongPool.Enqueue(t.ToSort);
                 }, new ExecutionDataflowBlockOptions()
@@ -91,7 +92,7 @@ namespace twihash
                 for(; reader.Readable; FileCount++)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
-                    int ToSortLength = await reader.Read(ToSort).ConfigureAwait(false);
+                    int ToSortLength = reader.Read(ToSort);
                     await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength)).ConfigureAwait(false);
                 }
                 FirstSortBlock.Complete();
@@ -108,7 +109,7 @@ namespace twihash
             {
                 if (SortRange.Begin >= SortRange.End) { return null; }
                 //十分に並列化されるか要素数が少なくなったらLINQに投げる
-                if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length >> ConcurrencyLog))
+                if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length / (config.hash.InitialSortConcurrency + 1)))
                 {
                     Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
                     return null;
@@ -168,9 +169,5 @@ namespace twihash
             BufBlock.Complete();
             await QuickSortBlock.Completion.ConfigureAwait(false);
         }
-        ///<summary>Log2(CPUスレッド数) 小数切り上げ</summary>
-        static readonly int ConcurrencyLog = (int)Math.Ceiling(Math.Log(Environment.ProcessorCount, 2));
-        ///<summary>ソートの本体(それだけ)</summary>
-
     }
 }

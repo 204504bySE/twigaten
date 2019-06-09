@@ -59,7 +59,7 @@ AND (md.downloaded_at IS NULL OR md.downloaded_at < @downloaded_at)
 ORDER BY m.media_id
 LIMIT @limit;"))
                     {
-                        cmd.Parameters.Add("@downloaded_at", DbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;
+                        cmd.Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
                         if (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
                     }

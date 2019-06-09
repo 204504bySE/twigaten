@@ -77,6 +77,7 @@ namespace twitenlib
             return Path.Combine((crc16 >> 8).ToString("x2"), (crc16 & 0xff).ToString("x2"));
         }
 
+        
         /// <summary>
         /// :thumb の保存先パスを生成する
         /// </summary>
@@ -85,9 +86,19 @@ namespace twitenlib
         /// <returns>…/(00~ff)/(00~ff)/media_id.xxx</returns>
         public static string ThumbPath(long media_id, string media_url)
         {
+            return ThumbPath(media_id) + Path.GetExtension(media_url);
+        }
+
+        /// <summary>
+        /// :thumb の保存先パスを生成する 拡張子抜き版
+        /// </summary>
+        /// <param name="media_id">APIで出てくるmedia_id</param>
+        /// <returns>…/(00~ff)/(00~ff)/media_id</returns>
+        public static string ThumbPath(long media_id)
+        {
             return Path.Combine(config.crawl.PictPaththumb,
                 Crc2Dir(BitConverter.GetBytes(media_id)),
-                media_id.ToString() + Path.GetExtension(media_url));
+                media_id.ToString());
         }
 
         const string DefaultProfileImageDir = "_default_profile_image";
