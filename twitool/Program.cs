@@ -83,7 +83,7 @@ LIMIT @limit;"))
                             delcmd.Parameters.AddWithValue('@' + n.ToString(), Table[n].media_id);
                             delcmd2.Parameters.AddWithValue('@' + n.ToString(), Table[n].media_id);
                         }
-                        RemovedCount += await ExecuteNonQuery(new[] { delcmd, delcmd2 }) >> 1;
+                        RemovedCount += await ExecuteNonQuery(new[] { delcmd, delcmd2 }).ConfigureAwait(false) >> 1;
                     }
                     //Console.WriteLine("{0} Media removed", RemovedCount);
                 } while (Table.Count >= BulkUnit);

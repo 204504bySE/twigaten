@@ -8,13 +8,14 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using twitenlib;
 using Zstandard.Net;
 
 namespace twihash
 {
     /// <summary>
-    /// まとめて、速く読み込みたい時用
+    /// ファイル全体を1発で速く読み込みたい時用
     /// </summary>
     class UnbufferedLongReader : IDisposable
     {
@@ -31,31 +32,38 @@ namespace twihash
         ///<summary>続きのデータがあるかどうか</summary>
         public bool Readable { get; private set; } = true;
 
-        Vector<long> LastRead; //差分取る用
         /// <summary>まとめて読む用</summary>
         /// <param name="Values">読み込み結果を格納する配列
         /// 要素数がVector(long).Countの倍数になってないとデータが壊れる</param>
         /// <returns>読み込んだ要素数</returns>
-        public int Read(long[] Values)
+        public async Task<int> Read(long[] Values)
         {
+            if (!Readable) { return 0; }
             int ValuesCursor = 0;
-            var ValuesSpan = Values.AsSpan();
-            var LastBefore = LastRead; //ローカル変数にコピーしてちょっと速くする
-            while (ValuesCursor < Values.Length)
+            //XORを取って圧縮しやすくしたのを元に戻すのを別スレッドにやらせる
+            //BufSize個毎にリセットされているので並列実行できる(間違いなくzstdより速いし並列にならないだろうけど)
+            var TakeDiffBlock = new ActionBlock<Memory<long>>((TakeDiffMemory) =>
             {
-                int ReadBytes = zip.Read(MemoryMarshal.Cast<long, byte>(ValuesSpan.Slice(ValuesCursor, Math.Min(BufSize, Values.Length - ValuesCursor))));
-                if(ReadBytes < sizeof(long)) { Readable = false; break; }
-
-                int ReadElements = ReadBytes / sizeof(long);
-                //XORを取って圧縮しやすくしたのを元に戻す
-                var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(ValuesSpan.Slice(ValuesCursor, ReadElements));
-                for(int i = 0; i < TakeDiffSpan.Length; i++)
+                var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(TakeDiffMemory.Span);
+                var LastBefore = Vector<long>.Zero;
+                for (int i = 0; i < TakeDiffSpan.Length; i++)
                 {
                     LastBefore = (TakeDiffSpan[i] ^= LastBefore);
                 }
+            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1, BoundedCapacity = 2, SingleProducerConstrained = true });
+
+            while (ValuesCursor < Values.Length)
+            {
+                int ReadBytes = zip.Read(MemoryMarshal.Cast<long, byte>(Values.AsSpan(ValuesCursor, Math.Min(BufSize, Values.Length - ValuesCursor))));
+                if(ReadBytes < sizeof(long)) { Readable = false; break; }
+
+                int ReadElements = ReadBytes / sizeof(long);
+                await TakeDiffBlock.SendAsync(Values.AsMemory(ValuesCursor, ReadElements)).ConfigureAwait(false);
                 ValuesCursor += ReadElements;
             }
-            LastRead = LastBefore;
+
+            TakeDiffBlock.Complete();
+            await TakeDiffBlock.Completion.ConfigureAwait(false);
             return ValuesCursor;
         }
 
@@ -72,7 +80,7 @@ namespace twihash
     }
 
     /// <summary>
-    /// まとめて、速く書き込みたい時用
+    /// ファイル全体を一発で速く書き込みたい時用
     /// </summary>
     class UnbufferedLongWriter : IDisposable
     {
@@ -86,32 +94,40 @@ namespace twihash
             zip = new ZstandardStream(file, 1, true);
         }
 
-        Vector<long> LastWritten; //差分取る用
-        /// <summary>まとめて書き込む用 Valuesは圧縮用に改変される</summary>
+        /// <summary>ファイル全体をまとめて書き込む用 Valuesは圧縮用に改変される</summary>
         /// <param name="Values">書き込みたい要素を含む配列</param>
-        /// <param name="Length">書き込みたい要素数([0]から[Length - 1]まで書き込まれる)
-        /// 要素数がVector(long).Countの倍数になってないとデータが壊れる</param>
-        public void WriteDestructive(long[] Values, int Length)
+        /// <param name="Length">書き込みたい要素数([0]から[Length - 1]まで書き込まれる)</param>
+        public async Task WriteDestructive(long[] Values, int Length)
         {
-            int ValuesCursor = 0;
-            var ValuesSpan = Values.AsSpan(0, Length);
-            var LastBefore = LastWritten; //ローカル変数にコピーしてちょっと速くする
+            //圧縮を別スレッドにやらせる
+            var ZipBlock = new ActionBlock<Memory<long>>((ZipMemory) =>
+            {
+                zip.Write(MemoryMarshal.Cast<long, byte>(ZipMemory.Span));
+            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1, BoundedCapacity = 2, SingleProducerConstrained = true });
 
+            int ValuesCursor = 0;
             while (ValuesCursor < Length)
             {
-                var CompressSpan = ValuesSpan.Slice(ValuesCursor, Math.Min(BufSize, Length - ValuesCursor));
-                var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(CompressSpan);
-                //XORを取って圧縮しやすくする Vector<long>で余った分は圧縮されない
-                for (int i = 0; i < TakeDiffSpan.Length; i++)
+                var ValuesMemory = Values.AsMemory(ValuesCursor, Math.Min(BufSize, Length - ValuesCursor));
+                //XORを取って圧縮しやすくする BufSize個毎にリセットされる Vector<long>で余った分は圧縮されない
+                void TakeDiff(Memory<long> _ValuesMemory)
                 {
-                    var NextLastBefore = TakeDiffSpan[i];
-                    TakeDiffSpan[i] ^= LastBefore;
-                    LastBefore = NextLastBefore;
+                    var CompressSpan = _ValuesMemory.Span;
+                    var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(CompressSpan);
+                    var LastBefore = Vector<long>.Zero;
+                    for (int i = 0; i < TakeDiffSpan.Length; i++)
+                    {
+                        var NextLastBefore = TakeDiffSpan[i];
+                        TakeDiffSpan[i] ^= LastBefore;
+                        LastBefore = NextLastBefore;
+                    }
                 }
-                zip.Write(MemoryMarshal.Cast<long, byte>(CompressSpan));
-                ValuesCursor += CompressSpan.Length;
+                TakeDiff(ValuesMemory);
+                await ZipBlock.SendAsync(ValuesMemory).ConfigureAwait(false);
+                ValuesCursor += ValuesMemory.Length;
             }
-            LastWritten = LastBefore;
+            ZipBlock.Complete();
+            await ZipBlock.Completion.ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -149,7 +165,6 @@ namespace twihash
             ActualReadAuto();
         }
 
-        Vector<long> LastRead; //差分取る用
         void FillNextBuf()
         {
             FillNextBufTask = Task.Run(async () =>
@@ -162,12 +177,11 @@ namespace twihash
                 void TakeDiff()
                 {
                     var NextBufAsVector = MemoryMarshal.Cast<byte, Vector<long>>(NextBuf.AsSpan(0, ReadBytes));
-                    var LastBefore = LastRead;
+                    var LastBefore = Vector<long>.Zero;
                     for (int i = 0; i < NextBufAsVector.Length; i++)
                     {
                         LastBefore = (NextBufAsVector[i] ^= LastBefore);
                     }
-                    LastRead = LastBefore;
                 }
                 TakeDiff();
                 return ReadBytes / sizeof(long);
@@ -260,7 +274,6 @@ namespace twihash
             }
         }
         
-        Vector<long> LastWritten; //差分取る用
         async Task ActualWrite()
         {
             if(ActualWriteTask != null) { await ActualWriteTask.ConfigureAwait(false); }
@@ -273,14 +286,13 @@ namespace twihash
             void TakeDiff()
             {
                 var WriteBufAsVector = MemoryMarshal.Cast<byte, Vector<long>>(WriteBuf.AsSpan(0, BufCursor * sizeof(long)));
-                var LastBefore = LastWritten;
+                var LastBefore = Vector<long>.Zero;
                 for (int i = 0; i < WriteBufAsVector.Length; i++)
                 {
                     var NextLastBefore = WriteBufAsVector[i];
                     WriteBufAsVector[i] ^= LastBefore;
                     LastBefore = NextLastBefore;
                 }
-                LastWritten = LastBefore;
             }
             TakeDiff();
             ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long));

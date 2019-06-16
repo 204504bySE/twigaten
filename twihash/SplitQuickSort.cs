@@ -79,7 +79,7 @@ namespace twihash
                     //書き込みは並列で行う
                     using (var writer = new UnbufferedLongWriter(t.WriteFilePath))
                     {
-                        writer.WriteDestructive(t.ToSort, t.Length);
+                        await writer.WriteDestructive(t.ToSort, t.Length).ConfigureAwait(false);
                     }
                     LongPool.Enqueue(t.ToSort);
                 }, new ExecutionDataflowBlockOptions()
@@ -92,7 +92,7 @@ namespace twihash
                 for(; reader.Readable; FileCount++)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
-                    int ToSortLength = reader.Read(ToSort);
+                    int ToSortLength = await reader.Read(ToSort).ConfigureAwait(false);
                     await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength)).ConfigureAwait(false);
                 }
                 FirstSortBlock.Complete();
