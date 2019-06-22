@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace twimgproxy
+namespace twiview
 {
     public static class Counter
     {

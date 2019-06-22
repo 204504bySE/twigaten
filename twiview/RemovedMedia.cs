@@ -5,10 +5,10 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static twimgproxy.DBHandlerView;
-using static twimgproxy.twimgStatic;
+using static twiview.DBHandlerView;
+using static twiview.twimgStatic;
 
-namespace twimgproxy
+namespace twiview
 {
     public class RemovedMedia
     {

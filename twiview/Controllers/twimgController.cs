@@ -11,9 +11,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using twitenlib;
-using static twimgproxy.twimgStatic;
+using static twiview.twimgStatic;
 
-namespace twimgproxy.Controllers
+namespace twiview.Controllers
 {
     [Route("twimg")]
     public class twimgController : Controller

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 
-namespace twimgproxy
+namespace twiview
 {
     public class DBHandlerView : twitenlib.DBHandler
     {
