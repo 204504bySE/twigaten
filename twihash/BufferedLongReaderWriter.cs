@@ -32,6 +32,7 @@ namespace twihash
         ///<summary>続きのデータがあるかどうか</summary>
         public bool Readable { get; private set; } = true;
 
+        Vector<long> LastRead = Vector<long>.Zero;
         /// <summary>まとめて読む用</summary>
         /// <param name="Values">読み込み結果を格納する配列
         /// 要素数がVector(long).Countの倍数になってないとデータが壊れる</param>
@@ -41,15 +42,15 @@ namespace twihash
             if (!Readable) { return 0; }
             int ValuesCursor = 0;
             //XORを取って圧縮しやすくしたのを元に戻すのを別スレッドにやらせる
-            //BufSize個毎にリセットされているので並列実行できる(間違いなくzstdより速いし並列にならないだろうけど)
             var TakeDiffBlock = new ActionBlock<Memory<long>>((TakeDiffMemory) =>
             {
                 var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(TakeDiffMemory.Span);
-                var LastBefore = Vector<long>.Zero;
+                var Before = LastRead;
                 for (int i = 0; i < TakeDiffSpan.Length; i++)
                 {
-                    LastBefore = (TakeDiffSpan[i] ^= LastBefore);
+                    Before = (TakeDiffSpan[i] ^= Before);
                 }
+                LastRead = Before;
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1, BoundedCapacity = 2, SingleProducerConstrained = true });
 
             while (ValuesCursor < Values.Length)
@@ -94,6 +95,7 @@ namespace twihash
             zip = new ZstandardStream(file, 1, true);
         }
 
+        Vector<long> LastWritten = Vector<long>.Zero;
         /// <summary>ファイル全体をまとめて書き込む用 Valuesは圧縮用に改変される</summary>
         /// <param name="Values">書き込みたい要素を含む配列</param>
         /// <param name="Length">書き込みたい要素数([0]から[Length - 1]まで書き込まれる)</param>
@@ -114,13 +116,14 @@ namespace twihash
                 {
                     var CompressSpan = _ValuesMemory.Span;
                     var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(CompressSpan);
-                    var LastBefore = Vector<long>.Zero;
+                    var Before = LastWritten;
                     for (int i = 0; i < TakeDiffSpan.Length; i++)
                     {
                         var NextLastBefore = TakeDiffSpan[i];
-                        TakeDiffSpan[i] ^= LastBefore;
-                        LastBefore = NextLastBefore;
+                        TakeDiffSpan[i] ^= Before;
+                        Before = NextLastBefore;
                     }
+                    LastWritten = Before;
                 }
                 TakeDiff(ValuesMemory);
                 await ZipBlock.SendAsync(ValuesMemory).ConfigureAwait(false);
@@ -165,6 +168,7 @@ namespace twihash
             ActualReadAuto();
         }
 
+        Vector<long> LastRead = Vector<long>.Zero;
         void FillNextBuf()
         {
             FillNextBufTask = Task.Run(async () =>
@@ -177,11 +181,12 @@ namespace twihash
                 void TakeDiff()
                 {
                     var NextBufAsVector = MemoryMarshal.Cast<byte, Vector<long>>(NextBuf.AsSpan(0, ReadBytes));
-                    var LastBefore = Vector<long>.Zero;
+                    var Before = LastRead;
                     for (int i = 0; i < NextBufAsVector.Length; i++)
                     {
-                        LastBefore = (NextBufAsVector[i] ^= LastBefore);
+                        Before = (NextBufAsVector[i] ^= Before);
                     }
+                    LastRead = Before;
                 }
                 TakeDiff();
                 return ReadBytes / sizeof(long);
@@ -273,7 +278,8 @@ namespace twihash
                 ValuesCursor += CopySize;
             }
         }
-        
+
+        Vector<long> LastWritten = Vector<long>.Zero;
         async Task ActualWrite()
         {
             if(ActualWriteTask != null) { await ActualWriteTask.ConfigureAwait(false); }
@@ -286,13 +292,14 @@ namespace twihash
             void TakeDiff()
             {
                 var WriteBufAsVector = MemoryMarshal.Cast<byte, Vector<long>>(WriteBuf.AsSpan(0, BufCursor * sizeof(long)));
-                var LastBefore = Vector<long>.Zero;
+                var Before = LastWritten;
                 for (int i = 0; i < WriteBufAsVector.Length; i++)
                 {
                     var NextLastBefore = WriteBufAsVector[i];
-                    WriteBufAsVector[i] ^= LastBefore;
-                    LastBefore = NextLastBefore;
+                    WriteBufAsVector[i] ^= Before;
+                    Before = NextLastBefore;
                 }
+                LastWritten = Before;
             }
             TakeDiff();
             ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long));

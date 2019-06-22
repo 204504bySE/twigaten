@@ -83,6 +83,8 @@ namespace twihash
             long SortMask = UnMask(BaseBlocks, Combi.Count);
 
             var QuickSortSW = Stopwatch.StartNew();
+
+            //適当なサイズに切ってそれぞれをクイックソート
             int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
             QuickSortSW.Stop();
             Console.WriteLine("{0}\tFile Sort\t{1}ms ", Index, QuickSortSW.ElapsedMilliseconds);
@@ -179,12 +181,13 @@ namespace twihash
             });
 
             var MultipleSortSW = Stopwatch.StartNew();
+
+            //クイックソートしたファイル群をマージソートしながら読み込む
             using (var Reader = new MergeSortReader(SortedFileCount, SortMask, NewHash))
             {
                 AddOnlyList<long> Sorted;
                 while ((Sorted = Reader.ReadBlocks()) != null)
                 {
-                    //長さ1の要素はReadBlock()が弾いてくれるのでここでは何も考えない
                     await MultipleSortBlock.SendAsync(Sorted).ConfigureAwait(false);
                 }
             }
