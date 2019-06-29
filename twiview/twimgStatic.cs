@@ -20,7 +20,7 @@ namespace twiview
             if (ExtMime.TryGetContentType(FileName, out string mime)) { return mime; }
             else { return "application/octet-stream"; };
         }
-        public static readonly DBHandlerView DB = new DBHandlerView();
+        public static readonly DBHandlerTwimg DB = new DBHandlerTwimg();
         public static readonly DBHandlerCrawl DBCrawl = new DBHandlerCrawl();
         public static readonly RemovedMedia Removed = new RemovedMedia();
     }

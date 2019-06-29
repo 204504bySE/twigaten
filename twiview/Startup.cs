@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace twiview
@@ -16,6 +18,8 @@ namespace twiview
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddResponseCompression(options => { options.Providers.Add<BrotliCompressionProvider>(); });
+            services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

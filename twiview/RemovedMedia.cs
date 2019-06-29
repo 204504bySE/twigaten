@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static twiview.DBHandlerView;
+using static twiview.DBHandlerTwimg;
 using static twiview.twimgStatic;
 
 namespace twiview

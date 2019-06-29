@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2027
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twidownparent", "twidownparent\twidownparent.csproj", "{D50D52EB-E166-4C46-8217-7BAF43946F2C}"
 EndProject
@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dcthashserver", "dcthashser
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twidownstream", "twidownstream\twidownstream.csproj", "{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "twimgproxy", "twimgproxy\twimgproxy.csproj", "{E0206C47-65BF-41A0-90AD-4ED30F6AFB31}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twiview", "twiview\twiview.csproj", "{5D4C4FE7-67B2-476A-988B-4C4500257D1B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,10 +47,10 @@ Global
 		{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E0206C47-65BF-41A0-90AD-4ED30F6AFB31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E0206C47-65BF-41A0-90AD-4ED30F6AFB31}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E0206C47-65BF-41A0-90AD-4ED30F6AFB31}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E0206C47-65BF-41A0-90AD-4ED30F6AFB31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
