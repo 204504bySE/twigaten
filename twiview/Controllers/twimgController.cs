@@ -32,10 +32,17 @@ namespace twiview.Controllers
             var MediaInfo = await DB.SelectThumbUrl(media_id).ConfigureAwait(false);
             if(MediaInfo == null) { return StatusCode(404); }
             
-            var result = await Download(MediaInfo.Value.media_url + (MediaInfo.Value.media_url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""),
+            var ret = await Download(MediaInfo.Value.media_url + (MediaInfo.Value.media_url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""),
                 MediaInfo.Value.tweet_url, GetMime(FileName)).ConfigureAwait(false);
-            if (result.Removed) { Removed.Enqueue(MediaInfo.Value.source_tweet_id); }
-            return result.Result;
+            if (RemovedStatusCode(ret.StatusCode)) { Removed.Enqueue(MediaInfo.Value.source_tweet_id); }
+            if (ret.FileBytes != null)
+            {
+                //画像の取得に成功したわけだし保存しておきたい
+                StoreMediaBlock.Post((MediaInfo.Value, ret.FileBytes));
+
+                return File(ret.FileBytes, GetMime(FileName));
+            }
+            else { return StatusCode((int)ret.StatusCode); }
         }
 
         /// <summary>ユーザーのアイコンを鯖内→横流し で探して返す</summary>
@@ -48,21 +55,32 @@ namespace twiview.Controllers
             string localmedia = MediaFolderPath.ProfileImagePath(user_id, false, FileName);
             if (System.IO.File.Exists(localmedia)) { return File(System.IO.File.OpenRead(localmedia), GetMime(FileName), true); }
 
-            var Source = await DB.SelectProfileImageUrl(user_id).ConfigureAwait(false);
-            if (Source == null) { return StatusCode(404); }
+            var ProfileImageInfo = await DB.SelectProfileImageUrl(user_id).ConfigureAwait(false);
+            if (ProfileImageInfo == null) { return StatusCode(404); }
             //初期アイコンなら改めて鯖内を探す
-            if (Source.Value.is_default_profile_image)
+            if (ProfileImageInfo.Value.is_default_profile_image)
             {
-                string defaulticon = MediaFolderPath.ProfileImagePath(user_id, true, Source.Value.Url);
-                if (System.IO.File.Exists(defaulticon)) { return File(System.IO.File.OpenRead(defaulticon), GetMime(Source.Value.Url), true); }
+                string defaulticon = MediaFolderPath.ProfileImagePath(user_id, true, ProfileImageInfo.Value.profile_image_url);
+                if (System.IO.File.Exists(defaulticon)) { return File(System.IO.File.OpenRead(defaulticon), GetMime(ProfileImageInfo.Value.profile_image_url), true); }
             }
             //鯖内にファイルがなかったのでtwitterから横流しする
-            return (await Download(Source.Value.Url, Source.Value.Referer, GetMime(FileName)).ConfigureAwait(false)).Result;
+            var ret = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url, GetMime(FileName)).ConfigureAwait(false);
+            if (ret.FileBytes != null)
+            {
+                //画像の取得に成功したわけだし保存しておきたい
+                //初期アイコンはいろいろ面倒なのでここではやらない
+                if (!ProfileImageInfo.Value.is_default_profile_image)
+                {
+                    StoreProfileImageBlock.Post((ProfileImageInfo.Value, ret.FileBytes));
+                }
+                return File(ret.FileBytes, GetMime(FileName));
+            }
+            else { return StatusCode((int)ret.StatusCode); }
         }
 
         ///<summary>ファイルをダウンロードしてそのまんま返す
-        ///Removedは404と410で判定</summary>
-        async Task<(bool Removed, IActionResult Result)> Download(string Url, string Referer, string mime)
+        ///ダウンロードに失敗したらFileBytesはnull</summary>
+        async Task<(HttpStatusCode StatusCode, byte[] FileBytes)> Download(string Url, string Referer, string mime)
         {
             Counter.MediaTotal.Increment();
             using (var req = new HttpRequestMessage(HttpMethod.Get, Url))
@@ -73,14 +91,23 @@ namespace twiview.Controllers
                     if (res.IsSuccessStatusCode)
                     {
                         Counter.MediaSuccess.Increment();
-                        return (false, File(await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false), mime));
+                        return (res.StatusCode, await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false));
                     }
-                    else { return (res.StatusCode == HttpStatusCode.NotFound
-                                || res.StatusCode == HttpStatusCode.Gone
-                                || res.StatusCode == HttpStatusCode.Forbidden,
-                                StatusCode((int)res.StatusCode)); }
+                    else { return (res.StatusCode, null); }
                 }
             }
+        }
+
+        /// <summary>
+        /// このステータスコードがTwitterから返ってきたらその画像は削除されたとみなす
+        /// </summary>
+        /// <param name="StatusCode"></param>
+        /// <returns></returns>
+        bool RemovedStatusCode(HttpStatusCode StatusCode)
+        {
+            return StatusCode == HttpStatusCode.NotFound
+                || StatusCode == HttpStatusCode.Gone
+                || StatusCode == HttpStatusCode.Forbidden;
         }
 
         [HttpGet("index")]

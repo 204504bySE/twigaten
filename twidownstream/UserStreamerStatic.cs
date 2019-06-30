@@ -200,7 +200,7 @@ namespace twidownstream
                 //古いアイコンと拡張子が違うなら古いアイコンを明示的に消す
                 string oldext = Path.GetExtension(d.OldProfileImageUrl);
                 string newext = Path.GetExtension(ProfileImageUrl);
-                if (!d.isDefaultProfileImage && oldext != null && oldext != newext)  //卵アイコンはこのパスじゃないしそもそも消さない
+                if (!d.isDefaultProfileImage && oldext != null && oldext != newext)  //初期アイコンはこのパスじゃないしそもそも消さない
                 { File.Delete(MediaFolderPath.ProfileImagePath(x.User.Id.Value, false, d.OldProfileImageUrl)); }
             }
             return DownloadOK;

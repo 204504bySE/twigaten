@@ -134,7 +134,11 @@ namespace twitenlib
         /// </summary>
         public static void MkdirAll()
         {
-            foreach (string basedir in new[] { config.crawl.PictPathProfileImage, config.crawl.PictPaththumb })
+            foreach (string basedir in new[] 
+            {
+                config.crawl.PictPathProfileImage,
+                config.crawl.PictPaththumb
+            })
             {
                 //画像ディレクトリの指定がおかしい場合は落ちてくれないと後々も困る
                 if (!Directory.Exists(basedir)) { throw new ArgumentException(); }

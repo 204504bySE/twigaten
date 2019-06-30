@@ -119,23 +119,47 @@ AND u.isprotected IS FALSE);"))
             }
         }
 
-        public async Task<(string Url, string Referer, bool is_default_profile_image)?> SelectProfileImageUrl(long user_id)
+        public struct ProfileImageInfo
         {
-            (string Url, string Referer, bool is_default_profile_image)? ret = null;
+            public long user_id { get; set; }
+            public string profile_image_url { get; set; }
+            public string tweet_url { get; set; }
+
+            public bool is_default_profile_image { get; set; }
+        }
+        public async Task<ProfileImageInfo?> SelectProfileImageUrl(long user_id)
+        {
+            ProfileImageInfo? ret = null;
             using (var cmd = new MySqlCommand(@"SELECT profile_image_url, screen_name, is_default_profile_image
 FROM user
 WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
-                await ExecuteReader(cmd, (r) => ret = (r.GetString(0), "https://twitter.com/" + r.GetString(1), r.GetBoolean(2)), IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                await ExecuteReader(cmd, (r) => ret = new ProfileImageInfo()
+                {
+                    user_id = user_id,
+                    profile_image_url = r.GetString(0),
+                    tweet_url = "https://twitter.com/" + r.GetString(1),
+                    is_default_profile_image = r.GetBoolean(2)
+                }, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
             //つまりDBのアクセスに失敗したりしてもnull
             return ret;
         }
     }
+    
+    /// <summary>
+    /// クローラーのフリを強いられているんだ！
+    /// TwimgController絡みの処理でしか使わないはず
+    /// </summary>
     public class DBHandlerCrawl : DBHandler
     {
         public DBHandlerCrawl() : base("crawl", "", config.database.Address, config.database.Protocol, 20, 1) { }
+        /// <summary>
+        /// 指定されたツイをDBから消すだけ
+        /// </summary>
+        /// <param name="tweet_id"></param>
+        /// <returns></returns>
         public async Task<int> RemoveDeletedTweet(long tweet_id)
         {
             using (var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;"))
@@ -144,6 +168,39 @@ WHERE user_id = @user_id;"))
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 return await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false) >> 1;
+            }
+        }
+        /// <summary>
+        /// media_downloaded_atに現在時刻を書き込むだけ
+        /// </summary>
+        /// <param name="media_id"></param>
+        /// <returns></returns>
+        public async Task<int> StoreMedia_downloaded_at(long media_id)
+        {
+            using (var cmd = new MySqlCommand(@"INSERT INTO media_downloaded_at (media_id, downloaded_at) VALUES (@media_id, @downloaded_at)
+ON DUPLICATE KEY UPDATE downloaded_at=@downloaded_at;"))
+            {
+                cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
+                cmd.Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+            }
+        }
+        /// <summary>
+        /// user_updated_atに現在時刻を書き込むだけ
+        /// 初期アイコンになってるアカウントに対してやっちゃダメ
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <returns></returns>
+        public async Task<int> StoreUser_updated_at(long user_id)
+        {
+            using (var cmd = new MySqlCommand(@"INSERT INTO user_updated_at (user_id, updated_at) VALUES (@user_id, @updated_at)
+ON DUPLICATE KEY UPDATE updated_at=@updated_at;"))
+            {
+                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
+                cmd.Parameters.Add("@updated_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
     }
@@ -241,7 +298,6 @@ FROM user WHERE user_id = @user_id"))
         public async Task<string> SelectUserLoginToken(long user_id)
         {
             string LoginToken = null;
-            DataTable Table;
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT logintoken FROM viewlogin WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
