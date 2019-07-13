@@ -34,19 +34,12 @@ namespace twidownparent
                     new ProcessStartInfo(config.crawlparent.DotNetChild, config.crawlparent.ChildPath);
                 info.WorkingDirectory = Path.GetDirectoryName(config.crawlparent.ChildPath);
                 info.WindowStyle = ProcessWindowStyle.Minimized;
-                using (var retProcess = new Process()
-                {
-                    StartInfo = info,
-                    EnableRaisingEvents = true
-                })
-                {
-                    retProcess.Start();
-                    ProcessInfo[retProcess.Id] = retProcess;
-                    TokenCount[retProcess.Id] = 0;
-                    WatchDog.Add(retProcess.Id);
-                    return retProcess.Id;
-                }
 
+                var retProcess = Process.Start(info);
+                ProcessInfo[retProcess.Id] = retProcess;
+                TokenCount[retProcess.Id] = 0;
+                WatchDog.Add(retProcess.Id);
+                return retProcess.Id;
             }
             catch { return -1; }
         }
