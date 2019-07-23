@@ -104,9 +104,10 @@ LIMIT @limit;"))
                 while (drive.TotalFreeSpace < drive.TotalSize / 16)
                 {
                     using (MySqlCommand cmd = new MySqlCommand(@"(SELECT
-media_id, media_url
-FROM media_downloaded_at
-JOIN media USING (media_id)
+m.media_id, mt.media_url
+FROM media_downloaded_at md
+JOIN media m on md.media_id = m.media_id
+JOIN media_text mt ON m.media_id = mt.media_id
 ORDER BY downloaded_at
 LIMIT @limit)
 ORDER BY media_id;"))
