@@ -79,20 +79,20 @@ namespace twihash
                     //書き込みは並列で行う
                     using (var writer = new UnbufferedLongWriter(t.WriteFilePath))
                     {
-                        await writer.WriteDestructive(t.ToSort, t.Length).ConfigureAwait(false);
+                        writer.WriteDestructive(t.ToSort, t.Length);
                     }
                     LongPool.Enqueue(t.ToSort);
                 }, new ExecutionDataflowBlockOptions()
                 {   //ここでメモリを節約する、かもしれない
                     SingleProducerConstrained = true,
                     MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
-                    BoundedCapacity = config.hash.InitialSortConcurrency
+                    BoundedCapacity = config.hash.InitialSortConcurrency + 1
                 });
                 //読み込み過ぎてメモリを食い潰さないように進める
                 for(; reader.Readable; FileCount++)
                 {
                     if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
-                    int ToSortLength = await reader.Read(ToSort).ConfigureAwait(false);
+                    int ToSortLength = reader.Read(ToSort);
                     await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength)).ConfigureAwait(false);
                 }
                 FirstSortBlock.Complete();
@@ -101,6 +101,7 @@ namespace twihash
             return FileCount;
         }
 
+        static readonly int QuickSortAllConcurrency = Environment.ProcessorCount / config.hash.InitialSortConcurrency + 1;
         ///<summary>配列の0~SortListLengthまでを並列ソート</summary>
         static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
         {
@@ -109,33 +110,35 @@ namespace twihash
             {
                 if (SortRange.Begin >= SortRange.End) { return null; }
                 //十分に並列化されるか要素数が少なくなったらLINQに投げる
-                if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length / (config.hash.InitialSortConcurrency + 1)))
+                if (SortRange.End - SortRange.Begin < Math.Max(1048576, SortList.Length / QuickSortAllConcurrency))
                 {
                     Array.Sort(SortList, SortRange.Begin, SortRange.End - SortRange.Begin + 1, Comparer);
                     return null;
                 }
 
+                var SortSpan = SortList.AsSpan(SortRange.Begin, SortRange.End - SortRange.Begin + 1);
+
                 //ふつーにピボットを選ぶ
-                long PivotA = SortList[SortRange.Begin] & SortMask;
-                long PivotB = SortList[(SortRange.Begin >> 1) + (SortRange.End >> 1)] & SortMask;
-                long PivotC = SortList[SortRange.End] & SortMask;
+                long PivotA = SortSpan[0] & SortMask;
+                long PivotB = SortSpan[SortSpan.Length >> 1] & SortMask;
+                long PivotC = SortSpan[SortSpan.Length - 1] & SortMask;
                 long PivotMasked;
                 if (PivotA <= PivotB && PivotB <= PivotC || PivotA >= PivotB && PivotB >= PivotC) { PivotMasked = PivotB; }
                 else if (PivotA <= PivotC && PivotC <= PivotB || PivotA >= PivotC && PivotC >= PivotB) { PivotMasked = PivotC; }
                 else { PivotMasked = PivotA; }
 
-                int i = SortRange.Begin - 1; int j = SortRange.End + 1;
+                int i = -1; int j = SortSpan.Length;
                 while (true)
                 {
                     //do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
-                    for (i++; i < SortList.Length; i++) { if ((SortList[i] & SortMask) >= PivotMasked) { break; } }
-                    do { j--; } while ((SortList[j] & SortMask) > PivotMasked);
+                    for (i++; i < SortSpan.Length; i++) { if ((SortSpan[i] & SortMask) >= PivotMasked) { break; } }
+                    do { j--; } while ((SortSpan[j] & SortMask) > PivotMasked);
                     if (i >= j) { break; }
-                    long SwapHash = SortList[i];
-                    SortList[i] = SortList[j];
-                    SortList[j] = SwapHash;
+                    long SwapHash = SortSpan[i];
+                    SortSpan[i] = SortSpan[j];
+                    SortSpan[j] = SwapHash;
                 }
-                return (SortRange.Begin, j, j + 1, SortRange.End);
+                return (SortRange.Begin, SortRange.Begin + j, SortRange.Begin + j + 1, SortRange.End);
             }
 
             //処理中の要素があるかどうかをこれで数える

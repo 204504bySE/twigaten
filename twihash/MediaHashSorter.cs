@@ -11,6 +11,7 @@ using System.Threading.Tasks.Dataflow;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.CompilerServices;
 using System.Buffers;
+using twitenlib;
 
 namespace twihash
 {
@@ -53,10 +54,17 @@ namespace twihash
     class MediaHashSorter
     {
         readonly DBHandler db;
+        readonly Config config = Config.Instance;
         readonly HashSet<long> NewHash;
         readonly long MaxHammingDistance;
         readonly long HashCount;
         readonly Combinations Combi;
+
+        readonly BatchBlock<HashPair> PairBatchBlock = new BatchBlock<HashPair>(DBHandler.StoreMediaPairsUnit);
+        readonly ActionBlock<HashPair[]> PairStoreBlock;
+        int PairCount;
+        int DBAddCount;
+
         public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock, long HashCount)
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
@@ -64,19 +72,33 @@ namespace twihash
             this.db = db;
             this.HashCount = HashCount;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
+
+            PairStoreBlock = new ActionBlock<HashPair[]>(
+            async (p) =>
+            {
+                int AddCount;
+                do { AddCount = await db.StoreMediaPairs(p).ConfigureAwait(false); } while (AddCount < 0);    //失敗したら無限に再試行
+                if (0 < AddCount) { Interlocked.Add(ref DBAddCount, AddCount); }
+            },
+            new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
+            PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
         }
 
         public async Task Proceed()
         {
+            var SortTask = new List<Task>(Combi.Length);
             for (int i = 0; i < Combi.Length; i++)
             {
-                await MultipleSortUnit(i).ConfigureAwait(false);
+                SortTask.Add(await MultipleSortUnit(i).ConfigureAwait(false));
             }
+            await Task.WhenAll(SortTask).ConfigureAwait(false);
+            PairBatchBlock.Complete();
+            await PairStoreBlock.Completion.ConfigureAwait(false);
+            Console.WriteLine("{0} / {1} Pairs Inserted",DBAddCount, PairCount);
         }
 
-
         const int bitcount = sizeof(long) * 8;    //longのbit数
-        async Task MultipleSortUnit(int Index)
+        async Task<Task> MultipleSortUnit(int Index)
         {
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
@@ -89,20 +111,7 @@ namespace twihash
             QuickSortSW.Stop();
             Console.WriteLine("{0}\tFile Sort\t{1}ms ", Index, QuickSortSW.ElapsedMilliseconds);
 
-            int PairCount = 0;
-            int DBAddCount = 0;
             long[] UnMasks = Enumerable.Range(0, Combi.Count).Select(i => UnMask(i, Combi.Count)).ToArray();
-
-            var PairBatchBlock = new BatchBlock<HashPair>(DBHandler.StoreMediaPairsUnit);
-            var PairStoreBlock = new ActionBlock<HashPair[]>(
-                async (p) =>
-                {
-                    int AddCount;
-                    do { AddCount = await db.StoreMediaPairs(p).ConfigureAwait(false); } while (AddCount < 0);    //失敗したら無限に再試行
-                    if (0 < AddCount) { Interlocked.Add(ref DBAddCount, AddCount); }
-                },
-                new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
-            PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
             var MultipleSortBlock = new ActionBlock<AddOnlyList<long>>((BlockList) =>
             {
@@ -132,15 +141,17 @@ namespace twihash
 
                     for (int i = 0; i < SortedSpan.Length; i++)
                     {
-                        bool NeedInsert_i = NewHash?.Contains(SortedSpan[i]) ?? true;
-                        long maskedhash_i = SortedSpan[i] & SortMask;
+                        long Sorted_i = SortedSpan[i];
+                        bool NeedInsert_i = NewHash?.Contains(Sorted_i) ?? true;
+                        long maskedhash_i = Sorted_i & SortMask;
                         for (int j = i + 1; j < SortedSpan.Length; j++)
                         {
+                            long Sorted_j = SortedSpan[j];
                             //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
                             //すでにDBに入っているペアは処理しない
-                            if ((NeedInsert_i || NewHash.Contains(SortedSpan[j]))    //NewHashがnullなら後者は処理されないからセーフ
-                                                                                        //ブロックソートで一致した組のハミング距離を測る
-                                && HammingDistance(SortedSpan[i], SortedSpan[j]) <= MaxHammingDistance)
+                            if ((NeedInsert_i || NewHash.Contains(Sorted_j))    //NewHashがnullなら後者は処理されないからセーフ
+                                //ブロックソートで一致した組のハミング距離を測る
+                                && HammingDistance(Sorted_i, Sorted_j) <= MaxHammingDistance)
                             {
                                 //一致したペアが見つかる最初の組合せを調べる
                                 int matchblockindex = 0;
@@ -154,7 +165,7 @@ namespace twihash
                                     }
                                     else
                                     {
-                                        if ((SortedSpan[i] & UnMasks[x]) == (SortedSpan[j] & UnMasks[x]))
+                                        if ((Sorted_i & UnMasks[x]) == (Sorted_j & UnMasks[x]))
                                         {
                                             if (x < BaseBlocks[matchblockindex]) { break; }
                                             matchblockindex++;
@@ -165,7 +176,7 @@ namespace twihash
                                 if (x == StartBlock)
                                 {
                                     LocalPairCount++;
-                                    PairBatchBlock.Post(new HashPair(SortedSpan[i], SortedSpan[j]));
+                                    PairBatchBlock.Post(new HashPair(Sorted_i, Sorted_j));
                                 }
                             }
                         }
@@ -176,7 +187,7 @@ namespace twihash
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
-                BoundedCapacity = Environment.ProcessorCount << 4,
+                BoundedCapacity = config.hash.MultipleSortBufferCount,
                 SingleProducerConstrained = true
             });
 
@@ -191,11 +202,14 @@ namespace twihash
                     await MultipleSortBlock.SendAsync(Sorted).ConfigureAwait(false);
                 }
             }
-            //余りをDBに入れる
-            MultipleSortBlock.Complete(); await MultipleSortBlock.Completion.ConfigureAwait(false);
-            PairBatchBlock.Complete(); await PairStoreBlock.Completion.ConfigureAwait(false);
-            MultipleSortSW.Stop();
-            Console.WriteLine("{0}\tMerge+Comp\t{1}ms\t{2}, {3}", Index, MultipleSortSW.ElapsedMilliseconds, DBAddCount, PairCount);
+            //余りをDBに入れるついでにここで制御を戻してしまう
+            MultipleSortBlock.Complete();
+            return MultipleSortBlock.Completion
+                .ContinueWith((_) =>
+                {
+                    MultipleSortSW.Stop();
+                    Console.WriteLine("{0}\tMerge+Comp\t{1}ms", Index, MultipleSortSW.ElapsedMilliseconds);
+                });
 
         }
 

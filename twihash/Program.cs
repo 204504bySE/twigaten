@@ -18,7 +18,7 @@ namespace twihash
             Config config = Config.Instance;
             AddOnlyList<long>.Pool = ArrayPool<long>.Create(
                 Math.Max(DBHandler.TableListSize, config.hash.MultipleSortBufferElements),
-                Environment.ProcessorCount << 4 + Environment.ProcessorCount);
+                config.hash.MultipleSortBufferCount + Environment.ProcessorCount);
 
             DBHandler db = new DBHandler();
             Stopwatch sw = new Stopwatch();

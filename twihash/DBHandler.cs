@@ -68,7 +68,7 @@ namespace twihash
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
-                            BoundedCapacity = Environment.ProcessorCount << 4
+                            BoundedCapacity = config.hash.MultipleSortBufferCount
                         });
 
                     var LoadHashBlock = new ActionBlock<long>(async (i) =>

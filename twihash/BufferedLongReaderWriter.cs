@@ -37,34 +37,26 @@ namespace twihash
         /// <param name="Values">読み込み結果を格納する配列
         /// 要素数がVector(long).Countの倍数になってないとデータが壊れる</param>
         /// <returns>読み込んだ要素数</returns>
-        public async Task<int> Read(long[] Values)
+        public int Read(long[] Values)
         {
             if (!Readable) { return 0; }
             int ValuesCursor = 0;
-            //XORを取って圧縮しやすくしたのを元に戻すのを別スレッドにやらせる
-            var TakeDiffBlock = new ActionBlock<Memory<long>>((TakeDiffMemory) =>
+
+            while (ValuesCursor < Values.Length)
             {
-                var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(TakeDiffMemory.Span);
+                int ReadBytes = zip.Read(MemoryMarshal.Cast<long, byte>(Values.AsSpan(ValuesCursor, Math.Min(BufSize, Values.Length - ValuesCursor))));
+                if(ReadBytes < sizeof(long)) { Readable = false; break; }
+                int ReadElements = ReadBytes / sizeof(long);
+                //XORを取って圧縮しやすくしたのを元に戻す
+                var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(Values.AsSpan(ValuesCursor, ReadElements));
                 var Before = LastRead;
                 for (int i = 0; i < TakeDiffSpan.Length; i++)
                 {
                     Before = (TakeDiffSpan[i] ^= Before);
                 }
                 LastRead = Before;
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1, BoundedCapacity = 2, SingleProducerConstrained = true });
-
-            while (ValuesCursor < Values.Length)
-            {
-                int ReadBytes = zip.Read(MemoryMarshal.Cast<long, byte>(Values.AsSpan(ValuesCursor, Math.Min(BufSize, Values.Length - ValuesCursor))));
-                if(ReadBytes < sizeof(long)) { Readable = false; break; }
-
-                int ReadElements = ReadBytes / sizeof(long);
-                await TakeDiffBlock.SendAsync(Values.AsMemory(ValuesCursor, ReadElements)).ConfigureAwait(false);
                 ValuesCursor += ReadElements;
             }
-
-            TakeDiffBlock.Complete();
-            await TakeDiffBlock.Completion.ConfigureAwait(false);
             return ValuesCursor;
         }
 
@@ -99,38 +91,26 @@ namespace twihash
         /// <summary>ファイル全体をまとめて書き込む用 Valuesは圧縮用に改変される</summary>
         /// <param name="Values">書き込みたい要素を含む配列</param>
         /// <param name="Length">書き込みたい要素数([0]から[Length - 1]まで書き込まれる)</param>
-        public async Task WriteDestructive(long[] Values, int Length)
+        public void WriteDestructive(long[] Values, int Length)
         {
-            //圧縮を別スレッドにやらせる
-            var ZipBlock = new ActionBlock<Memory<long>>((ZipMemory) =>
-            {
-                zip.Write(MemoryMarshal.Cast<long, byte>(ZipMemory.Span));
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1, BoundedCapacity = 2, SingleProducerConstrained = true });
-
             int ValuesCursor = 0;
             while (ValuesCursor < Length)
             {
-                var ValuesMemory = Values.AsMemory(ValuesCursor, Math.Min(BufSize, Length - ValuesCursor));
-                //XORを取って圧縮しやすくする BufSize個毎にリセットされる Vector<long>で余った分は圧縮されない
-                void TakeDiff(Memory<long> _ValuesMemory)
+                var ValuesSpan = Values.AsSpan(ValuesCursor, Math.Min(BufSize, Length - ValuesCursor));
+                //XORを取って圧縮しやすくする Vector<long>で余った分は圧縮されない
+                var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(ValuesSpan);
+                var Before = LastWritten;
+                for (int i = 0; i < TakeDiffSpan.Length; i++)
                 {
-                    var CompressSpan = _ValuesMemory.Span;
-                    var TakeDiffSpan = MemoryMarshal.Cast<long, Vector<long>>(CompressSpan);
-                    var Before = LastWritten;
-                    for (int i = 0; i < TakeDiffSpan.Length; i++)
-                    {
-                        var NextLastBefore = TakeDiffSpan[i];
-                        TakeDiffSpan[i] ^= Before;
-                        Before = NextLastBefore;
-                    }
-                    LastWritten = Before;
+                    var NextLastBefore = TakeDiffSpan[i];
+                    TakeDiffSpan[i] ^= Before;
+                    Before = NextLastBefore;
                 }
-                TakeDiff(ValuesMemory);
-                await ZipBlock.SendAsync(ValuesMemory).ConfigureAwait(false);
-                ValuesCursor += ValuesMemory.Length;
+                LastWritten = Before;
+
+                zip.Write(MemoryMarshal.Cast<long, byte>(ValuesSpan));
+                ValuesCursor += ValuesSpan.Length;
             }
-            ZipBlock.Complete();
-            await ZipBlock.Completion.ConfigureAwait(false);
         }
 
         public void Dispose()

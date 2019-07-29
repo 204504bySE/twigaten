@@ -55,22 +55,22 @@ namespace twiview
         public static readonly ActionBlock<(DBHandlerTwimg.ProfileImageInfo, byte[])> StoreProfileImageBlock
             = new ActionBlock<(DBHandlerTwimg.ProfileImageInfo ProfileImageInfo, byte[] Bytes)>(
             async (u) =>
+        {
+            //初期アイコンはいろいろ面倒なのでここではやらない
+            if (!u.ProfileImageInfo.is_default_profile_image
+                && 0 < await DBCrawl.StoreUser_updated_at(u.ProfileImageInfo.user_id).ConfigureAwait(false))
             {
-                //初期アイコンはいろいろ面倒なのでここではやらない
-                if (!u.ProfileImageInfo.is_default_profile_image
-                    && 0 < await DBCrawl.StoreUser_updated_at(u.ProfileImageInfo.user_id).ConfigureAwait(false))
+                try
                 {
-                    try
+                    using (var file = File.Create(MediaFolderPath.ProfileImagePath(u.ProfileImageInfo.user_id, u.ProfileImageInfo.is_default_profile_image, u.ProfileImageInfo.profile_image_url)))
                     {
-                        using (var file = File.Create(MediaFolderPath.ProfileImagePath(u.ProfileImageInfo.user_id, u.ProfileImageInfo.is_default_profile_image, u.ProfileImageInfo.profile_image_url)))
-                        {
-                            await file.WriteAsync(u.Bytes, 0, u.Bytes.Length).ConfigureAwait(false);
-                            await file.FlushAsync().ConfigureAwait(false);
-                        }
-                        Counter.MediaStored.Increment();
+                        await file.WriteAsync(u.Bytes, 0, u.Bytes.Length).ConfigureAwait(false);
+                        await file.FlushAsync().ConfigureAwait(false);
                     }
-                    catch { }
+                    Counter.MediaStored.Increment();
                 }
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
+                catch { }
+            }
+        }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
     }
 }

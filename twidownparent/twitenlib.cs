@@ -155,6 +155,7 @@ namespace twitenlib
             public int MergeSortCompareUnit { get; }
             public int ZipBufferElements { get; }
             public int MultipleSortBufferElements { get; }
+            public int MultipleSortBufferCount { get; }
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
@@ -168,6 +169,7 @@ namespace twitenlib
                 MergeSortCompareUnit = int.Parse(data["hash"][nameof(MergeSortCompareUnit)] ?? "2");
                 ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "32768");
                 MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "25000");
+                MultipleSortBufferCount = int.Parse(data["hash"][nameof(MultipleSortBufferCount)] ?? (Environment.ProcessorCount << 4).ToString());
             }
             public void NewLastUpdate(long time)
             {

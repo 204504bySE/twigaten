@@ -22,7 +22,6 @@ namespace twihash
         readonly HashSet<long> NewHash;
         readonly MergedEnumerator Creator;
         readonly MergeSortBuffer Reader;
-        readonly ArrayPool<long> Pool = ArrayPool<long>.Create();
 
         public MergeSortReader(int FileCount, long SortMask, HashSet<long> NewHash)
         {
