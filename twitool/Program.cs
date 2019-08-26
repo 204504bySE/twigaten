@@ -22,14 +22,21 @@ namespace twitool
         static async Task Main(string[] args)
         {
             //CheckOldProcess.CheckandExit();
-            Config config = Config.Instance;
             DBHandler db = new DBHandler();
 
-            await db.RemoveOldMedia();
-            await db.RemoveOrphanMedia();
-            await db.RemoveOldProfileImage();
+            if (args.Length == 0)
+            {
+                await db.RemoveOldMedia();
+                await db.RemoveOrphanMedia();
+                await db.RemoveOldProfileImage();
+            }
+            else
+            {
+                await CommandLine.Run(args).ConfigureAwait(false);
+            }
         }
     }
+
 
     public class DBHandler : twitenlib.DBHandler
     {

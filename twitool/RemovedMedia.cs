@@ -36,9 +36,11 @@ namespace twitool
                 //もっと古い公開ツイートがあるのは先に確認したぞ
                 Counter.TweetToDelete.Increment();
                 using (var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;"))
+                using (var cmd2 = new MySqlCommand(@"DELETE FROM tweet_text WHERE tweet_id = @tweet_id;"))
                 {
                     cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
-                    Counter.TweetDeleted.Add(await ExecuteNonQuery(cmd).ConfigureAwait(false));
+                    cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
+                    if (await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false) > 0) { Counter.TweetDeleted.Increment(); }
                 }
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
             
