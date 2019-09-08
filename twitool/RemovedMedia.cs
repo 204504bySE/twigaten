@@ -29,8 +29,9 @@ namespace twitool
         });
 
         //twimgで画像が消えてたら条件付きでツイを消したい
-        public async Task DeleteRemovedTweet()
+        public async Task DeleteRemovedTweet(DateTimeOffset Begin, DateTimeOffset Exclude)
         {
+            //本当にツイートを消すやつ
             var RemoveTweetBlock = new ActionBlock<long>(async (tweet_id) =>
             {
                 //もっと古い公開ツイートがあるのは先に確認したぞ
@@ -44,6 +45,7 @@ namespace twitool
                 }
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
             
+            //画像の存在確認をするやつ
             var TryDownloadBlock = new ActionBlock<IEnumerable<MediaInfo>>(async (media) =>
             {
                 if(media.Count() == 0) { return; }
@@ -75,6 +77,7 @@ namespace twitool
                 MaxDegreeOfParallelism = DownloadConcurrency
             });
 
+            //画像転載の疑いがあるツイだけ選ぶやつ
             var CheckTweetBlock = new ActionBlock<(long tweet_id, long[] media_id)>(async (t) =>
             {
                 //ハッシュ値が同じで古い奴
@@ -126,9 +129,10 @@ AND u.isprotected IS FALSE);"))
                 }
                 //存在確認をする画像の情報を取得(汚い
                 using (var cmd = new MySqlCommand(@"SELECT
-m.media_id, m.media_url, u.screen_name
+m.media_id, mt.media_url, u.screen_name
 FROM media m
-LEFT JOIN media_downloaded_at d USING (media_id)
+LEFT JOIN media_downloaded_at md ON m.media_id = md.media_id
+JOIN media_text mt ON m.media_id = mt.media_id
 JOIN tweet t ON m.source_tweet_Id = t.tweet_id
 JOIN user u USING (user_id)
 WHERE m.source_tweet_id = @tweet_id;"))
@@ -145,7 +149,7 @@ WHERE m.source_tweet_id = @tweet_id;"))
                             screen_name = r.GetString(2),
                             source_tweet_id = t.tweet_id,
                         });
-                    }, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
                     await TryDownloadBlock.SendAsync(medialist).ConfigureAwait(false);
                 }
             }, new ExecutionDataflowBlockOptions() { BoundedCapacity = Environment.ProcessorCount << 1, MaxDegreeOfParallelism = Environment.ProcessorCount });
@@ -160,9 +164,10 @@ ORDER BY o.tweet_id
 LIMIT 1000;"))
             {
                 var tweet_param = cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64);
-                
+
                 //ここから始めるんじゃ(
-                long last_tweet_id = 903494683149574144;
+                long last_tweet_id = SnowFlake.SecondinSnowFlake(Begin, false);
+                long exclude_tweet_id = SnowFlake.SecondinSnowFlake(Exclude, false);
                 tweet_param.Value = last_tweet_id;
 
                 var media_id = new List<long>();
@@ -176,6 +181,7 @@ LIMIT 1000;"))
                         long tweet_id = t.t;
                         if (last_tweet_id < tweet_id)
                         {
+                            if (exclude_tweet_id < tweet_id) { break; }
                             if (media_id.Count > 0)
                             {
                                 await CheckTweetBlock.SendAsync((last_tweet_id, media_id.ToArray())).ConfigureAwait(false);
@@ -188,7 +194,14 @@ LIMIT 1000;"))
                         media_id.Add(t.m);
                     }
                     if (Table.Count > 0) { tweet_param.Value = Table.Last().t; }
-                } while (Table.Count > 0);
+                } while (Table.Count > 0 && last_tweet_id < exclude_tweet_id);
+
+                CheckTweetBlock.Complete();
+                await CheckTweetBlock.Completion.ConfigureAwait(false);
+                TryDownloadBlock.Complete();
+                await TryDownloadBlock.Completion.ConfigureAwait(false);
+                RemoveTweetBlock.Complete();
+                await RemoveTweetBlock.Completion.ConfigureAwait(false);
             }
         }
 
@@ -223,7 +236,7 @@ LIMIT 1000;"))
         public static CounterValue TweetToDelete = new CounterValue();
         public static void PrintReset()
         {
-            Console.WriteLine("{0} Tweet ID: {1}", DateTime.Now, LastTweetID);
+            Console.WriteLine("{0} Tweet ID: {1} ({2})", DateTime.Now, LastTweetID, SnowFlake.DatefromSnowFlake(LastTweetID));
             Console.WriteLine("{0} {1} / {2} Media Gone",DateTime.Now, MediaGone.Get(), MediaTotal.Get()); 
             Console.WriteLine("{0} {1} / {2} Tweet Deleted", DateTime.Now, TweetDeleted.Get(), TweetToDelete.Get()); 
         }

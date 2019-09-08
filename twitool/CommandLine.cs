@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,17 +13,26 @@ namespace twitool
 {
     static class CommandLine
     {
-        static DBHandlerCommandLine DB = new DBHandlerCommandLine();
+        static readonly DBHandlerCommandLine DB = new DBHandlerCommandLine();
         public static Task Run(string[] args)
         {
-            return Parser.Default.ParseArguments<DeleteOption, LookupOption>(args)
+            return Parser.Default.ParseArguments<DeleteOption, LookupOption, CleanupOption>(args)
                 .MapResult(
                     async (DeleteOption opts) => await DeleteTweetsCommand(opts).ConfigureAwait(false),
                     async (LookupOption opts) => await LookupCommand(opts).ConfigureAwait(false),
+                    async (CleanupOption opts) => await CleanupCommand(opts).ConfigureAwait(false),
                     errs => { Console.WriteLine("Invalid argument. See  --help"); return Task.Run(() => { }); }
                 );
         }
 
+        [Verb("delete", HelpText = "Delete specified account and its tweets.")]
+        class DeleteOption
+        {
+            [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
+            public string screen_name { get; set; }
+            [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
+            public long? user_id { get; set; }
+        }
         static async Task DeleteTweetsCommand(DeleteOption opts)
         {
             long user_id;
@@ -47,6 +57,14 @@ namespace twitool
             else { Console.WriteLine("Canceled."); }
         }
 
+        [Verb("lookup", HelpText = "Lookup account information by ID or screen_name.")]
+        class LookupOption
+        {
+            [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
+            public string screen_name { get; set; }
+            [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
+            public long? user_id { get; set; }
+        }
         static async Task LookupCommand(LookupOption opts)
         {
             long user_id;
@@ -60,7 +78,6 @@ namespace twitool
             Console.WriteLine(await DB.UserInfo(user_id).ConfigureAwait(false));
             Console.WriteLine("{0} Tweets of this account is archived.", await DB.TweetCount(user_id).ConfigureAwait(false));
         }
-
         static async Task<long?> LookupUserId(string screen_name)
         {
             if (!string.IsNullOrWhiteSpace(screen_name))
@@ -70,25 +87,29 @@ namespace twitool
             }
             return null;
         }
+
+        [Verb("cleanup", HelpText = "Delete tweets deleted from twitter containing reprinted media.")]
+        class CleanupOption
+        {
+            [Option('b', "begin", HelpText = "Begin time in yyyyMMdd (UTC)", Required = true)]
+            public string begin { get; set; }
+            [Option('e', "exclude", HelpText = "Exclude time in yyyyMMdd (UTC)", Required = true)]
+            public string exclude { get; set; }
+        }
+        static async Task CleanupCommand(CleanupOption opts)
+        {
+            if (DateTimeOffset.TryParseExact(opts.begin, "yyyyMMdd", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal, out var begin)
+                && DateTimeOffset.TryParseExact(opts.exclude, "yyyyMMdd", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AssumeUniversal, out var exclude))
+            {
+                Console.WriteLine("Cleanup removed tweets...");
+                await new RemovedMedia().DeleteRemovedTweet(begin, exclude).ConfigureAwait(false);
+                Counter.PrintReset();
+                Console.WriteLine("＼(^o^)／");
+            }
+            else { Console.WriteLine("Invalid argument. See  --help"); }
+        }
     }
 
-    [Verb("delete")]
-    class DeleteOption
-    {
-        [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
-        public string screen_name { get; set; }
-        [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
-        public long? user_id { get; set; }
-    }
-
-    [Verb("lookup")]
-    class LookupOption
-    {
-        [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
-        public string screen_name { get; set; }
-        [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
-        public long? user_id { get; set; }
-    }
 
     class DBHandlerCommandLine : twitenlib.DBHandler
     {
