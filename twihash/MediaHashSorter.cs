@@ -56,7 +56,7 @@ namespace twihash
         readonly DBHandler db;
         readonly Config config = Config.Instance;
         readonly HashSet<long> NewHash;
-        readonly long MaxHammingDistance;
+        readonly ulong MaxHammingDistance;
         readonly long HashCount;
         readonly Combinations Combi;
 
@@ -68,7 +68,7 @@ namespace twihash
         public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock, long HashCount)
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
-            this.MaxHammingDistance = MaxHammingDistance;
+            this.MaxHammingDistance = (ulong)MaxHammingDistance;
             this.db = db;
             this.HashCount = HashCount;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
@@ -234,17 +234,17 @@ namespace twihash
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         ///<summary>ハミング距離を計算する</summary>
-        long HammingDistance(long a, long b)
+        ulong HammingDistance(long a, long b)
         {
             //xorしてpopcnt
-            if (Popcnt.IsSupported) { return Popcnt.PopCount((ulong)(a ^ b)); }
+            if (Popcnt.X64.IsSupported) { return Popcnt.X64.PopCount((ulong)(a ^ b)); }
             else
             {
                 ulong value = (ulong)(a ^ b);
                 //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
                 ulong result = value - ((value >> 1) & 0x5555555555555555L);
                 result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
-                return (long)unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56;
+                return (ulong)unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56;
             }
         }
     }

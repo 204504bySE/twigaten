@@ -71,8 +71,12 @@ namespace twidownstream
         static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
         {
             UseCookies = false,
-            SslProtocols = System.Security.Authentication.SslProtocols.Tls12
-        });
+            AutomaticDecompression = DecompressionMethods.All,
+            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13
+        })
+        {
+            DefaultRequestVersion = HttpVersion.Version20
+        };
         
         /*
         static readonly UdpClient Udp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.LockerUdpPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
