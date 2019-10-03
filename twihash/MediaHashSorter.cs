@@ -244,7 +244,7 @@ namespace twihash
                 //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
                 ulong result = value - ((value >> 1) & 0x5555555555555555L);
                 result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
-                return (ulong)unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56;
+                return unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56;
             }
         }
     }

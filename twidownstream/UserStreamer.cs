@@ -32,7 +32,6 @@ namespace twidownstream
         //Singleton
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
-        ///<summary>全Tokenでこれを共有するとHttpClientも共有される</summary>
         static readonly ConnectionOptions TokenOptions = new ConnectionOptions
         {
             DisableKeepAlive = false,
@@ -63,7 +62,7 @@ namespace twidownstream
         {
             Token = setting.Token;
             Token.ConnectionOptions.ExternalHttpClient = Http;
-            //Token.ConnectionOptions = TokenOptions;
+            Token.ConnectionOptions = TokenOptions;
             LastReceivedTweetId = setting.last_status_id;
         }
 
