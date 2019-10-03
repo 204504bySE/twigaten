@@ -29,11 +29,22 @@ namespace twidownstream
         ///またはRESTで拾ったLastReceivedTweetIdのツイートの時刻</summary>
         DateTimeOffset LastMessageTime = DateTimeOffset.UtcNow; 
 
-        //Singleton
+        //Singleton members
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
+
+        static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
+        {
+            UseCookies = false,
+            AutomaticDecompression = DecompressionMethods.All,
+            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+        })
+        {
+            DefaultRequestVersion = HttpVersion.Version20
+        };
         static readonly ConnectionOptions TokenOptions = new ConnectionOptions
         {
+            ExternalHttpClient = Http,
             DisableKeepAlive = false,
             UseCompression = true,
             UseCompressionOnStreaming = true
@@ -48,20 +59,10 @@ namespace twidownstream
             public bool rest_my_tweet { get; set; }
         }
 
-        static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
-        {
-            UseCookies = false,
-            AutomaticDecompression = DecompressionMethods.All,
-            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
-        })
-        {
-            DefaultRequestVersion = HttpVersion.Version20
-        };
 
         public UserStreamer(UserStreamerSetting setting)
         {
             Token = setting.Token;
-            Token.ConnectionOptions.ExternalHttpClient = Http;
             Token.ConnectionOptions = TokenOptions;
             LastReceivedTweetId = setting.last_status_id;
         }
