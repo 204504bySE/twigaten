@@ -19,13 +19,17 @@ namespace aspcoretest
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app)
         {
-            app.UseMvc(routes =>
+            //app.UseStaticFiles();
+            app.UseRouting();
+            //app.UseCors();
+            //app.UseAuthentication();
+            //app.UseAuthorization();
+
+            app.UseEndpoints(endpoints => 
             {
-                routes.MapRoute(
-                    name: "default",
-                    template: "{controller=hash}/{action=index}/{id?}");
+                endpoints.MapControllerRoute("default", "{controller=hash}/{action=index}/{id?}");
             });
         }
     }

@@ -55,19 +55,16 @@ namespace twitool
                 if(media.Count() == 0) { return; }
                 foreach (var m in media)
                 {
+                    Counter.MediaTotal.Increment();
                     using (var req = new HttpRequestMessage(HttpMethod.Head, m.media_url))
                     {
-                        Counter.MediaTotal.Increment();
                         req.Headers.Referrer = new Uri(m.tweet_url);
                         using (var res = await Http.SendAsync(req).ConfigureAwait(false))
                         {
-                            if (!res.IsSuccessStatusCode
-                                && (res.StatusCode == HttpStatusCode.NotFound
-                                    || res.StatusCode == HttpStatusCode.Gone
-                                    || res.StatusCode == HttpStatusCode.Forbidden))
-                            {
-                                Counter.MediaGone.Increment();
-                            }
+                            if (res.StatusCode == HttpStatusCode.NotFound
+                                || res.StatusCode == HttpStatusCode.Gone
+                                || res.StatusCode == HttpStatusCode.Forbidden)
+                            { Counter.MediaGone.Increment(); }
                             else { return; }
                         }
                     }
@@ -77,7 +74,7 @@ namespace twitool
 
             }, new ExecutionDataflowBlockOptions()
             {
-                BoundedCapacity = DownloadConcurrency << 1,
+                BoundedCapacity = DownloadConcurrency << 2,
                 MaxDegreeOfParallelism = DownloadConcurrency
             });
 
@@ -85,7 +82,7 @@ namespace twitool
             var CheckTweetBlock = new ActionBlock<(long tweet_id, long[] media_id)>(async (t) =>
             {
                 //ハッシュ値が同じで古い奴
-                using (var mediacmd = new MySqlCommand(@"SELECT NOT EXISTS(
+                using (var mediacmd = new MySqlCommand(@"SELECT EXISTS(
 SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
@@ -93,8 +90,7 @@ JOIN user u USING (user_id)
 WHERE dcthash = (SELECT dcthash FROM media WHERE media_id = @media_id)
 AND t.tweet_id < @tweet_id
 AND u.isprotected IS FALSE);"))
-                //ハッシュ値がちょっと違って古い奴
-                using (var mediacmd2 = new MySqlCommand(@"SELECT NOT EXISTS(
+/* OR EXISTS(
 SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
@@ -102,8 +98,8 @@ JOIN user u USING (user_id)
 JOIN dcthashpairslim h ON h.hash_large = m.dcthash
 WHERE h.hash_small = (SELECT dcthash FROM media WHERE media_id = @media_id)
 AND t.tweet_id < @tweet_id
-AND u.isprotected IS FALSE);"))
-                using (var mediacmd3 = new MySqlCommand(@"SELECT NOT EXISTS(
+AND u.isprotected IS FALSE)
+OR EXISTS(
 SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
@@ -111,26 +107,23 @@ JOIN user u USING (user_id)
 JOIN dcthashpairslim h ON h.hash_small = m.dcthash
 WHERE h.hash_large = (SELECT dcthash FROM media WHERE media_id = @media_id)
 AND t.tweet_id < @tweet_id
-AND u.isprotected IS FALSE);"))
+AND u.isprotected IS FALSE);
+*/
                 {
                     mediacmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = t.tweet_id;
-                    mediacmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = t.tweet_id;
-                    mediacmd3.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = t.tweet_id;
                     var mediaparam = mediacmd.Parameters.Add("@media_id", MySqlDbType.Int64);
-                    var mediaparam2 = mediacmd2.Parameters.Add("@media_id", MySqlDbType.Int64);
-                    var mediaparam3 = mediacmd3.Parameters.Add("@media_id", MySqlDbType.Int64);
                     foreach (long mid in t.media_id)
                     {
                         mediaparam.Value = mid;
-                        mediaparam2.Value = mid;
-                        mediaparam3.Value = mid;
-                        //「存在する」時だけ次の画像に進める
-                        if (await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0
-                            && await SelectCount(mediacmd2, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0
-                            && await SelectCount(mediacmd3, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0)
-                        { return; }
+                        //全部画像転載の時だけ次の画像に進める
+                        while (true)
+                        {
+                            long val = await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                            if (val == 0) { return; } else if (val > 0) { break; }
+                        }
                     }
                 }
+
                 //存在確認をする画像の情報を取得(汚い
                 using (var cmd = new MySqlCommand(@"SELECT
 m.media_id, mt.media_url, u.screen_name
@@ -144,7 +137,7 @@ WHERE m.source_tweet_id = @tweet_id;"))
                     cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = t.tweet_id;
 
                     var medialist = new List<MediaInfo>();
-                    await ExecuteReader(cmd, (r) =>
+                    while (!await ExecuteReader(cmd, (r) =>
                     {
                         medialist.Add(new MediaInfo()
                         {
@@ -153,7 +146,7 @@ WHERE m.source_tweet_id = @tweet_id;"))
                             screen_name = r.GetString(2),
                             source_tweet_id = t.tweet_id,
                         });
-                    }).ConfigureAwait(false);
+                    }).ConfigureAwait(false)) { medialist.Clear(); }
                     await TryDownloadBlock.SendAsync(medialist).ConfigureAwait(false);
                 }
             }, new ExecutionDataflowBlockOptions() { BoundedCapacity = Environment.ProcessorCount << 1, MaxDegreeOfParallelism = Environment.ProcessorCount });
@@ -174,30 +167,32 @@ LIMIT 1000;"))
                 long exclude_tweet_id = SnowFlake.SecondinSnowFlake(Exclude, false);
                 tweet_param.Value = last_tweet_id;
 
-                var media_id = new List<long>();
-                List<(long t, long m)> Table = new List<(long t, long m)>();
+                var MediaIdList = new List<long>();
+                var Table = new List<(long tweet_id, long media_id)>();
                 do
                 {
-                    Table.Clear();
-                    await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetInt64(1))), IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+                    do { Table.Clear(); }
+                    while (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetInt64(1))), IsolationLevel.ReadUncommitted).ConfigureAwait(false));
                     foreach (var t in Table)
                     {
-                        long tweet_id = t.t;
-                        if (last_tweet_id < tweet_id)
+                        long tweet_id = t.tweet_id;
+                        if (last_tweet_id != tweet_id)
                         {
+                            Counter.TweetTotal.Increment();
+
                             if (exclude_tweet_id < tweet_id) { break; }
-                            if (media_id.Count > 0)
+                            if (MediaIdList.Count > 0)
                             {
-                                await CheckTweetBlock.SendAsync((last_tweet_id, media_id.ToArray())).ConfigureAwait(false);
-                                media_id.Clear();
+                                Counter.TweetToCheck.Increment();
+                                await CheckTweetBlock.SendAsync((last_tweet_id, MediaIdList.ToArray())).ConfigureAwait(false);
+                                MediaIdList.Clear();
                             }
                             last_tweet_id = tweet_id;
                             Counter.LastTweetID = tweet_id;
                         }
-                        else if (tweet_id < last_tweet_id) { throw new InvalidOperationException(); }
-                        media_id.Add(t.m);
+                        MediaIdList.Add(t.media_id); 
                     }
-                    if (Table.Count > 0) { tweet_param.Value = Table.Last().t; }
+                    if (Table.Count > 0) { tweet_param.Value = Table.Last().tweet_id; }
                 } while (Table.Count > 0 && last_tweet_id < exclude_tweet_id);
 
                 CheckTweetBlock.Complete();
@@ -234,6 +229,8 @@ LIMIT 1000;"))
         public static long LastTweetID;
 
         //structだからreadonlyにすると更新されなくなるよ
+        public static CounterValue TweetTotal = new CounterValue();
+        public static CounterValue TweetToCheck = new CounterValue();
         public static CounterValue MediaGone = new CounterValue();
         public static CounterValue MediaTotal = new CounterValue();
         public static CounterValue TweetDeleted = new CounterValue();
@@ -241,6 +238,7 @@ LIMIT 1000;"))
         public static void PrintReset()
         {
             Console.WriteLine("{0} Tweet ID: {1} ({2})", DateTime.Now, LastTweetID, SnowFlake.DatefromSnowFlake(LastTweetID));
+            Console.WriteLine("{0} {1} / {2} Tweet Checked", DateTime.Now, TweetToCheck.Get(), TweetTotal.Get());
             Console.WriteLine("{0} {1} / {2} Media Gone",DateTime.Now, MediaGone.Get(), MediaTotal.Get()); 
             Console.WriteLine("{0} {1} / {2} Tweet Deleted", DateTime.Now, TweetDeleted.Get(), TweetToDelete.Get()); 
         }

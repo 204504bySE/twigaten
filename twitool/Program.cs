@@ -87,8 +87,8 @@ LIMIT @limit;"))
                     {
                         for (int n = 0; n < Table.Count; n++)
                         {
-                            delcmd.Parameters.AddWithValue('@' + n.ToString(), Table[n].media_id);
-                            delcmd2.Parameters.AddWithValue('@' + n.ToString(), Table[n].media_id);
+                            delcmd.Parameters.AddWithValue("@" + n.ToString(), Table[n].media_id);
+                            delcmd2.Parameters.AddWithValue("@" + n.ToString(), Table[n].media_id);
                         }
                         RemovedCount += await ExecuteNonQuery(new[] { delcmd, delcmd2 }).ConfigureAwait(false) >> 1;
                     }
@@ -133,7 +133,7 @@ ORDER BY media_id;"))
                     {
                         for (int i = 0; i < Table.Count; i++)
                         {
-                            Cmd.Parameters.Add('@' + i.ToString(), DbType.Int64).Value = Table[i].media_id;
+                            Cmd.Parameters.Add("@" + i.ToString(), DbType.Int64).Value = Table[i].media_id;
                         }
                         await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                     }
@@ -184,7 +184,7 @@ ORDER BY updated_at LIMIT @limit;"))
                     {
                         for (int n = 0; n < Table.Count; n++)
                         {
-                            upcmd.Parameters.Add('@' + n.ToString(), DbType.Int64).Value = Table[n].user_id;
+                            upcmd.Parameters.Add("@" + n.ToString(), DbType.Int64).Value = Table[n].user_id;
                         }
                         RemovedCount += await ExecuteNonQuery(upcmd);
                     }

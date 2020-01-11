@@ -109,7 +109,7 @@ namespace twidownstream
         static readonly RemoveOldSet<long> UserLock = new RemoveOldSet<long>(config.crawl.TweetLockSize);
         static readonly ActionBlock<(Status, Tokens, bool stream)> TweetDistinctBlock
             = new ActionBlock<(Status x, Tokens t, bool stream)>((m) =>
-            {   //ここでLockする(1スレッドなのでHashSetでおｋ
+            {   //シングルスレッド動作なのでlock不要
                 if (TweetLock.Add(m.x.Id)/*await LockTweet(m.x.Id).ConfigureAwait(false)*/)
                 {
                     HandleTweetBlock.Post((m.x, m.t, m.stream,

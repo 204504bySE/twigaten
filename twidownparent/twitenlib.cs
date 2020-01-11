@@ -12,6 +12,7 @@ using IniParser;
 using IniParser.Model;
 using System.Threading.Tasks;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 
 namespace twitenlib
 {
@@ -535,6 +536,7 @@ namespace twitenlib
             return OldSet.Contains(Value) || NewSet.Contains(Value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RemoveOld()
         {
             if (NewSet.Count >= MaxSize)

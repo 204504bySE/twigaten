@@ -33,6 +33,7 @@ namespace twidownstream
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
 
+        //UserStreamerStatic.Http(画像取得用HttpClient)とはなんとなく分離しておく
         static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
         {
             UseCookies = false,

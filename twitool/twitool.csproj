@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
@@ -15,8 +15,8 @@
     <PackageReference Include="CommandLineParser" Version="2.6.0" />
     <PackageReference Include="CoreTweet" Version="1.0.0.483" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySqlConnector" Version="0.56.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Include="MySqlConnector" Version="0.61.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
 
 </Project>

@@ -25,10 +25,10 @@ namespace aspcoretest
             WebHost.CreateDefaultBuilder(args)
                 .UseKestrel(options =>
                 {
-                    options.Listen(IPAddress.Any, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
-                    options.Listen(IPAddress.IPv6Any, ListenPort, listenOptions => { listenOptions.NoDelay = true; });
+                    //WindowsではIPv4とIPv6は別々にListenする必要がある
+                    options.Listen(IPAddress.Any, ListenPort);
+                    options.Listen(IPAddress.IPv6Any, ListenPort);
                 })
-                .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 //.UseUrls("http://*:12305/")     
                 .ConfigureLogging((hostingContext, logging) =>

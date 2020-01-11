@@ -358,8 +358,8 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
                 {
                     for (j = 0; j < DeleteID.Length % BulkUnit; j++)
                     {
-                        cmd.Parameters.Add('@' + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
-                        cmd2.Parameters.Add('@' + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
+                        cmd.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
+                        cmd2.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64).Value = DeleteID[BulkUnit * i + j];
                     }
                     int DeletedCount = await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false);
                     if (DeletedCount >= 0) { Counter.TweetDeleted.Add(DeletedCount); }
