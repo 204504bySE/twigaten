@@ -47,10 +47,7 @@ namespace twitool
         {
             int RemovedCount = 0;
             const int BulkUnit = 1000;
-            const string head = @"DELETE FROM media WHERE media_id IN";
-            const string head2 = @"DELETE FROM media_text WHERE media_id IN";
-            string BulkDeleteCmdStr = BulkCmdStrIn(BulkUnit, head);
-            string BulkDeleteCmdStr2 = BulkCmdStrIn(BulkUnit, head2);
+
             try
             {
                 var Table = new List<(long media_id, string media_url)>(BulkUnit);
@@ -66,33 +63,30 @@ AND (md.downloaded_at IS NULL OR md.downloaded_at < @downloaded_at)
 ORDER BY m.media_id
 LIMIT @limit;"))
                     {
+                        //ダウンロードしたての画像は除く
                         cmd.Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 600;
                         cmd.Parameters.AddWithValue("@limit", BulkUnit);
                         if (!await ExecuteReader(cmd, (r) => Table.Add((r.GetInt64(0), r.GetString(1))))) { return; }
                     }
                     if (Table.Count < 1) { break; }
 
-                    foreach (var row in Table)
+                    var DeleteMediaBlock = new ActionBlock<(long media_id, string media_url)>(async (row) =>
                     {
                         File.Delete(MediaFolderPath.ThumbPath(row.media_id, row.media_url));
-                    }
 
-                    if (Table.Count < BulkUnit)
-                    {
-                        BulkDeleteCmdStr = BulkCmdStrIn(Table.Count, head);
-                        BulkDeleteCmdStr2 = BulkCmdStrIn(Table.Count, head2);
-                    }
-                    using (var delcmd = new MySqlCommand(BulkDeleteCmdStr))
-                    using (var delcmd2 = new MySqlCommand(BulkDeleteCmdStr2))
-                    {
-                        for (int n = 0; n < Table.Count; n++)
-                        {
-                            delcmd.Parameters.AddWithValue("@" + n.ToString(), Table[n].media_id);
-                            delcmd2.Parameters.AddWithValue("@" + n.ToString(), Table[n].media_id);
-                        }
-                        RemovedCount += await ExecuteNonQuery(new[] { delcmd, delcmd2 }).ConfigureAwait(false) >> 1;
-                    }
-                    //Console.WriteLine("{0} Media removed", RemovedCount);
+                        using var DeleteCmd = new MySqlCommand(@"DELETE FROM media WHERE media_id = @media_id");
+                        using var DeleteCmd2 = new MySqlCommand(@"DELETE FROM media_text WHERE media_id = @media_id");
+                        DeleteCmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = row.media_id;
+                        DeleteCmd2.Parameters.Add("@media_id", MySqlDbType.Int64).Value = row.media_id;
+
+                        int deleted = await ExecuteNonQuery(new[] { DeleteCmd, DeleteCmd2 }).ConfigureAwait(false);
+                        if (deleted > 0) { Interlocked.Add(ref RemovedCount, deleted >> 1); }
+                    }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
+
+                    foreach (var row in Table) { DeleteMediaBlock.Post(row); }
+                    DeleteMediaBlock.Complete();
+                    await DeleteMediaBlock.Completion.ConfigureAwait(false);
+                    //Console.WriteLine("{0} Orphan Media removed.", RemovedCount);
                 } while (Table.Count >= BulkUnit);
             }
             catch (Exception e) { Console.WriteLine(e); return; }
@@ -230,7 +224,7 @@ ORDER BY updated_at LIMIT @limit;"))
                             insertcmd.Parameters.Add("@b" + numstr, MySqlDbType.Text).Value = tweet.Value;
                         }
                         int inserted = await ExecuteNonQuery(insertcmd).ConfigureAwait(false);
-                        if (inserted < 0){ t--; continue; }
+                        if (inserted < 0) { t--; continue; }
                         else { Interlocked.Add(ref InsertCount, inserted); }
                     }
                 }
@@ -265,7 +259,7 @@ ORDER BY updated_at LIMIT @limit;"))
             for (snowflakecount = 1131945314723442689; snowflakecount < endsnowflake; snowflakecount += SnowFlake.msinSnowFlake * 1000 * 60)
             {
                 await doblock.SendAsync(snowflakecount).ConfigureAwait(false);
-                if(sw.ElapsedMilliseconds >= 60000)
+                if (sw.ElapsedMilliseconds >= 60000)
                 {
                     Console.WriteLine("{0}\t{1} / {2}\t{3}", DateTime.Now, InsertCount, TweetCount, snowflakecount);
                     sw.Restart();

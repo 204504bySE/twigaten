@@ -81,6 +81,9 @@ namespace twitool
             //画像転載の疑いがあるツイだけ選ぶやつ
             var CheckTweetBlock = new ActionBlock<(long tweet_id, long[] media_id)>(async (t) =>
             {
+                //Block自体の詰まりを検出するためこっちでやる
+                Counter.TweetToCheck.Increment();
+
                 //ハッシュ値が同じで古い奴
                 using (var mediacmd = new MySqlCommand(@"SELECT EXISTS(
 SELECT * FROM media m
@@ -123,6 +126,7 @@ AND u.isprotected IS FALSE);
                         }
                     }
                 }
+                Counter.TweetCheckHit.Increment();
 
                 //存在確認をする画像の情報を取得(汚い
                 using (var cmd = new MySqlCommand(@"SELECT
@@ -149,7 +153,7 @@ WHERE m.source_tweet_id = @tweet_id;"))
                     }).ConfigureAwait(false)) { medialist.Clear(); }
                     await TryDownloadBlock.SendAsync(medialist).ConfigureAwait(false);
                 }
-            }, new ExecutionDataflowBlockOptions() { BoundedCapacity = Environment.ProcessorCount << 1, MaxDegreeOfParallelism = Environment.ProcessorCount });
+            }, new ExecutionDataflowBlockOptions() { BoundedCapacity = Environment.ProcessorCount << 4, MaxDegreeOfParallelism = Environment.ProcessorCount });
 
 
             using (var cmd = new MySqlCommand(@"SELECT o.tweet_id, t.media_id
@@ -178,12 +182,9 @@ LIMIT 1000;"))
                         long tweet_id = t.tweet_id;
                         if (last_tweet_id != tweet_id)
                         {
-                            Counter.TweetTotal.Increment();
-
                             if (exclude_tweet_id < tweet_id) { break; }
                             if (MediaIdList.Count > 0)
                             {
-                                Counter.TweetToCheck.Increment();
                                 await CheckTweetBlock.SendAsync((last_tweet_id, MediaIdList.ToArray())).ConfigureAwait(false);
                                 MediaIdList.Clear();
                             }
@@ -229,8 +230,8 @@ LIMIT 1000;"))
         public static long LastTweetID;
 
         //structだからreadonlyにすると更新されなくなるよ
-        public static CounterValue TweetTotal = new CounterValue();
         public static CounterValue TweetToCheck = new CounterValue();
+        public static CounterValue TweetCheckHit = new CounterValue();
         public static CounterValue MediaGone = new CounterValue();
         public static CounterValue MediaTotal = new CounterValue();
         public static CounterValue TweetDeleted = new CounterValue();
@@ -238,7 +239,7 @@ LIMIT 1000;"))
         public static void PrintReset()
         {
             Console.WriteLine("{0} Tweet ID: {1} ({2})", DateTime.Now, LastTweetID, SnowFlake.DatefromSnowFlake(LastTweetID));
-            Console.WriteLine("{0} {1} / {2} Tweet Checked", DateTime.Now, TweetToCheck.Get(), TweetTotal.Get());
+            Console.WriteLine("{0} {1} / {2} Tweet Checked", DateTime.Now, TweetCheckHit.Get(), TweetToCheck.Get());
             Console.WriteLine("{0} {1} / {2} Media Gone",DateTime.Now, MediaGone.Get(), MediaTotal.Get()); 
             Console.WriteLine("{0} {1} / {2} Tweet Deleted", DateTime.Now, TweetDeleted.Get(), TweetToDelete.Get()); 
         }
