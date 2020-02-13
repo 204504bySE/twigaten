@@ -27,7 +27,7 @@ namespace twidownstream
         readonly TweetTimeList TweetTime = new TweetTimeList();
         ///<summary>最後にstreamingで何かを受信した時刻
         ///またはRESTで拾ったLastReceivedTweetIdのツイートの時刻</summary>
-        DateTimeOffset LastMessageTime = DateTimeOffset.UtcNow; 
+        public DateTimeOffset LastMessageTime { get; private set; } = DateTimeOffset.UtcNow; 
 
         //Singleton members
         static readonly Config config = Config.Instance;
@@ -203,7 +203,9 @@ namespace twidownstream
             Postponed   //ロックされてるから何もしない
         }
 
-        //これを外部から叩いて再接続の必要性を確認
+        /// <summary>
+        /// これを外部から叩いて再接続の必要性を確認する
+        /// </summary>
         public NeedConnectResult NeedConnect()
         {
             if (StreamSubscriber != null)
@@ -227,14 +229,49 @@ namespace twidownstream
                 else { return NeedConnectResult.JustNeeded; }
             }
         }
+
+        
+
+        /// <summary>
+        /// ツイートの平均間隔(秒)
+        /// ツイートを取得したことがない場合は0が返る
+        /// </summary>
+        double TweetInterval
+        {
+            get
+            {
+                if (TweetTime.Count < 2) { return 0; }
+                else { return (TweetTime.Max - TweetTime.Min).TotalSeconds / (TweetTime.Count - 1); }
+            }
+        }
+
+        /// <summary>
+        /// 最近取得したツイートから推定した取得待ちのツイート数
+        /// ツイートを取得したことがない場合はdouble.MaxValueが返る
+        /// </summary>
+        public double EstimatedTweetToReceive
+        {
+            get
+            {
+                double Interval = TweetInterval;
+                if (Interval == 0) { return double.MaxValue; }
+                else { return (DateTimeOffset.UtcNow - LastMessageTime).TotalSeconds / Interval; }
+            }
+        }
+
         public enum NeedStreamResult
         {
             Stream,
             Hysteresis,
             RestOnly
         }
+        /// <summary>
+        /// User streamの接続状態とTLの速度でUser streamへの接続の必要性を判定する
+        /// </summary>
+        /// <returns></returns>
         public NeedStreamResult NeedStreamSpeed()
         {
+            //StreamSpeedSecondsを0以下にしたら絶対にUser streamを使わない
             if (config.crawl.StreamSpeedSeconds <= 0) { return NeedStreamResult.RestOnly; }
             //User stream接続を失った可能性があるときもRestOnly→切断させる
             if (StreamSubscriber != null 
@@ -251,8 +288,10 @@ namespace twidownstream
 
 
         public enum TokenStatus { Success, Failure, Revoked, Locked }
-        ///<summary>tokenの有効性を確認して自身のプロフィールも取得
-        ///基本的にはRevokeの可能性があるときだけ呼ぶ</summary>
+        /// <summary>
+        /// tokenの有効性を確認して自身のプロフィールも取得する
+        /// 基本的にはRevokeの可能性があるときだけ呼ぶ
+        /// </summary>
         public async Task<TokenStatus> VerifyCredentials()
         {
             try
@@ -297,6 +336,9 @@ namespace twidownstream
             }
         }
         
+        /// <summary>
+        /// User streamの受信を開始する
+        /// </summary>
         public void RecieveStream()
         {
             DisconnectStream();
@@ -327,13 +369,17 @@ namespace twidownstream
 
         public void DisconnectStream() { StreamSubscriber?.Dispose(); StreamSubscriber = null; }
 
-        public async Task<TokenStatus> RecieveRestTimelineAuto()
+        /// <summary>
+        /// RESTでホームタイムラインを取得してDBに突っ込む
+        /// </summary>
+        /// <returns>tokenの有効性など</returns>
+        public async Task<TokenStatus> RecieveRestTimeline()
         {
             //TLが遅い分は省略
             //とはいえ一定時間取得してなかったら強制的にやる
-            if(DateTimeOffset.UtcNow - LastMessageTime < TimeSpan.FromSeconds(config.crawl.MaxRestInterval)
-                && TweetTime.Count >= 2 
-                && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
+            //if(DateTimeOffset.UtcNow - LastMessageTime < TimeSpan.FromSeconds(config.crawl.MaxRestInterval)
+            //    && TweetTime.Count >= 2 
+            //    && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
             //RESTで取得してツイートをDBに突っ込む
             //各ツイートの時刻をTweetTimeに格納
             try
@@ -425,6 +471,10 @@ namespace twidownstream
             }
         }
 
+        /// <summary>
+        /// ブロックしているアカウントのIDを取得してDBに突っ込む
+        /// </summary>
+        /// <returns>取得したブロック済みアカウント数</returns>
         public async Task<int> RestBlock()
         {
             try
@@ -435,7 +485,10 @@ namespace twidownstream
             }
             catch { return -1; }
         }
-
+        /// <summary>
+        /// フォローしてるアカウントのIDを取得してDBに突っ込む
+        /// </summary>
+        /// <returns>取得したフォロー中のアカウント数</returns>
         public async Task<int> RestFriend()
         {
             try
@@ -447,6 +500,11 @@ namespace twidownstream
             catch { return -1; }
         }
 
+        /// <summary>
+        /// User streamに流れてきたメッセージはこれに流し込むとよしなにやってくれる
+        /// </summary>
+        /// <param name="x">User streamからのメッセージ</param>
+        /// <returns></returns>
         async Task HandleStreamingMessage(StreamingMessage x)
         {
             switch (x.Type)
@@ -478,7 +536,11 @@ namespace twidownstream
                     break;
             }
         }
-
+        /// <summary>
+        /// User streamに流れてきたメッセージはこれに流し込むとよしなにやってくれる
+        /// </summary>
+        /// <param name="x">User streamからのメッセージ</param>
+        /// <returns></returns>
         async Task HandleEventMessage(EventMessage x)
         {
             switch (x.Event)

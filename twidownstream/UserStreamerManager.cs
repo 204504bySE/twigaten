@@ -58,9 +58,6 @@ namespace twidownstream
             }
         }
 
-        public int Count { get { return Streamers.Count; } }
-
-
         ///<summary>再試行にも失敗したらtrue KeyはUserID</summary>
         readonly ConcurrentDictionary<long, bool> RevokeRetryUserID = new ConcurrentDictionary<long, bool>();
         ///<summary>Revoke直後→再試行マーク 2連続Revoked→Token削除</summary>
@@ -100,14 +97,19 @@ namespace twidownstream
         static readonly IPEndPoint WatchDogEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.WatchDogPort);
         static readonly int ThisPid = Process.GetCurrentProcess().Id;
 
-        ///<summary>これを定期的に呼んで再接続やFriendの取得をやらせる</summary>
-        public async Task<int> ConnectStreamers()
+        /// <summary>
+        /// これを定期的に呼んで再接続やFriendの取得をやらせる
+        /// 1分経過しても終わらないときは打ち切る
+        /// 一度も取得していないアカウント→取得待ちが多い順 に処理する
+        /// </summary>
+        public async Task ConnectStreamers()
         {
             //アカウントが1個も割り当てられなくなってたら自殺する
             async Task ExistThisPid() { if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); } }
 
             await ExistThisPid().ConfigureAwait(false);
             int ActiveStreamers = 0;  //再接続が不要だったやつの数
+            int RestedStreamers = 0; //RESTでツイートを取得したやつの数
             var ConnectBlock = new ActionBlock<UserStreamer>(
             async (Streamer) =>
             {
@@ -143,7 +145,8 @@ namespace twidownstream
                     else
                     {
                         //TLの速度を測定して必要ならStreamに接続
-                        switch (await Streamer.RecieveRestTimelineAuto().ConfigureAwait(false))
+                        Interlocked.Increment(ref RestedStreamers);
+                        switch (await Streamer.RecieveRestTimeline().ConfigureAwait(false))
                         {
                             case UserStreamer.TokenStatus.Locked:
                                 Streamer.PostponeConnect(); break;
@@ -169,7 +172,7 @@ namespace twidownstream
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
-                BoundedCapacity = config.crawl.ReconnectThreads << 4,    //これでもawaitする
+                BoundedCapacity = config.crawl.ReconnectThreads << 1,    //これでもawaitする
                 SingleProducerConstrained = true,
             });
 
@@ -178,27 +181,21 @@ namespace twidownstream
             Stopwatch sw = new Stopwatch();
             sw.Start();
             Counter.PrintReset();
-            foreach (var s in Streamers)
+
+            foreach (var s in Streamers.Select(s => s.Value)
+                .Where(s => s.EstimatedTweetToReceive >= config.crawl.StreamSpeedTweets
+                    || (s.LastMessageTime - DateTimeOffset.UtcNow).TotalSeconds > config.crawl.MaxRestInterval)
+                .OrderByDescending(s => s.EstimatedTweetToReceive))
             {
-                if (!await ConnectBlock.SendAsync(s.Value).ConfigureAwait(false)) { break; }    //そんなバナナ
-                SetMaxConnections(ActiveStreamers);
-                while (true)
+                if (!await ConnectBlock.SendAsync(s).ConfigureAwait(false)) { break; }    //そんなバナナ
+
+                //ツイートが詰まってたら休む 
+                while (UserStreamerStatic.NeedConnectPostpone() && sw.ElapsedMilliseconds <= 60000)
                 {
-                    if (sw.ElapsedMilliseconds > 60000)
-                    {
-                        sw.Restart();
-                        Counter.PrintReset();
-                        await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
-                        await ExistThisPid().ConfigureAwait(false);
-                    }
-                    //ツイートが詰まってたら休む                    
-                    if (UserStreamerStatic.NeedConnectPostpone())
-                    {
-                        await ExistThisPid().ConfigureAwait(false);
-                        await Task.Delay(1000).ConfigureAwait(false);
-                    }
-                    else { break; }
-                } 
+                    await ExistThisPid().ConfigureAwait(false);
+                    await Task.Delay(1000).ConfigureAwait(false);
+                }
+                if(sw.ElapsedMilliseconds > 60000) { break; }
             }
             ConnectBlock.Complete();
             await ConnectBlock.Completion.ConfigureAwait(false);
@@ -207,23 +204,10 @@ namespace twidownstream
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
 
-            return ActiveStreamers;
+            Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ActiveStreamers, RestedStreamers, Streamers.Count);
         }
 
         ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>
         public async Task StoreCrawlStatus() { await db.StoreUserStreamerSetting(Streamers.Select(s => s.Value.Setting)).ConfigureAwait(false); }
-
-        private void SetMaxConnections(int basecount, bool Force = false)
-        {
-            int max = basecount
-                + (config.crawl.MediaDownloadThreads << 1)
-                + (config.crawl.ReconnectThreads << 1)
-                + config.crawl.MaxDBConnections
-                + config.crawl.DefaultConnectionThreads;
-            if (Force || ServicePointManager.DefaultConnectionLimit < max)
-            {
-                ServicePointManager.DefaultConnectionLimit = max;
-            }
-        }
     }
 }

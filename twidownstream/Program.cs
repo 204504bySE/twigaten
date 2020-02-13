@@ -41,8 +41,7 @@ namespace twidownstream
             var sw = Stopwatch.StartNew();
             while (true)
             {
-                int Connected = await manager.ConnectStreamers().ConfigureAwait(false);
-                Console.WriteLine("App: {0} / {1} Accounts Streaming.", Connected, manager.Count);
+                await manager.ConnectStreamers().ConfigureAwait(false);
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
                 GC.Collect();
                 sw.Stop();
