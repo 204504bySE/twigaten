@@ -53,7 +53,6 @@ namespace twihash
     /// </summary>
     class MediaHashSorter
     {
-        readonly DBHandler db;
         readonly Config config = Config.Instance;
         readonly HashSet<long> NewHash;
         readonly ulong MaxHammingDistance;
@@ -69,10 +68,10 @@ namespace twihash
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
             this.MaxHammingDistance = (ulong)MaxHammingDistance;
-            this.db = db;
             this.HashCount = HashCount;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
 
+            //このブロックは全MultipleSortUnitで共有する
             PairStoreBlock = new ActionBlock<HashPair[]>(
             async (p) =>
             {
@@ -84,6 +83,7 @@ namespace twihash
             PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
         }
 
+        /// <summary>これを呼ぶと全部やる</summary>
         public async Task Proceed()
         {
             var SortTask = new List<Task>(Combi.Length);
@@ -98,11 +98,13 @@ namespace twihash
         }
 
         const int bitcount = sizeof(long) * 8;    //longのbit数
+        /// <summary>複合ソート法のマスク1個分をやる</summary>
+        /// <param name="Index">nCxの組合せの何個目か(0~(nCx)-1)</param>
         async Task<Task> MultipleSortUnit(int Index)
         {
             int[] BaseBlocks = Combi[Index];
             int StartBlock = BaseBlocks.Last();
-            long SortMask = UnMask(BaseBlocks, Combi.Count);
+            long SortMask = UnMask(BaseBlocks, Combi.Choice);
 
             var QuickSortSW = Stopwatch.StartNew();
 
@@ -111,7 +113,7 @@ namespace twihash
             QuickSortSW.Stop();
             Console.WriteLine("{0}\tFile Sort\t{1}ms ", Index, QuickSortSW.ElapsedMilliseconds);
 
-            long[] UnMasks = Enumerable.Range(0, Combi.Count).Select(i => UnMask(i, Combi.Count)).ToArray();
+            long[] UnMasks = Enumerable.Range(0, Combi.Choice).Select(i => UnMask(i, Combi.Choice)).ToArray();
 
             var MultipleSortBlock = new ActionBlock<AddOnlyList<long>>((BlockList) =>
             {
@@ -122,7 +124,7 @@ namespace twihash
                 int BlockIndex = 0;
                 int CurrentBlockLength;
 
-                //要素数,実際の要素,…,要素数,…,0 という配列を読み込んでいく
+                //(要素数,実際の要素,…),0 という配列を読み込んでいく
                 for (; (CurrentBlockLength = (int)Block[BlockIndex]) > 0; BlockIndex += CurrentBlockLength + 1)
                 {
                     //「実際の要素」1セット分を取り出す
@@ -217,7 +219,12 @@ namespace twihash
         {
             return UnMask(new int[] { block }, blockcount);
         }
-
+        /// <summary>
+        /// 64bitを割と均等に分割して,blocksに入った範囲のビットを1にした数値
+        /// 例えば blocks={0,2}, blockcount=4 なら 0x0000FFFF0000FFFF
+        /// </summary>
+        /// <param name="blocks">1で埋めたいブロック(謎)</param>
+        /// <param name="blockcount">分割数</param>
         long UnMask(int[] blocks, int blockcount)
         {
             long ret = 0;

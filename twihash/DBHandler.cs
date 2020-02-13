@@ -23,7 +23,7 @@ namespace twihash
         public async Task<int> StoreMediaPairs(HashPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
-            if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentOutOfRangeException(); }
+            if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentException(); }
             else if (StorePairs.Length == 0) { return 0; }
             else
             {

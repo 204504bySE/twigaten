@@ -118,7 +118,7 @@ namespace twihash
 
                 var SortSpan = SortList.AsSpan(SortRange.Begin, SortRange.End - SortRange.Begin + 1);
 
-                //ふつーにピボットを選ぶ
+                //ピボットを選ぶ 最初/中間/最後 の3要素の中央値を取る
                 long PivotA = SortSpan[0] & SortMask;
                 long PivotB = SortSpan[SortSpan.Length >> 1] & SortMask;
                 long PivotC = SortSpan[SortSpan.Length - 1] & SortMask;

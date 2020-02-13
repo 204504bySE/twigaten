@@ -6,26 +6,29 @@ using System.Collections;
 
 namespace twihash
 {
+    /// <summary>
+    /// "n個の要素からx個選ぶ"組合せを扱う
+    /// </summary>
     class Combinations : IEnumerable<int[]>
     {
         ///<summary>nCxのn</summary>
-        public int Count { get; }
+        public int Choice { get; }
         ///<summary>nCxのx</summary>
         public int Select { get; }
         ///<summary>組合せの個数</summary>
         public int Length { get; }
 
-        public Combinations(int _Count, int _Select)
+        public Combinations(int choice, int select)
         {
-            if (_Count < 1 || _Select < 1) { throw new ArgumentOutOfRangeException(); }
-            if (_Count < _Select) { throw new ArgumentException(); }
-            Count = _Count;
-            Select = _Select;
+            if (choice < 1 || select < 1) { throw new ArgumentOutOfRangeException(); }
+            if (choice < select) { throw new ArgumentException(); }
+            Choice = choice;
+            Select = select;
 
-            Length = CombiCount(Count, Select);
+            Length = CombiCount(Choice, Select);
         }
 
-        //a個からb個選ぶ組合せの個数
+        ///<summary>a個からb個選ぶ組合せの個数</summary>
         int CombiCount(int a, int b)
         {
             long lengthtmp = 1;
@@ -55,11 +58,11 @@ namespace twihash
             return (int)lengthtmp;
         }
 
-        //n個要素が入っていてn番目がaの組合せの要素数
+        ///<summary>n個要素が入っていてn番目がaである組合せの要素数</summary>
         int RestCombiCount(int n, int a)
         {
-            if (n >= Count) { return 0; }    //全部埋まってる場合は0
-            return CombiCount(Count - a - 1, Select - n);
+            if (n >= Choice) { return 0; }    //全部埋まってる場合は0
+            return CombiCount(Choice - a - 1, Select - n);
         }
 
         public int IndexOf(int[] Combi)
@@ -86,7 +89,7 @@ namespace twihash
                 for (int i = 0; i < Select - 1; i++)
                 {
                     int j;
-                    for (j = (i == 0 ? 0 : ret[i - 1] + 1); j < Count - (Select - i); j++)
+                    for (j = (i == 0 ? 0 : ret[i - 1] + 1); j < Choice - (Select - i); j++)
                     {
                         int x = RestCombiCount(i + 1, j);
                         if (indextmp + x > index) { break; }

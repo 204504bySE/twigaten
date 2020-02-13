@@ -46,7 +46,7 @@ namespace twihash
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
         ///長さ2以上のやつは全部返す(NewHashが含まれてなくても返す)
         ///最後まで読み終わったらnull</summary>
-        ///<returns>要素数,実際の要素,…,要素数,…,0 と繰り返すオレオレ配列</returns>
+        ///<returns>(要素数,実際の要素…)を繰り返し、要素数0で終わりを示すオレオレ配列</returns>
         public AddOnlyList<long> ReadBlocks()
         {
             var ReadBlockList = new AddOnlyList<long>(ReadBlockListSize);
@@ -66,15 +66,13 @@ namespace twihash
                 {
                     long Value = SortedValues[ValueIndex];
                     long MaskedValue = Value & SortMask;
-                    //Maskしたやつ同士が一致するなら普通に続きに加える
                     if (MaskedKey == MaskedValue)
-                    {
+                    {   //Maskしたやつ同士が一致するなら普通に続きに加える
                         ReadBlockList.Add(Value);
                         BlockCount++;
                     }
-                    //Maskしたやつが一致しない場合はオレオレ配列1サイクル分終了
                     else
-                    {
+                    {   //Maskしたやつが一致しない場合はオレオレ配列1サイクル分終了
                         MaskedKey = MaskedValue;
                         //2要素以上あれば確定して次のサイクルに進む
                         if (1 < BlockCount)
