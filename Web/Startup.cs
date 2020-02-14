@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Twigaten.DctHashServer
+namespace Twigaten.Web
 {
     public class Startup
     {
@@ -16,21 +18,33 @@ namespace Twigaten.DctHashServer
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddResponseCompression(options => { options.Providers.Add<BrotliCompressionProvider>(); });
+            services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
+
+            services.AddSession();
+            services.Configure<CookiePolicyOptions>(options => 
+            {
+                options.CheckConsentNeeded = context => true;
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app)
         {
-            //app.UseStaticFiles();
+            app.UseStaticFiles();
             app.UseRouting();
-            //app.UseCors();
             //app.UseAuthentication();
-            //app.UseAuthorization();
+            app.UseAuthorization();
 
-            app.UseEndpoints(endpoints => 
+            app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute("default", "{controller=hash}/{action=index}/{id?}");
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            app.UseSession();
+            app.UseCookiePolicy();
         }
     }
 }

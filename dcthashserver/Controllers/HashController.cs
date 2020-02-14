@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace aspcoretest.Controllers
+namespace Twigaten.DctHashServer.Controllers
 {
     [Route("hash")]
     public class HashController : Controller

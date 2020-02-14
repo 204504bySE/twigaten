@@ -3,21 +3,26 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twidownparent", "twidownparent\twidownparent.csproj", "{D50D52EB-E166-4C46-8217-7BAF43946F2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrawlParent", "CrawlParent\CrawlParent.csproj", "{D50D52EB-E166-4C46-8217-7BAF43946F2C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twihash", "twihash\twihash.csproj", "{D5BC6216-3A12-4BE3-AFCD-C5220197B029}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hash", "Hash\Hash.csproj", "{D5BC6216-3A12-4BE3-AFCD-C5220197B029}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twilock", "twilock\twilock.csproj", "{0D3F41E7-A0AE-4C08-B084-D938090D9EA7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lock", "Lock\Lock.csproj", "{0D3F41E7-A0AE-4C08-B084-D938090D9EA7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twitool", "twitool\twitool.csproj", "{BE6BDE09-F094-4088-A078-10DF8AE5AE20}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tool", "Tool\Tool.csproj", "{BE6BDE09-F094-4088-A078-10DF8AE5AE20}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dcthashserver", "dcthashserver\dcthashserver.csproj", "{EA9F3E22-0AC2-4305-A7F1-91822C03A51F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DctHashServer", "DctHashServer\DctHashServer.csproj", "{EA9F3E22-0AC2-4305-A7F1-91822C03A51F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twidownstream", "twidownstream\twidownstream.csproj", "{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Crawl", "Crawl\Crawl.csproj", "{2798FDA6-5FD1-4C41-B4BC-8D8AEB6BDEA7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "twiview", "twiview\twiview.csproj", "{5D4C4FE7-67B2-476A-988B-4C4500257D1B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Web", "Web\Web.csproj", "{5D4C4FE7-67B2-476A-988B-4C4500257D1B}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Lib", "Lib\Lib.shproj", "{1996D371-AD00-4D45-A03A-511E942B8DD5}"
 EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Lib\Lib.projitems*{1996d371-ad00-4d45-a03a-511e942b8dd5}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
