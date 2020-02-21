@@ -1,0 +1,240 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Error_Title" xml:space="preserve">
+    <value>Oops, something went wrong.</value>
+  </data>
+  <data name="Headline_Featured" xml:space="preserve">
+    <value>Popular Tweets</value>
+  </data>
+  <data name="Headline_NoTweetToShow_HTML" xml:space="preserve">
+    <value>Tweet&lt;small&gt;({0})&lt;/small&gt;Not Found</value>
+  </data>
+  <data name="Headline_Timeline" xml:space="preserve">
+    <value>Timeline of @{0}</value>
+  </data>
+  <data name="Headline_TimeToSearch" xml:space="preserve">
+    <value>The time taken to search</value>
+  </data>
+  <data name="Headline_UserNotFound" xml:space="preserve">
+    <value>User Not Found</value>
+  </data>
+  <data name="Headline_UserTweet" xml:space="preserve">
+    <value>Tweets of @{0}</value>
+  </data>
+  <data name="Menu_About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Menu_Featured" xml:space="preserve">
+    <value>Popular Tweets</value>
+  </data>
+  <data name="Menu_Login" xml:space="preserve">
+    <value>Sign in with Twitter</value>
+  </data>
+  <data name="Menu_Logout" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Menu_MyTweet" xml:space="preserve">
+    <value>My Tweets</value>
+  </data>
+  <data name="Menu_Timeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="Order_Featured" xml:space="preserve">
+    <value>Popularity</value>
+  </data>
+  <data name="Order_New" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Pager_Datetimepicker" xml:space="preserve">
+    <value>Jump to date(UTC+9)</value>
+  </data>
+  <data name="Pager_Latest" xml:space="preserve">
+    <value>Latest</value>
+  </data>
+  <data name="Pager_Newer" xml:space="preserve">
+    <value>« Newer</value>
+  </data>
+  <data name="Pager_Hide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="Pager_Older" xml:space="preserve">
+    <value>Older »</value>
+  </data>
+  <data name="Pager_ResultsPerPage" xml:space="preserve">
+    <value>Results per page</value>
+  </data>
+  <data name="Pager_Show" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="Title_Featured" xml:space="preserve">
+    <value>Popular Tweets Having Similar Images({0})</value>
+  </data>
+  <data name="Title_NoTweetToShow" xml:space="preserve">
+    <value>Tweet({0}) Not Found</value>
+  </data>
+  <data name="Title_OneTweet" xml:space="preserve">
+    <value>Tweet of @{0} and Similar Images({1})</value>
+  </data>
+  <data name="Title_Timeline" xml:space="preserve">
+    <value>Timeline of @{0} Having Similar Images{1}</value>
+  </data>
+  <data name="Title_UserNotFound" xml:space="preserve">
+    <value>User Not Found</value>
+  </data>
+  <data name="Title_UserTweet" xml:space="preserve">
+    <value>Tweets of @{0} Having Similar Images{1}</value>
+  </data>
+  <data name="Auth_BackTop" xml:space="preserve">
+    <value>« Back to top page</value>
+  </data>
+  <data name="SimilarMedia_GoogleImage" xml:space="preserve">
+    <value>Google this image</value>
+  </data>
+  <data name="SimilarMedia_ResultCount" xml:space="preserve">
+    <value>{0} result(s)</value>
+  </data>
+  <data name="SimilarMedia_SeparatePage" xml:space="preserve">
+    <value>View in other page</value>
+  </data>
+  <data name="SimilarMedia_ViewMore" xml:space="preserve">
+    <value>View more</value>
+  </data>
+  <data name="TweetButton_Lang" xml:space="preserve">
+    <value>en</value>
+  </data>
+  <data name="TweetButton_Tweet" xml:space="preserve">
+    <value>Tweet</value>
+  </data>
+  <data name="Title_Registration_Completed" xml:space="preserve">
+    <value>Registration Completed</value>
+  </data>
+  <data name="Title_SignIn_Failure" xml:space="preserve">
+    <value>Sign in Failed</value>
+  </data>
+  <data name="Headline_OneTweet" xml:space="preserve">
+    <value>Tweet of {0}</value>
+  </data>
+  <data name="Headline_LatestTime" xml:space="preserve">
+    <value>Recent 1 Hour</value>
+  </data>
+  <data name="SimilarMedia_ShowNoDup" xml:space="preserve">
+    <value>Isolated images</value>
+  </data>
+</root>

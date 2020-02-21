@@ -18,7 +18,7 @@ namespace Twigaten.Web.Controllers
     [Route("twimg")]
     public class twimgController : Controller
     {
-        /// <summary>ツイ画像(:thumbサイズ)を鯖内→横流し で探して返す</summary>
+        /// <summary>ツイ画像(:thumbサイズ)を鯖内 > 横流し で探して返す</summary>
         [HttpGet("thumb/{FileName}")]
         public async Task<IActionResult> thumb(string FileName)
         {
@@ -33,7 +33,7 @@ namespace Twigaten.Web.Controllers
             if(MediaInfo == null) { return StatusCode(404); }
             
             var ret = await Download(MediaInfo.Value.media_url + (MediaInfo.Value.media_url.IndexOf("twimg.com") >= 0 ? ":thumb" : ""),
-                MediaInfo.Value.tweet_url, GetMime(FileName)).ConfigureAwait(false);
+                MediaInfo.Value.tweet_url).ConfigureAwait(false);
             if (RemovedStatusCode(ret.StatusCode)) { Removed.Enqueue(MediaInfo.Value.source_tweet_id); }
             if (ret.FileBytes != null)
             {
@@ -45,7 +45,7 @@ namespace Twigaten.Web.Controllers
             else { return StatusCode((int)ret.StatusCode); }
         }
 
-        /// <summary>ユーザーのアイコンを鯖内→横流し で探して返す</summary>
+        /// <summary>ユーザーのアイコンを鯖内 > 横流し で探して返す</summary>
         [HttpGet("profile_image/{FileName}")]
         public async Task<IActionResult> profile_image(string FileName)
         {
@@ -64,7 +64,7 @@ namespace Twigaten.Web.Controllers
                 if (System.IO.File.Exists(defaulticon)) { return File(System.IO.File.OpenRead(defaulticon), GetMime(ProfileImageInfo.Value.profile_image_url), true); }
             }
             //鯖内にファイルがなかったのでtwitterから横流しする
-            var ret = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url, GetMime(FileName)).ConfigureAwait(false);
+            var ret = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url).ConfigureAwait(false);
             if (ret.FileBytes != null)
             {
                 //画像の取得に成功したわけだし保存しておきたい
@@ -80,7 +80,7 @@ namespace Twigaten.Web.Controllers
 
         ///<summary>ファイルをダウンロードしてそのまんま返す
         ///ダウンロードに失敗したらFileBytesはnull</summary>
-        async Task<(HttpStatusCode StatusCode, byte[] FileBytes)> Download(string Url, string Referer, string mime)
+        async Task<(HttpStatusCode StatusCode, byte[] FileBytes)> Download(string Url, string Referer)
         {
             Counter.MediaTotal.Increment();
             using (var req = new HttpRequestMessage(HttpMethod.Get, Url))

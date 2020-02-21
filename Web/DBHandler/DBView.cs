@@ -13,14 +13,12 @@ using Twigaten.Lib;
 
 namespace Twigaten.Web.DBHandler
 {
-    public class DBView : Twigaten.Lib.DBHandler
+    public class DBView : Lib.DBHandler
     {
         public DBView() : base("view", "", config.database.Address, config.database.Protocol, 11, 40, 600) { }
         public async Task<TweetData._user> SelectUser(long user_id)
         {
-            using (MySqlCommand cmd = new MySqlCommand(@"SELECT
-user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description
-FROM user WHERE user_id = @user_id"))
+            using (MySqlCommand cmd = new MySqlCommand(GetUsersHead + @"WHERE user_id = @user_id"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
                 var ret = await GetUsers(cmd).ConfigureAwait(false);
@@ -49,8 +47,26 @@ FROM user WHERE user_id = @user_id"))
             }
         }
 
+        /// <summary>
+        /// ユーザー検索のモード選択
+        /// </summary>
         public enum SelectUserLikeMode
-        { Show, Following, All }
+        { 
+            ///<summary>表示可能(フォロー外の鍵垢を除外する)</summary>
+            Show,
+            ///<summary>フォローしているアカウントのみ(サインインしてない場合は虚無になるのでUIで選択禁止させる)</summary>
+            Following,
+            ///<summary>全て</summary>
+            All
+        }
+        /// <summary>
+        /// screen_nameでアカウントを検索する
+        /// </summary>
+        /// <param name="Pattern">screen_name(前方一致, 先頭の"@"は付けない)</param>
+        /// <param name="login_user_id"></param>
+        /// <param name="Mode">検索モード</param>
+        /// <param name="Limit">返す最大件数</param>
+        /// <returns></returns>
         public async Task<TweetData._user[]> SelectUserLike(string Pattern, long? login_user_id, SelectUserLikeMode Mode, int Limit)
         {
             System.Text.StringBuilder cmdBuilder = new System.Text.StringBuilder(GetUsersHead);
@@ -77,8 +93,16 @@ FROM user WHERE user_id = @user_id"))
             }
         }
 
+        /// <summary>
+        /// GetUsers()で使うSQL文の先頭部分
+        /// </summary>
         const string GetUsersHead = @"SELECT
-user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description ";
+user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description FROM user ";
+        /// <summary>
+        /// Userテーブルを取得してオブジェクトに詰めるだけのやっつけメソッド
+        /// </summary>
+        /// <param name="cmd">GetUsersHeadで始まるSQL文を含むMySqlCommand</param>
+        /// <returns></returns>
         async Task<TweetData._user[]> GetUsers(MySqlCommand cmd)
         {
             var users = new List<TweetData._user>();
@@ -100,7 +124,10 @@ user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_i
             return users.ToArray();
         }
 
-        ///<summary>完全一致かつ唯一のscreen_idが見つかればそのIDを返す</summary>
+        /// <summary>
+        /// そのscreen_nameのアカウントが1つだけ見つかればそのIDを返す
+        /// </summary>
+        /// <param name="target_screen_name">検索対象のscreen_name(先頭の"@"はつけない</param>
         public async Task<long?> SelectID_Unique_screen_name(string target_screen_name)
         {
             long? ret = null;
@@ -117,7 +144,7 @@ user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_i
         }
 
         /// <summary>
-        /// 特定のハッシュ値の画像を含むツイートのうち、表示可能かつ最も古いやつ
+        /// 特定のハッシュ値の画像を含むツイートのうち、表示可能かつ最も古いやつの(tweet_id, media_id)
         /// </summary>
         /// <param name="dcthash"></param>
         /// <param name="login_user_id"></param>
@@ -181,6 +208,11 @@ ORDER BY o.created_at LIMIT 1
             }
         }
 
+        /// <summary>
+        /// そのツイートが存在するかどうか
+        /// </summary>
+        /// <param name="tweet_id"></param>
+        /// <returns></returns>
         public async Task<bool> ExistTweet(long tweet_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT COUNT(tweet_id) FROM tweet WHERE tweet_id = @tweet_id;"))
@@ -190,7 +222,10 @@ ORDER BY o.created_at LIMIT 1
             }
         }
 
-        //tweet_idのツイートがRTだったら元ツイートのIDを返す
+        /// <summary>
+        /// tweet_idのツイートがRTだったら元ツイートのIDを返す
+        /// RTじゃない/そもそも存在しない ときはnull
+        /// </summary>
         public async Task<long?> SourceTweetRT(long tweet_id)
         {
             using(MySqlCommand cmd = new MySqlCommand(@"SELECT retweet_id FROM tweet WHERE tweet_id = @tweet_id;"))
@@ -202,8 +237,15 @@ ORDER BY o.created_at LIMIT 1
             }
         }
 
-        //特定のツイートの各画像とその類似画像
-        //鍵かつフォロー外なら何も出ない
+        /// <summary>
+        /// 特定のツイートの各画像とその類似画像
+        /// 鍵かつフォロー外なら何も出ない
+        /// </summary>
+        /// <param name="tweet_id"></param>
+        /// <param name="login_user_id"></param>
+        /// <param name="SimilarLimit">類似画像の最大件数(古い順)</param>
+        /// <returns></returns>
+
         public async Task<SimilarMediaTweet[]> SimilarMediaTweet(long tweet_id, long? login_user_id, int SimilarLimit)
         {
             using (MySqlCommand cmd = new MySqlCommand(SimilarMediaHeadRT + @"
@@ -226,7 +268,19 @@ AND (ou.isprotected = 0 OR ou.user_id = @login_user_id OR EXISTS (SELECT * FROM 
         }
 
         const int MultipleMediaOffset = 3;  //複画は今のところ4枚まで これを同ページに収めたいマン
-        //target_user_idのTL内から類似画像を発見したツイートをずらりと
+        /// <summary>
+        /// 指定したユーザーのタイムライン上のツイートをずらりと
+        /// 鍵かつフォロー外なら何も出ない
+        /// </summary>
+        /// <param name="target_user_id"></param>
+        /// <param name="login_user_id"></param>
+        /// <param name="LastTweet"></param>
+        /// <param name="TweetCount">最大件数(複画がラストに来ると増える)</param>
+        /// <param name="SimilarLimit">類似画像の枚数上限(古い順)</param>
+        /// <param name="GetRetweet">RTを含める</param>
+        /// <param name="ShowNoDup">類似画像がない</param>
+        /// <param name="Before">true→LastTweetより古いツイートを検索する/false→(同文)新しいツイート(同文)</param>
+        /// <returns></returns>
         public async Task<SimilarMediaTweet[]> SimilarMediaTimeline(long target_user_id, long? login_user_id, long LastTweet, int TweetCount, int SimilarLimit, bool GetRetweet, bool ShowNoDup, bool Before)
         {
             //鍵垢のTLはフォローしてない限り表示しない
@@ -394,8 +448,19 @@ ORDER BY o.tweet_id " + (Before ? "DESC" : "ASC") + " LIMIT @limitplus;";
             return ret.ToArray();
         }
 
-        //target_user_idのツイートから類似画像を発見したツイートをずらりと
-        //鍵かつフォロー外なら何も出ない
+        /// <summary>
+        /// 指定したユーザーのツイートをずらりと
+        /// 鍵かつフォロー外なら何も出ない
+        /// </summary>
+        /// <param name="target_user_id"></param>
+        /// <param name="login_user_id"></param>
+        /// <param name="LastTweet"></param>
+        /// <param name="TweetCount">最大件数(複画がラストに来ると増える)</param>
+        /// <param name="SimilarLimit">類似画像の枚数上限(古い順)</param>
+        /// <param name="GetRetweet">RTを含める</param>
+        /// <param name="ShowNoDup">類似画像がない</param>
+        /// <param name="Before">true→LastTweetより古いツイートを検索する/false→(同文)新しいツイート(同文)</param>
+        /// <returns></returns>
         public async Task<SimilarMediaTweet[]> SimilarMediaUser(long target_user_id, long? login_user_id, long LastTweet, int TweetCount, int SimilarLimit, bool GetRetweet, bool ShowNoDup, bool Before)
         {
             SimilarMediaTweet[] ret;
@@ -461,13 +526,19 @@ ORDER BY o.tweet_id " + (Before ? "DESC" : "ASC") + " LIMIT @limitplus;";
             return ret;
         }
 
-        public enum TweetOrder { New, Featured }
+        public enum TweetOrder 
+        {
+            ///<summary>新しい順</summary>
+            New, 
+            ///<summary>人気順(ふぁぼ+RT数)</summary>
+            Featured
+        }
         /// <summary>
         /// 「人気のツイート」とかいうようわからん機能を作ってしまいおつらい
         /// </summary>
         /// <param name="SimilarLimit">類似画像の最大取得数</param>
-        /// <param name="BeginSnowFlake"></param>
-        /// <param name="EndSnowFlake"></param>
+        /// <param name="BeginSnowFlake">ツイートの古い方の限界</param>
+        /// <param name="EndSnowFlake">ツイートの新しい方の限界</param>
         /// <param name="Order"></param>
         /// <returns></returns>
         public async Task<SimilarMediaTweet[]> SimilarMediaFeatured(int SimilarLimit, long BeginSnowFlake, long EndSnowFlake, TweetOrder Order)
@@ -571,9 +642,10 @@ m.media_id, mt.media_url, mt.type,
     + (SELECT COUNT(tweet_id) FROM tweet_media WHERE media_id = m.media_id) - 1";
 
         /// <summary>
-        /// SimilarMediaHead(no)?RT を取得するcmdを処理して、ついでに類似画像も取得する
+        /// SimilarMediaHead(no)RTで始まるコマンドを処理してオブジェクトに詰め込む
+        /// ついでに類似画像も取得してオブジェクトに詰め込む
         /// </summary>
-        /// <param name="cmd"></param>
+        /// <param name="cmd">SimilarMediaHead(no)RT で始まるSQL文を含むMySqlCommand</param>
         /// <param name="login_user_id"></param>
         /// <param name="SimilarLimit">取得する類似画像の上限</param>
         /// <param name="GetIsolated">「ぼっち画像」を含める</param>
