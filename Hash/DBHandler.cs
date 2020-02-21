@@ -12,7 +12,7 @@ using System.Collections.Concurrent;
 
 namespace Twigaten.Hash
 {
-    class DBHandler : Twigaten.Lib.DBHandler
+    class DBHandler : Lib.DBHandler
     {
         public DBHandler() : base("hash", "", config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400) { }
         

@@ -38,7 +38,7 @@ namespace Twigaten.Tool
     }
 
 
-    public class DBHandler : Twigaten.Lib.DBHandler
+    public class DBHandler : Lib.DBHandler
     {
         public DBHandler() : base("tool", "", config.database.Address, config.database.Protocol) { }
 

@@ -288,13 +288,13 @@ namespace Twigaten.Lib
                 return (T)value;
             }
 
-            private static Nullable<TElem> NullableField<TElem>(object value) where TElem : struct
+            private static TElem? NullableField<TElem>(object value) where TElem : struct
             {
                 if (DBNull.Value == value)
                 {
-                    return default(Nullable<TElem>);
+                    return default(TElem?);
                 }
-                return new Nullable<TElem>((TElem)value);
+                return new TElem?((TElem)value);
             }
         }
     }

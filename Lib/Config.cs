@@ -24,10 +24,12 @@ namespace Twigaten.Lib
                 crawl = new _crawl(data);
                 crawlparent = new _crawlparent(data);
                 locker = new _locker(data);
+                //hashはiniに書き込む必要がある
                 hash = new _hash(iniPath, ini, data);
+                web = new _web(data);
                 database = new _database(data);
             }
-            catch { Console.WriteLine("FAILED TO LOAD twiten.ini"); }   //twiviewではこのconfigクラスは使用しない
+            catch { Console.WriteLine("FAILED TO LOAD twiten.ini"); }
         }
 
         //singletonはこれでインスタンスを取得して使う
@@ -176,6 +178,16 @@ namespace Twigaten.Lib
             }
         }
         public _hash hash;
+
+        public class _web
+        {
+            public string CallBackUrl { get; }
+            public _web(IniData data)
+            {
+                CallBackUrl = data["web"][nameof(CallBackUrl)] ?? "";
+            }
+        }
+        public _web web;
 
         public class _database
         {

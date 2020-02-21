@@ -16,7 +16,7 @@ namespace Twigaten.Crawl
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             ServicePointManager.EnableDnsRoundRobin = true;
 
-            Twigaten.Lib.Config config = Twigaten.Lib.Config.Instance;
+            Lib.Config config = Twigaten.Lib.Config.Instance;
             //結局Minを超えると死ぬのでMinを大きくしておくしかない
             //User streamを使うときだけ対応する
             if(config.crawl.StreamSpeedSeconds > 0)

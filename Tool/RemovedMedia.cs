@@ -14,7 +14,7 @@ using Twigaten.Lib;
 namespace Twigaten.Tool
 {
 
-    class RemovedMedia : Twigaten.Lib.DBHandler
+    class RemovedMedia : Lib.DBHandler
     {
         const int DownloadConcurrency = 256;
         public RemovedMedia() : base("tool", "", config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2))

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Twigaten.CrawlParent
 {
 
-    class DBHandler : Twigaten.Lib.DBHandler
+    class DBHandler : Lib.DBHandler
     {
         public DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol) { }
 

@@ -16,7 +16,7 @@ using static Twigaten.Crawl.UserStreamer;
 
 namespace Twigaten.Crawl
 {
-    class DBHandler : Twigaten.Lib.DBHandler
+    class DBHandler : Lib.DBHandler
     {
         private DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol, 10, (uint)Config.Instance.crawl.MaxDBConnections) { }
         private static readonly DBHandler _db = new DBHandler();

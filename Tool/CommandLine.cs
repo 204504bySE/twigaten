@@ -111,7 +111,7 @@ namespace Twigaten.Tool
     }
 
 
-    class DBHandlerCommandLine : Twigaten.Lib.DBHandler
+    class DBHandlerCommandLine : Lib.DBHandler
     {
         public DBHandlerCommandLine() : base("tool", "", config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2)) { }
 

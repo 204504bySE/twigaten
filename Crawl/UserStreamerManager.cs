@@ -92,10 +92,101 @@ namespace Twigaten.Crawl
             }
         }
 
-
+        ///<summary>CrawlParentに定期的になんでもいいからパケットを投げて生存報告をする</summary>
         static readonly UdpClient WatchDogUdp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.WatchDogPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
         static readonly IPEndPoint WatchDogEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.WatchDogPort);
         static readonly int ThisPid = Process.GetCurrentProcess().Id;
+
+        /// <summary>
+        /// UserStreamerの再接続やRESTによるツイート取得などを行うやつ
+        /// </summary>
+        class ConnectBlock
+        {            
+            readonly ActionBlock<UserStreamer> InnerBlock;
+
+            int _ActiveStreamers;
+            ///<summary>再接続が不要だったやつの数</summary>
+            public int ActiveStreamers => _ActiveStreamers;
+            int _RestedStreamers;
+            ///<summary>RESTでツイートを取得したやつの数</summary>
+            public int RestedStreamers => _RestedStreamers;
+
+            public ConnectBlock(UserStreamerManager Manager)
+            {
+                InnerBlock = new ActionBlock<UserStreamer>(
+                async (Streamer) =>
+                {
+                    try
+                    {
+                        var NeedConnect = Streamer.NeedConnect();
+                        //初回とRevoke疑いのときだけVerifyCredentials()する
+                        //プロフィールを取得したい
+                        if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
+                        else if (NeedConnect == UserStreamer.NeedConnectResult.First)
+                        {
+                            switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
+                            {
+                                case UserStreamer.TokenStatus.Locked:
+                                    Streamer.PostponeConnect(); return;
+                                case UserStreamer.TokenStatus.Revoked:
+                                    Manager.MarkRevoked(Streamer); return;
+                                case UserStreamer.TokenStatus.Failure:
+                                    return;
+                                case UserStreamer.TokenStatus.Success:
+                                    Manager.UnmarkRevoked(Streamer);
+                                    NeedConnect = UserStreamer.NeedConnectResult.JustNeeded;    //無理矢理接続処理に突っ込む #ウンコード
+                                    break;
+                            }
+                        }
+
+                        //Streamに接続したりRESTだけにしたり
+                        if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
+                        {
+                            if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); return; }
+                            else { Interlocked.Increment(ref _ActiveStreamers); }
+                        }
+                        else
+                        {
+                            //TLの速度を測定して必要ならStreamに接続
+                            Interlocked.Increment(ref _RestedStreamers);
+                            switch (await Streamer.RecieveRestTimeline().ConfigureAwait(false))
+                            {
+                                case UserStreamer.TokenStatus.Locked:
+                                    Streamer.PostponeConnect(); break;
+                                case UserStreamer.TokenStatus.Revoked:
+                                    Manager.MarkRevoked(Streamer); break;
+                                default:
+                                    UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
+                                    if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Interlocked.Increment(ref _ActiveStreamers); }
+                                    //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
+                                    if (Streamer.NeedRestMyTweet)
+                                    {
+                                        await Streamer.RestMyTweet().ConfigureAwait(false);
+                                        //User streamに繋がない場合はこっちでフォローを取得する必要がある
+                                        if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend().ConfigureAwait(false); }
+                                        await Streamer.RestBlock().ConfigureAwait(false);
+                                        Streamer.NeedRestMyTweet = false;
+                                    }
+                                    break;
+                            }
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
+                }, new ExecutionDataflowBlockOptions()
+                {
+                    MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
+                    BoundedCapacity = config.crawl.ReconnectThreads << 1,    //これでもawaitする
+                    SingleProducerConstrained = true,
+                });
+            }
+
+            public Task<bool> SendAsync(UserStreamer Streamer) => InnerBlock.SendAsync(Streamer);
+            public Task Complete()
+            {
+                InnerBlock.Complete();
+                return InnerBlock.Completion;
+            }
+        }
 
         /// <summary>
         /// これを定期的に呼んで再接続やFriendの取得をやらせる
@@ -108,73 +199,7 @@ namespace Twigaten.Crawl
             async Task ExistThisPid() { if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); } }
 
             await ExistThisPid().ConfigureAwait(false);
-            int ActiveStreamers = 0;  //再接続が不要だったやつの数
-            int RestedStreamers = 0; //RESTでツイートを取得したやつの数
-            var ConnectBlock = new ActionBlock<UserStreamer>(
-            async (Streamer) =>
-            {
-                try
-                {
-                    var NeedConnect = Streamer.NeedConnect();
-                    //初回とRevoke疑いのときだけVerifyCredentials()する
-                    //プロフィールを取得したい
-                    if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
-                    else if (NeedConnect == UserStreamer.NeedConnectResult.First)
-                    {
-                        switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
-                        {
-                            case UserStreamer.TokenStatus.Locked:
-                                Streamer.PostponeConnect(); return;
-                            case UserStreamer.TokenStatus.Revoked:
-                                MarkRevoked(Streamer); return;
-                            case UserStreamer.TokenStatus.Failure:
-                                return;
-                            case UserStreamer.TokenStatus.Success:
-                                UnmarkRevoked(Streamer);
-                                NeedConnect = UserStreamer.NeedConnectResult.JustNeeded;    //無理矢理接続処理に突っ込む #ウンコード
-                                break;
-                        }
-                    }
-
-                    //Streamに接続したりRESTだけにしたり
-                    if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
-                    {
-                        if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); return; }
-                        else { Interlocked.Increment(ref ActiveStreamers); }
-                    }
-                    else
-                    {
-                        //TLの速度を測定して必要ならStreamに接続
-                        Interlocked.Increment(ref RestedStreamers);
-                        switch (await Streamer.RecieveRestTimeline().ConfigureAwait(false))
-                        {
-                            case UserStreamer.TokenStatus.Locked:
-                                Streamer.PostponeConnect(); break;
-                            case UserStreamer.TokenStatus.Revoked:
-                                MarkRevoked(Streamer); break;
-                            default:
-                                UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
-                                if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Interlocked.Increment(ref ActiveStreamers); }
-                                //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
-                                if (Streamer.NeedRestMyTweet)
-                                {
-                                    await Streamer.RestMyTweet().ConfigureAwait(false);
-                                    //User streamに繋がない場合はこっちでフォローを取得する必要がある
-                                    if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend().ConfigureAwait(false); }
-                                    await Streamer.RestBlock().ConfigureAwait(false);
-                                    Streamer.NeedRestMyTweet = false;
-                                }
-                                break;
-                        }
-                    }
-                }
-                catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
-            }, new ExecutionDataflowBlockOptions()
-            {
-                MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
-                BoundedCapacity = config.crawl.ReconnectThreads << 1,    //これでもawaitする
-                SingleProducerConstrained = true,
-            });
+            var ConnectBlock = new ConnectBlock(this);
 
             //SetMaxConnections(0);
 
@@ -197,14 +222,13 @@ namespace Twigaten.Crawl
                 }
                 if(sw.ElapsedMilliseconds > 60000) { break; }
             }
-            ConnectBlock.Complete();
-            await ConnectBlock.Completion.ConfigureAwait(false);
+            await ConnectBlock.Complete().ConfigureAwait(false);
             await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
 
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
 
-            Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ActiveStreamers, RestedStreamers, Streamers.Count);
+            Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ConnectBlock.ActiveStreamers, ConnectBlock.RestedStreamers, Streamers.Count);
         }
 
         ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>
