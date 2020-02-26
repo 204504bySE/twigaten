@@ -45,26 +45,25 @@ namespace Twigaten.Web.Controllers
                     ? JsonSerializer.Deserialize<OAuth.OAuthSession>(Bytes)
                     : null; 
 
-            static readonly DBToken dbToken = DBHandler.Instance.DBToken;
 
             //(新規)ログインの処理
             public async Task<DBToken.VerifytokenResult> StoreNewLogin(Tokens Token, HttpContext Context)
             {
-                DBToken.VerifytokenResult vt = await dbToken.Verifytoken(Token).ConfigureAwait(false);
+                DBToken.VerifytokenResult vt = await DB.DBToken.Verifytoken(Token).ConfigureAwait(false);
                 if (vt != DBToken.VerifytokenResult.Exist)
                 {
-                    if (await dbToken.InsertNewtoken(Token).ConfigureAwait(false) < 1)
+                    if (await DB.DBToken.InsertNewtoken(Token).ConfigureAwait(false) < 1)
                     {
                         throw (new Exception("トークンの保存に失敗しました"));
                     }
                 }
                 UserResponse SelfUserInfo = Token.Account.VerifyCredentials();
-                await dbToken.StoreUserProfile(SelfUserInfo).ConfigureAwait(false);
+                await DB.DBToken.StoreUserProfile(SelfUserInfo).ConfigureAwait(false);
                 ScreenName = SelfUserInfo.ScreenName;
                 Context.Session.SetString(nameof(ScreenName), ScreenName);
 
                 var LoginToken = LoginTokenEncrypt.NewToken();
-                if (await dbToken.StoreUserLoginToken(Token.UserId, LoginToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
+                if (await DB.DBToken.StoreUserLoginToken(Token.UserId, LoginToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
 
                 ID = Token.UserId;
                 base.LoginToken = LoginToken.Text88;

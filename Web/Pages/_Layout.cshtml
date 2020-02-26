@@ -4,14 +4,14 @@
 
 <html>
 <head>
-    <link rel="stylesheet" href="/css/site.css" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@('@')204504bySE" />
-    <meta name="twitter:title" content="@ViewData["Title"] - TwiGaTen" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:title" content="@ViewData["Title"] - TwiGaTen" />
+    @RenderSection("TwitterCard", false)
+    @RenderSection("MetaTags", false)
     <environment include="Development">
         <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.css" />
         <link rel="stylesheet" href="/lib/bootstrap-vue/dist/bootstrap-vue.css" />
@@ -20,22 +20,22 @@
         <link type="text/css" rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
         <link type="text/css" rel="stylesheet" href="/lib/bootstrap-vue/dist/bootstrap-vue.min.css" />
     </environment>
+    <link rel="stylesheet" href="/css/site.css" />
     <title>@ViewData["Title"] - TwiGaTen</title>
-    @RenderSection("TwitterCard", false)
-    @RenderSection("MetaTags", false)
+
 </head>
 <body>
-    <div id="app">
+    <div id="app" class="small">
         <b-navbar type="light" variant="light" role="navigation">
-            <b-navbar-brand href="/"><a href="/">TwiGaTen</a></b-navbar-brand>
+            <b-navbar-brand href="/"><a href="/" style="color:inherit">TwiGaTen</a></b-navbar-brand>
             <b-navbar-nav>
                 @if (true)/*(Context.Session.GetString("ScreenName") != null)*/
                 {
                 <b-nav-item-dropdown text="@("@" + Context.Session.GetString("ScreenName"))">
-                    <b-dropdown-item href="/users"><a href="/users">@Locale.Menu_MyTweet</a></b-dropdown-item>
-                    <b-dropdown-item href="/timeline"><a href="/timeline">@Locale.Menu_Timeline</a></b-dropdown-item>
+                    <b-dropdown-item href="/users"><a href="/users" style="color:inherit">@Locale.Menu_MyTweet</a></b-dropdown-item>
+                    <b-dropdown-item href="/timeline"><a href="/timeline" style="color:inherit">@Locale.Menu_Timeline</a></b-dropdown-item>
                     <b-dropdown-divider></b-dropdown-divider>
-                    <b-dropdown-item href="/auth/logout"><a href="/auth/logout">@Locale.Menu_Logout</a></b-dropdown-item>
+                    <b-dropdown-item href="/auth/logout"><a href="/auth/logout" style="color:inherit">@Locale.Menu_Logout</a></b-dropdown-item>
                 </b-nav-item-dropdown>
                 }
                 else
@@ -45,11 +45,11 @@
             </b-navbar-nav>
             <b-collapse id="bs-example-navbar-collapse-1">
                 <b-navbar-nav>
-                    <b-nav-item href="/featured">@Locale.Menu_Featured</b-nav-item>
-                    <b-nav-item href="/about">@Locale.Menu_About</b-nav-item>
+                    <b-nav-item href="/featured"><a href="/featured" style="color:inherit">@Locale.Menu_Featured</a></b-nav-item>
+                    <b-nav-item href="/about"><a href="/about" style="color:inherit">@Locale.Menu_About</a></b-nav-item>
                 </b-navbar-nav>
             </b-collapse>
-            <navbar-nav>
+            <b-navbar-nav>
                 <b-nav-form>
                     <b-form-select>
                         <!--
@@ -65,7 +65,7 @@
                         <b-button variant="outline-primary" type="submit">🔍</b-button>
                     </b-input-group>
                 </b-nav-form>
-            </navbar-nav>
+            </b-navbar-nav>
         </b-navbar>
 
         <div class="container-fluid body-content">
@@ -84,7 +84,7 @@
         <script src="/lib/vue/vue.min.js"></script>
         <script src="/lib/bootstrap-vue/dist/bootstrap-vue.min.js"></script>
     </environment>
-    @RenderSection("scripts", required: true)
+    @RenderSection("scripts", required: false)
     <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 </body>
 </html>

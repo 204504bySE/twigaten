@@ -8,17 +8,18 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Twigaten.Lib;
 
 namespace Twigaten.Web
 {
     public class Program
     {
-        //ポート番号は適宜
-        const int ListenPort = 12309;
-
         public static void Main(string[] args)
         {
             Counter.AutoRefresh();
+            //Codepagesを必要とする処理が動くようにする
+            //https://stackoverflow.com/questions/49215791/vs-code-c-sharp-system-notsupportedexception-no-data-is-available-for-encodin?noredirect=1&lq=1
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             BuildWebHost(args).Run();
         }
 
@@ -27,7 +28,7 @@ namespace Twigaten.Web
                 .UseKestrel(options =>
                 {
                     //LinuxではIPv6だけListenすればIPv4もListenされる
-                    options.Listen(IPAddress.IPv6Loopback, ListenPort);
+                    options.Listen(IPAddress.IPv6Loopback, Config.Instance.web.ListenPort);
                 })
                 .UseStartup<Startup>()
                 .ConfigureLogging((hostingContext, logging) => {

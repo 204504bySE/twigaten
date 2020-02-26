@@ -20,11 +20,10 @@ namespace Twigaten.Web
             public string name { get; set; }
             public string screen_name { get; set; }
             public bool isprotected { get; set; }
-            public string profile_image_url { get; set; }   //鯖に保存してあればそのURL
+            public string local_profile_image_url { get; set; }
             public bool is_default_profile_image { get; set; }
             public string location { get; set; }
-            public string description { get; set; }    //リンクや改行などをhtmlにして突っ込む
-            //public string origdescription { get; set; }  //今は必要ないね
+            public string description_html { get; set; }    //リンクや改行などをhtmlにして突っ込む
         }
 
         public class _tweet
@@ -32,8 +31,7 @@ namespace Twigaten.Web
             public _user user { get; } = new _user();
             public long tweet_id { get; set; }
             public DateTimeOffset created_at { get; set; }
-            public string text { get; set; }    //リンクや改行などをhtmlにして突っ込む
-            //public string origtext { get; set; }  //今は必要ないね
+            public string text_html { get; set; }    //リンクや改行などをhtmlにして突っ込む
             public _tweet retweet { get; set; }
             public int retweet_count { get; set; }
             public int favorite_count { get; set; }
@@ -44,11 +42,9 @@ namespace Twigaten.Web
             public long media_id { get; set; }
             public long source_tweet_id { get; set; }
             public string type { get; set; }
-            public string media_url { get; set; }   //鯖に保存してあればそのURL
             public string orig_media_url { get; set; }
-            public string local_media_url { get; set; } //鯖に保存してなくても鯖用のURL
+            public string local_media_url { get; set; }
             public long dcthash { get; set; }
-            //public sbyte dcthash_distance { get; set; }
         }
     }
 }

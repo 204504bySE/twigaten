@@ -8,7 +8,10 @@
 @section Scripts{
     <script async>const app = new Vue({ el: '#app' })</script>
 }
-<!--section TwitterCard{TextHelper.TwitterCardDefault()}-->
+@section TwitterCard{
+    <twitter-card-description />
+    <twitter-card-image />
+}
 <div class="jumbotron">
     <h1>
         <ruby>
@@ -17,9 +20,9 @@
         </ruby>
     </h1>
     <p class="lead">類似画像/画像転載を見つけるやつ</p>
-    <p>@Html.ActionLink(Locale.Menu_Login + " »", "Twitter", "Auth", null, new { @class = "btn btn-primary btn-lg" })</p>
+    <p><a href="/auth/login" class="btn btn-primary btn-lg">@(Locale.Menu_Login) »</a></p>
 </div>
-<!--tweet button-->
+<tweet-button />
 <div>
     <p>5/20 RTを「除外」すると動作しないのを修正</p>
     <p>└(└ ・o・)┘↓こういうのができたようです。ご活用下さい。</p>
@@ -32,7 +35,7 @@
         ユーザー名やツイートのURLで検索することもできます。<br />
         画像でも一応検索できます。
     </p>
-    <p>@Html.ActionLink("ユーザー名/ツイートURL/画像で検索 »", "Index", "Search", null, new { @class = "btn btn-success" })</p>
+    <p><a href="/search/" class="btn btn-success">ユーザー名/ツイートURL/画像で検索 »</a></p>
 </div>
 <div>
     <h2>#サインインすると</h2>
@@ -41,7 +44,7 @@
         また、タイムライン上の画像付きツイートが収集されます。<br />
         収集対象のツイートが増え、検索のヒット率が向上します(たぶん)
     </p>
-    <p>@Html.ActionLink(Locale.Menu_Login + " »", "Twitter", "Auth", null, new { @class = "btn btn-success" })</p>
+    <p><a href="/auth/login" class="btn btn-success">@(Locale.Menu_Login) »</a></p>
 </div>
 <div>
     <h2>#なお用途は</h2>
@@ -57,7 +60,7 @@
         <p>
             💨💨💨┌(┌；・o・)┐
         </p>
-        <p>@Html.ActionLink("┌(┌ ーoー)┐ »", "About", "Home", null, new { @class = "btn btn-success" })</p>
+        <p><a href="/about" class="btn btn-success">┌(┌ ーoー)┐ »</a></p>
     </div>
 </div>
 

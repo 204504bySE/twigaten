@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Twigaten.Web.DBHandler
 {
-    static class Instance
+    static class DB
     {
         public static DBCrawl DBCrawl { get; } = new DBCrawl();
         public static DBToken DBToken { get; } = new DBToken();

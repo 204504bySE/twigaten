@@ -4,10 +4,11 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <RootNamespace>Twigaten.Web</RootNamespace>
+    <AssemblyName>Twigaten.Web</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\auth\" />
+    <Folder Include="Pages\Auth\" />
     <Folder Include="wwwroot\lib\" />
   </ItemGroup>
 

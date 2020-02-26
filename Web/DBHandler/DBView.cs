@@ -116,9 +116,9 @@ user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_i
                     isprotected = r.GetBoolean(3),
                     is_default_profile_image = r.GetBoolean(5),
                     location = r.GetString(6),
-                    description = LocalText.TextToLink(r.GetString(7))
+                    description_html = LocalText.TextToLink(r.GetString(7))
                 };
-                tmpuser.profile_image_url = LocalText.ProfileImageUrl(tmpuser, r.GetBoolean(5));
+                tmpuser.local_profile_image_url = LocalText.ProfileImageUrl(tmpuser, r.GetBoolean(5));
                 users.Add(tmpuser);
             }).ConfigureAwait(false);
             return users.ToArray();
@@ -246,7 +246,7 @@ ORDER BY o.created_at LIMIT 1
         /// <param name="SimilarLimit">類似画像の最大件数(古い順)</param>
         /// <returns></returns>
 
-        public async Task<SimilarMediaTweet[]> SimilarMediaTweet(long tweet_id, long? login_user_id, int SimilarLimit)
+        public async Task<SimilarMediaTweet[]> SimilarMediaTweet(long tweet_id, long? login_user_id, int SimilarLimit = 3)
         {
             using (MySqlCommand cmd = new MySqlCommand(SimilarMediaHeadRT + @"
 FROM tweet o
@@ -672,16 +672,16 @@ m.media_id, mt.media_url, mt.type,
                 rettmp.tweet.user.user_id = r.GetInt64(0);
                 rettmp.tweet.user.name = r.GetString(1);
                 rettmp.tweet.user.screen_name = r.GetString(2);
-                rettmp.tweet.user.profile_image_url = r.GetString(3);
+                rettmp.tweet.user.local_profile_image_url = r.GetString(3);
                 rettmp.tweet.user.isprotected =r.GetBoolean(4);
                 rettmp.tweet.tweet_id = r.GetInt64(6);
                 rettmp.tweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
-                rettmp.tweet.text = LocalText.TextToLink(r.GetString(8));
+                rettmp.tweet.text_html = LocalText.TextToLink(r.GetString(8));
                 rettmp.tweet.favorite_count = r.GetInt32(9);
                 rettmp.tweet.retweet_count = r.GetInt32(10);
 
                 //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
-                rettmp.tweet.user.profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.user, r.GetBoolean(4));
+                rettmp.tweet.user.local_profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.user, r.GetBoolean(4));
 
                 if (!r.IsDBNull(11)) //RTなら元ツイートが入っている
                 {
@@ -690,20 +690,20 @@ m.media_id, mt.media_url, mt.type,
                     rettmp.tweet.retweet.user.user_id = r.GetInt64(12);
                     rettmp.tweet.retweet.user.name = r.GetString(13);
                     rettmp.tweet.retweet.user.screen_name = r.GetString(14);
-                    rettmp.tweet.retweet.user.profile_image_url = r.GetString(15);
+                    rettmp.tweet.retweet.user.local_profile_image_url = r.GetString(15);
                     rettmp.tweet.retweet.user.isprotected = r.GetBoolean(17);
                     rettmp.tweet.retweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(18));
-                    rettmp.tweet.retweet.text = LocalText.TextToLink(r.GetString(19));
+                    rettmp.tweet.retweet.text_html = LocalText.TextToLink(r.GetString(19));
                     rettmp.tweet.retweet.favorite_count = r.GetInt32(20);
                     rettmp.tweet.retweet.retweet_count = r.GetInt32(21);
 
                     //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
-                    rettmp.tweet.retweet.user.profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.retweet.user, r.GetBoolean(16));
+                    rettmp.tweet.retweet.user.local_profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.retweet.user, r.GetBoolean(16));
                 }
                 rettmp.media.media_id = r.GetInt64(22);
                 rettmp.media.orig_media_url = r.GetString(23);
                 rettmp.media.type = r.GetString(24);
-                rettmp.media.media_url = rettmp.media.local_media_url = LocalText.MediaUrl(rettmp.media);
+                rettmp.media.local_media_url = LocalText.MediaUrl(rettmp.media);
                 rettmp.SimilarMediaCount = r.IsDBNull(25) ? -1 : r.GetInt64(25);    //COUNTはNOT NULLじゃない
 
                 TweetList.Add(rettmp);

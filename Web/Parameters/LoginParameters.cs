@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Twigaten.Web.DBHandler;
+using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Parameters
 {
@@ -51,8 +51,6 @@ namespace Twigaten.Web.Parameters
             set { if (value != null) { Context.Session.SetString(nameof(ScreenName), value); } else { Context.Session.Remove(nameof(ScreenName)); } }
         }
 
-        static readonly DBView dbView = DBHandler.Instance.DBView;
-
         /// <summary>
         /// HttpContextを受け取って各パラメーターを使えるようにする
         /// LoginTokenの検査もここで行う
@@ -71,13 +69,13 @@ namespace Twigaten.Web.Parameters
             //ログイン確認
             if (ID != null)
             {
-                if (LoginToken != null && LoginTokenEncrypt.VerifyToken(LoginToken, await dbView.SelectUserLoginToken(ID.Value).ConfigureAwait(false)))
+                if (LoginToken != null && LoginTokenEncrypt.VerifyToken(LoginToken, await DBView.SelectUserLoginToken(ID.Value).ConfigureAwait(false)))
                 {
                     //Cookieの有効期限を延長する
                     ID = ID;
                     LoginToken = LoginToken;
 
-                    if (ScreenName == null) { ScreenName = (await dbView.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
+                    if (ScreenName == null) { ScreenName = (await DBView.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
                 }
                 else
                 {

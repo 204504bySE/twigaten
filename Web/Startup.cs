@@ -13,6 +13,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Localization;
 using System.Globalization;
 using Twigaten.Web.Parameters;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 
 namespace Twigaten.Web
 {
@@ -28,6 +30,10 @@ namespace Twigaten.Web
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            //タグ内の日本語などがエスケープされるのを防ぐ
+            //https://qiita.com/rei000/items/67f66fa01b87f720c92f
+            services.AddSingleton(HtmlEncoder.Create(UnicodeRanges.All));
+
             services.AddResponseCompression(options => 
             {
                 options.Providers.Add<BrotliCompressionProvider>();

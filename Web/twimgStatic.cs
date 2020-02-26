@@ -28,8 +28,8 @@ namespace Twigaten.Web
             if (ExtMime.TryGetContentType(FileName, out string mime)) { return mime; }
             else { return "application/octet-stream"; };
         }
-        public static readonly DBTwimg DB = Instance.DBTwimg;
-        public static readonly DBCrawl DBCrawl = Instance.DBCrawl;
+        public static readonly DBTwimg DB = DBHandler.DB.DBTwimg;
+        public static readonly DBCrawl DBCrawl = DBHandler.DB.DBCrawl;
         public static readonly RemovedMedia Removed = new RemovedMedia();
 
         /// <summary>

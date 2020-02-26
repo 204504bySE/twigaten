@@ -17,10 +17,10 @@ namespace Twigaten.Web
 
         static readonly Regex UrlRegex = new Regex(@"https?://[-_.!~*'()\w;/?:@&=+$,%#]+", RegexOptions.Compiled);
         static readonly Regex HashtagRegex = new Regex(@"(?<=(?:^|[\s　>])[#＃])[a-z0-9_À-ÖØ-öø-ÿĀ-ɏɓ-ɔɖ-ɗəɛɣɨɯɲʉʋʻ̀-ͯḀ-ỿЀ-ӿԀ-ԧⷠ-ⷿꙀ-֑ꚟ-ֿׁ-ׂׄ-ׇׅא-תװ-״﬒-ﬨשׁ-זּטּ-לּמּנּ-סּףּ-פּצּ-ﭏؐ-ؚؠ-ٟٮ-ۓە-ۜ۞-۪ۨ-ۯۺ-ۼۿݐ-ݿࢠࢢ-ࢬࣤ-ࣾﭐ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼ‌ก-ฺเ-๎ᄀ-ᇿ㄰-ㆅꥠ-꥿가-힯ힰ-퟿ﾡ-ￜァ-ヺー-ヾｦ-ﾟｰ０-９Ａ-Ｚａ-ｚぁ-ゖ゙-ゞ㐀-䶿一-鿿꜀-뜿띀-렟-﨟〃々〻]+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        ///<summary>URLとハッシュタグをリンクにする rel="nofollow" 付き</summary>
         public static string TextToLink(string Text)
         {
-            //URLとハッシュタグをリンクにする rel="nofollow" 付き
-
             if (Text == null) { return null; }
             StringBuilder Builder = new StringBuilder(Text);
             Builder.Replace("<", "&lt;");
@@ -49,13 +49,8 @@ namespace Twigaten.Web
             return Builder.ToString();
         }
 
-        //単にhttps://…を必要に応じてつけるだけ
-        /*
-        public static string MediaUrlCard(TweetData._media Media, HttpRequestBase Request)
-        {
-            return Request.Url.GetLeftPart(UriPartial.Authority) + Media.local_media_url; 
-        }
-        */
+        ///<summary>Viewに使う画像のURLを返す(ホスト名より後だけ)
+        ///orig_media_urlとmedia_idが必要</summary>
         public static string MediaUrl(TweetData._media Media)
         {   //Viewに使う画像のURLを返す
             //orig_media_urlとmedia_idが必要
@@ -63,16 +58,18 @@ namespace Twigaten.Web
             else{ return config.crawl.PictPaththumb + Media.media_id.ToString() + Path.GetExtension(Media.orig_media_url); }
         }
 
+        ///<summary>Viewに使うアイコンのURLを返す(ホスト名より後だけ)
+        ///user_idとprofile_image_urlが必要</summary>
         public static string ProfileImageUrl(TweetData._user User, bool IsDefaultProfileImage)
-        {   //Viewに使うアイコンのURLを返す
-            //user_idとprofile_image_urlが必要
-            if (User.profile_image_url == null) { return null; }
-            if (IsDefaultProfileImage) { return config.crawl.PictPathProfileImage + '_' + Path.GetFileName(User.profile_image_url); }
-            else { return config.crawl.PictPathProfileImage + User.user_id.ToString() + Path.GetExtension(User.profile_image_url); }
+        {
+            if (User.local_profile_image_url == null) { return null; }
+            if (IsDefaultProfileImage) { return config.crawl.PictPathProfileImage + '_' + Path.GetFileName(User.local_profile_image_url); }
+            else { return config.crawl.PictPathProfileImage + User.user_id.ToString() + Path.GetExtension(User.local_profile_image_url); }
         }
 
+        ///<summary>単語のどこでも改行できるようにするだけ</summary>
         public static string wbrEveryLetter(string Input)
-        {   //単語のどこでも改行できるようにするだけ
+        {
             if(Input == null || Input.Length < 2) { return Input; }
             StringBuilder Builder = new StringBuilder(Input, Input.Length * 8 - 14);    //字数ぴったりでおｋ
             for (int i = Input.Length - 1; i > 0; i--)

@@ -1,8 +1,46 @@
-﻿@page
-@model Twigaten.Web.IndexModel
-@{
-    ViewData["Title"] = "Index";
+﻿@page "{TweetId}/{More?}"
+@using Twigaten.Web.Locale;
+@model Twigaten.Web.Pages.Tweet.IndexModel
+@section Scripts{
+    <script async src="~/js/tweet.js"></script>
 }
+@{
+    if (Model.Tweets.Length > 0)
+    {
+        ViewData["Title"] = string.Format(Locale.Title_OneTweet, Model.Tweets[0].tweet.user.screen_name,
+            Model.Tweets[0].tweet.created_at.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss"));
+    }
+    else
+    {
+        ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.TweetId);
+    }
+    @section TwitterCard{
+        @if (Model.Tweets.Length > 0)
+        {
+            <twitter-card-description content="@(Model.Tweets[0].tweet.text_html)" />
+            <twitter-card-image path="@(LocalText.MediaUrl(Model.Tweets[0].media))" />
+        }
+        else
+        {
+            <twitter-card-description content="このツイートは収集されていないか、削除されたか、または非公開アカウントのツイートです。" />
+        }
+    }
+}
+@if (Model.Tweets.Length > 0)
+{
 
-<h1>Index</h1>
-
+    <h2>@string.Format(Locale.Headline_OneTweet, Html.ActionLink('@' + Model.Tweets[0].tweet.user.screen_name, "UserTweet", new { UserID = Model.Tweets[0].tweet.user.user_id }).ToString()))</h2>
+    <p><tweet-permalink screen-name="@Model.Tweets[0].tweet.user.screen_name" tweet-id=@Model.Tweets[0].tweet.tweet_id /></p>
+    <p><tweet-button path="@("/tweet/" + Model.Tweets[0].tweet.tweet_id.ToString())" /></p>
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+    foreach (var Tweet in Model.Tweets)
+    {
+        <partial name="OneTweet" model="Tweet" />
+    }
+}
+else
+{
+    <h2>@Html.Raw(string.Format(Locale.Headline_NoTweetToShow_HTML, Model.TweetId))</h2>
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+    <partial name="NoTweetToShow" />
+}

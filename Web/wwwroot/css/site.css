@@ -1,3 +1,145 @@
-﻿a {
-    color:inherit
+﻿body {
+    padding-top: 50px;
+    padding-bottom: 20px;
+    font-family: "メイリオ", "Meiryo", "ヒラギノ角ゴ Pro", "Hiragino Kaku Gothic Pro", "Yu Gothic UI", "Osaka", sans-serif;
+}
+
+html, body {
+    margin: 0px;
+    padding: 0px;
+}
+
+.body-content {
+    word-wrap: break-word;
+}
+
+iframe.twitter-share-button {
+    vertical-align: text-bottom;
+}
+
+.glyphicon-retweet {
+    color: #aab8c2;
+}
+
+    .glyphicon-retweet:hover {
+        color: #19cf86;
+    }
+
+.glyphicon-star {
+    color: #aab8c2;
+}
+
+    .glyphicon-star:hover {
+        color: #feac33;
+    }
+
+.collapsing {
+    -webkit-transition: none;
+    transition: none;
+}
+
+.navbar-nav > li {
+    float: left;
+}
+
+.pagination {
+    margin: 0 0 20px 0;
+    vertical-align: middle
+}
+
+h2, .h2 {
+    font-size: 20px;
+}
+
+h3, .h3 {
+    font-size: 20px;
+}
+
+.h1, .h2, .h3, h1, h2, h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+@media (min-width: 520px) {
+    h2, .h2 {
+        font-size: 30px;
+    }
+
+    h3, .h3 {
+        font-size: 24px;
+    }
+
+    .h1, .h2, .h3, h1, h2, h3 {
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+}
+
+a.anchor {
+    display: block;
+    position: relative;
+    top: -150px;
+    visibility: hidden;
+}
+
+div.twigaten-similarmedia {
+    vertical-align: top;
+    margin: 0 4px;
+}
+
+div.twigaten-panel {
+    display: inline-block;
+    width: 100%;
+}
+
+div.twigaten-media {
+    float: left;
+    margin: 4px;
+}
+
+@media (min-width:520px) {
+    div.twigaten-panel {
+        width: 216px;
+    }
+
+    div.twigaten-media {
+        float: none;
+        text-align: center;
+    }
+}
+
+img.twigaten-thumb {
+    max-width: 150px;
+    max-height: 150px;
+}
+
+img.twigaten-icon {
+    max-width: 48px;
+    max-height: 48px;
+}
+
+@media (min-width:520px) {
+    img.twigaten-icon {
+        float: left;
+    }
+}
+
+img.twigaten-icon-retweet {
+    float: left;
+}
+
+span.twigaten-twitterbird {
+    float: right;
+    margin-right: 1em;
+    word-break: break-all;
+}
+
+p.twigaten-tweettext {
+    display: inline-block;
+    white-space: pre-line;
+    width: 100%;
+}
+
+a.twigaten-screenname {
+    word-break: break-all;
 }
