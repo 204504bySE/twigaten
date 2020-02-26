@@ -139,7 +139,7 @@ namespace Twigaten.Lib
                     }
                 }
             }
-            catch { }
+            catch (Exception e) { }
             return null;
         }
 
@@ -168,7 +168,7 @@ namespace Twigaten.Lib
                     }
                 }
             }
-            catch { }
+            catch (Exception e) { }
             return false;
         }
 
@@ -195,7 +195,7 @@ namespace Twigaten.Lib
                     }
                 }
             }
-            catch { }
+            catch (Exception e) { }
             return -1;
         }
 
@@ -234,7 +234,7 @@ namespace Twigaten.Lib
                     }
                 }
             }
-            catch { }
+            catch (Exception e) { }
             return -1;
         }
     }

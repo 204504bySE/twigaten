@@ -5,6 +5,7 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <LangVersion>latest</LangVersion>
     <RootNamespace>Twigaten.Lock</RootNamespace>
+    <AssemblyName>Twigaten.Lock</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

@@ -182,9 +182,11 @@ namespace Twigaten.Lib
         public class _web
         {
             public string CallBackUrl { get; }
+            public int ListenPort { get; }
             public _web(IniData data)
             {
                 CallBackUrl = data["web"][nameof(CallBackUrl)] ?? "";
+                ListenPort = int.Parse(data["web"][nameof(ListenPort)] ?? "12309");
             }
         }
         public _web web;
