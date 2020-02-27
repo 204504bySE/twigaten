@@ -5,66 +5,60 @@
 @addTagHelper *, Twigaten.Web
 @using Twigaten.Web
 
-<div class="card" style="width:100%">
-    <div class="card-body">
-        @{
-            TweetData._tweet tw = Model.tweet.retweet ?? Model.tweet;
-            <a class="anchor" id="@(Model.media.media_id)"></a>
-            <div class="card">
-                <div class="card-body">
-                    <div class="twigaten-media">
-                        <media-thumb media="Model.media" />
-                        <media-type-icon media="Model.media" />
-                    </div>
-                    <user-icon user="tw.user" />
-                    <tweet-permalink-bird tweet="tw" />
-                    <p>
-                        <user-screenname-link user="tw.user" /><br />
-                        @tw.user.name<br />
-                        <tweet-date-link tweet="tw" />
-                    </p>
-                    <p>
-                        <retweet-intent tweet="tw" /> @tw.retweet_count
-                        <favorite-intent tweet="tw" /> @tw.favorite_count
-                        <media-search-google-button media="Model.media" />
-                    </p>
-                    <p class="twigaten-tweettext">@Html.Raw(tw.text_html)</p>
-                    @if (Model.tweet.retweet != null)
-                    {
-                        <p>
-                            <user-icon tweet="Model.tweet" retweet="true" />
-                            <span class="glyphicon glyphicon-retweet"></span>
-                            <user-screenname-link user="Model.tweet.user" /><br />
-                            @Model.tweet.user.name<br />
-                            <tweet-date-text tweet=Model.tweet />
-                        </p>
-                    }
-                </div>
+<div class="card twigaten-tweet-frame">
+    @{
+        TweetData._tweet tw = Model.tweet.retweet ?? Model.tweet;
+        <a class="anchor" id="@(Model.media.media_id)"></a>
+        <div class="panel twigaten-tweet twigaten-tweet-main">
+            <div class="twigaten-media">
+                <media-thumb media="Model.media" />
+                <media-type-icon media="Model.media" />
             </div>
-            @foreach (var Tweet in Model.Similars)
+            <user-icon user="tw.user" />
+            <tweet-permalink-bird tweet="tw" />
+            <p>
+                <user-screenname-link user="tw.user" /><br />
+                @tw.user.name<br />
+                <tweet-date-link tweet="tw" />
+            </p>
+            <p>
+                <retweet-intent tweet="tw" /> @tw.retweet_count
+                <favorite-intent tweet="tw" /> @tw.favorite_count
+                <media-search-google-button media="Model.media" />
+            </p>
+            <p class="twigaten-tweettext">@Html.Raw(tw.text_html)</p>
+            @if (Model.tweet.retweet != null)
             {
-                <div class="card">
-                    <div class="card-body">
-                        <div class="twigaten-media">
-                            <media-thumb media="Tweet.media" />
-                            <media-type-icon media="Tweet.media" />
-                        </div>
-                        <user-icon user="Tweet.tweet.user" />
-                        <tweet-permalink-bird tweet="Tweet.tweet" />
-                        <p>
-                            <user-screenname-link user="Tweet.tweet.user" /><br />
-                            @Tweet.tweet.user.name<br />
-                            <tweet-date-link tweet="Tweet.tweet" />
-                        </p>
-                        <p>
-                            <retweet-intent tweet="Tweet.tweet" /> @Tweet.tweet.retweet_count
-                            <favorite-intent tweet="Tweet.tweet" /> @Tweet.tweet.favorite_count
-                            <media-search-google-button media="Tweet.media" />
-                        </p>
-                        <p class="twigaten-tweettext">@Html.Raw(Tweet.tweet.text_html)</p>
-                    </div>
-                </div>
+                <p>
+                    <user-icon tweet="Model.tweet" retweet="true" />
+                    <span class="glyphicon glyphicon-retweet"></span>
+                    <user-screenname-link user="Model.tweet.user" /><br />
+                    @Model.tweet.user.name<br />
+                    <tweet-date-text tweet=Model.tweet />
+                </p>
             }
+        </div>
+        @foreach (var Tweet in Model.Similars)
+        {
+            <div class="panel twigaten-tweet">
+                <div class="twigaten-media">
+                    <media-thumb media="Tweet.media" />
+                    <media-type-icon media="Tweet.media" />
+                </div>
+                <user-icon user="Tweet.tweet.user" />
+                <tweet-permalink-bird tweet="Tweet.tweet" />
+                <p>
+                    <user-screenname-link user="Tweet.tweet.user" /><br />
+                    @Tweet.tweet.user.name<br />
+                    <tweet-date-link tweet="Tweet.tweet" />
+                </p>
+                <p>
+                    <retweet-intent tweet="Tweet.tweet" /> @Tweet.tweet.retweet_count
+                    <favorite-intent tweet="Tweet.tweet" /> @Tweet.tweet.favorite_count
+                    <media-search-google-button media="Tweet.media" />
+                </p>
+                <p class="twigaten-tweettext">@Html.Raw(Tweet.tweet.text_html)</p>
+            </div>
         }
-    </div>
+    }
 </div>

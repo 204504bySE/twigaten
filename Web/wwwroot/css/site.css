@@ -10,28 +10,42 @@ html, body {
 }
 
 .body-content {
+    margin: 0 10px;
     word-wrap: break-word;
+}
+
+p{
+    font-size: 0.85rem;
+}
+
+a {
+    color: hsl(217, 71%, 53%);
 }
 
 iframe.twitter-share-button {
     vertical-align: text-bottom;
 }
 
-.glyphicon-retweet {
-    color: #aab8c2;
+svg.twigaten-glyph, img.twigaten-glyph {
+    width: 16px;
+    height: 14px;
 }
 
-    .glyphicon-retweet:hover {
-        color: #19cf86;
-    }
-
-.glyphicon-star {
-    color: #aab8c2;
+svg.fill-retweet {
+    fill: #aab8c2;
 }
 
-    .glyphicon-star:hover {
-        color: #feac33;
-    }
+svg.fill-retweet:hover {
+    fill: #19cf86;
+}
+
+svg.fill-star {
+    fill: #aab8c2;
+}
+
+svg.fill-star:hover {
+    fill: #feac33;
+}
 
 .collapsing {
     -webkit-transition: none;
@@ -82,14 +96,21 @@ a.anchor {
     visibility: hidden;
 }
 
-div.twigaten-similarmedia {
-    vertical-align: top;
-    margin: 0 4px;
+div.twigaten-tweet-frame {
+    box-sizing: border-box;
+    margin: 20px 0;
+    padding: 4px 4px 0 4px;
+    background-color: #eeeeee;
 }
 
-div.twigaten-panel {
-    display: inline-block;
+div.twigaten-tweet {
+    display: inline-block;    
+    vertical-align: top;
     width: 100%;
+}
+
+div.twigaten-tweet-main {
+    background: #ffffff;
 }
 
 div.twigaten-media {
@@ -98,7 +119,7 @@ div.twigaten-media {
 }
 
 @media (min-width:520px) {
-    div.twigaten-panel {
+    div.twigaten-tweet {
         width: 216px;
     }
 
@@ -126,6 +147,11 @@ img.twigaten-icon {
 
 img.twigaten-icon-retweet {
     float: left;
+}
+
+a.twigaten-google-image {
+    display: inline;
+    padding: 1px;
 }
 
 span.twigaten-twitterbird {

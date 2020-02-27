@@ -41,8 +41,8 @@ namespace Twigaten.Web.TagHelpers
         {
             output.TagName = "span";
             output.TagMode = TagMode.StartTagAndEndTag;
-            output.Attributes.SetAttribute("class", "twigaten:twitterbird");
-            output.Content.SetHtmlContent(@"<a href=""https://twitter.com/" + Tweet.user.screen_name + @"/status/" + Tweet.tweet_id.ToString() + @""" rel=""nofollow""><img src=""/Content/images/Twitter_bird_logo_2012.svg"" width=""16"" height=""16"" /></a>");
+            output.Attributes.SetAttribute("class", " twigaten-twitterbird");
+            output.Content.SetHtmlContent(@"<a href=""https://twitter.com/" + Tweet.user.screen_name + @"/status/" + Tweet.tweet_id.ToString() + @""" rel=""nofollow""><img src=""/img/Twitter_bird_logo_2012.svg"" class=""twigaten-glyph"" /></a>");
         }
     }
 

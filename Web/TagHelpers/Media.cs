@@ -37,10 +37,10 @@ namespace Twigaten.Web.TagHelpers
             switch (Media.type)
             {
                 case "video":
-                    output.Content.SetHtmlContent(@"<span class=""glyphicon glyphicon-facetime-video""></span>");
+                    output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#video""/></svg>");
                     break;
                 case "animated_gif":
-                    output.Content.SetHtmlContent(@"<span class=""glyphicon glyphicon-film""></span>");
+                    output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#film""/></svg>");
                     break;
                 default:
                     output.SuppressOutput();
@@ -59,15 +59,17 @@ namespace Twigaten.Web.TagHelpers
         public TweetData._media Media { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
+            
+            output.TagName = "a";
+            output.TagMode = TagMode.StartTagAndEndTag;
             string MediaUrl = Media.orig_media_url.IndexOf("twimg.com") >= 0
                 ? Media.orig_media_url + ":small"
                 : Media.orig_media_url;
-            
-            output.TagName = "a";
+
             output.Attributes.SetAttribute("href", "https://www.google.com/searchbyimage?image_url=" + WebUtility.UrlEncode(MediaUrl));
-            output.Attributes.SetAttribute("class", "btn btn-default btn-xs");
+            output.Attributes.SetAttribute("class", "button is-light is-small twigaten-google-image");
             output.Attributes.SetAttribute("rel", "nofollow");
-            output.Content.SetHtmlContent(@"<span class=""glyphicon glyphicon-search""></span>" + Locale.Locale.SimilarMedia_GoogleImage);
+            output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#search""/></svg>" + Locale.Locale.SimilarMedia_GoogleImage);
         }
     }
 }

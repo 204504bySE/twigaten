@@ -6,25 +6,26 @@
     ViewData["Title"] = "Twitter上の類似画像/画像転載を見つけるやつ";
 }
 @section Scripts{
-    <script async>const app = new Vue({ el: '#app' })</script>
 }
 @section TwitterCard{
     <twitter-card-description />
     <twitter-card-image />
 }
-<div class="jumbotron">
-    <h1>
-        <ruby>
-            <rb>TwiGaTen</rb>
-            <rt>ツイ<small>ッター</small>画<small>像</small>転<small>載<del>奴～！</del></small></rt>
-        </ruby>
-    </h1>
-    <p class="lead">類似画像/画像転載を見つけるやつ</p>
-    <p><a href="/auth/login" class="btn btn-primary btn-lg">@(Locale.Menu_Login) »</a></p>
-</div>
+<section class="hero is-light" style="margin: 10px 0">
+    <div class="hero-body">
+        <h1 class="title">
+            <ruby>
+                <rb>TwiGaTen</rb>
+                <rt>ツイ<small>ッター</small>画<small>像</small>転<small>載<del>奴～！</del></small></rt>
+            </ruby>
+        </h1>
+        <p class="subtitle">類似画像/画像転載を見つけるやつ</p>
+        <p><a href="/auth/login" class="button is-primary">@(Locale.Menu_Login) »</a></p>
+    </div>
+</section>
 <tweet-button />
 <div>
-    <p>5/20 RTを「除外」すると動作しないのを修正</p>
+    <p>┌(┌；・o・)┐見た目はあまりかわってないけど中は変えまくってる</p>
     <p>└(└ ・o・)┘↓こういうのができたようです。ご活用下さい。</p>
     <blockquote class="twitter-tweet" data-lang="ja"><p lang="ja" dir="ltr">ツイートの共有メニューからTwiGaTenに飛ぶためのアプリを作ってみたよ&#13;&#13;&quot;Jump to TwiGaTen - Google Play の Android アプリ&quot; <a href="https://t.co/9ZUZppHQQN">https://t.co/9ZUZppHQQN</a></p>&mdash; 銀卿 (@@Ginkyo0523) <a href="https://twitter.com/Ginkyo0523/status/899956017424777217?ref_src=twsrc%5Etfw">2017年8月22日</a></blockquote>
 </div>
@@ -35,7 +36,7 @@
         ユーザー名やツイートのURLで検索することもできます。<br />
         画像でも一応検索できます。
     </p>
-    <p><a href="/search/" class="btn btn-success">ユーザー名/ツイートURL/画像で検索 »</a></p>
+    <p><a href="/search/" class="button is-success">ユーザー名/ツイートURL/画像で検索 »</a></p>
 </div>
 <div>
     <h2>#サインインすると</h2>
@@ -44,7 +45,7 @@
         また、タイムライン上の画像付きツイートが収集されます。<br />
         収集対象のツイートが増え、検索のヒット率が向上します(たぶん)
     </p>
-    <p><a href="/auth/login" class="btn btn-success">@(Locale.Menu_Login) »</a></p>
+    <p><a href="/auth/login" class="button is-success">@(Locale.Menu_Login) »</a></p>
 </div>
 <div>
     <h2>#なお用途は</h2>
@@ -54,13 +55,11 @@
         あるいは思いもよらない用途があるかもしれない。
     </p>
 </div>
-<div class="row">
-    <div class="col-md-4">
-        <h3>┌（┌ ＾o＾）┐</h3>
-        <p>
-            💨💨💨┌(┌；・o・)┐
-        </p>
-        <p><a href="/about" class="btn btn-success">┌(┌ ーoー)┐ »</a></p>
-    </div>
+<div>
+    <h3>┌（┌ ＾o＾）┐</h3>
+    <p>
+        💨💨💨┌(┌；・o・)┐
+    </p>
+    <a href="/about" class="button is-success">┌(┌ ーoー)┐ »</a>
 </div>
 

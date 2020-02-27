@@ -20,7 +20,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", $"https://twitter.com/intent/retweet?tweet_id={Tweet.tweet_id}");
             output.Attributes.SetAttribute("rel", "nofollow");
-            output.Content.SetHtmlContent(@"<span class=""glyphicon glyphicon-retweet""></span>");
+            output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph fill-retweet""><use xlink:href=""/img/fontawesome.svg#retweet""/></svg>");
         }
     }
 
@@ -38,7 +38,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", $"https://twitter.com/intent/favorite?tweet_id={Tweet.tweet_id}");
             output.Attributes.SetAttribute("rel", "nofollow");
-            output.Content.SetHtmlContent(@"<span class=""glyphicon glyphicon-star""></span>");
+            output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph fill-star""><use xlink:href=""/img/fontawesome.svg#star""/></svg>");
         }
     }
 }

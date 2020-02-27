@@ -12,78 +12,58 @@
     <meta property="og:title" content="@ViewData["Title"] - TwiGaTen" />
     @RenderSection("TwitterCard", false)
     @RenderSection("MetaTags", false)
-    <environment include="Development">
-        <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.css" />
-        <link rel="stylesheet" href="/lib/bootstrap-vue/dist/bootstrap-vue.css" />
-    </environment>
-    <environment exclude="Development">
-        <link type="text/css" rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
-        <link type="text/css" rel="stylesheet" href="/lib/bootstrap-vue/dist/bootstrap-vue.min.css" />
-    </environment>
+    <link rel="stylesheet" href="/css/bulmaswatch.min.css" />
     <link rel="stylesheet" href="/css/site.css" />
     <title>@ViewData["Title"] - TwiGaTen</title>
-
 </head>
 <body>
-    <div id="app" class="small">
-        <b-navbar type="light" variant="light" role="navigation">
-            <b-navbar-brand href="/"><a href="/" style="color:inherit">TwiGaTen</a></b-navbar-brand>
-            <b-navbar-nav>
-                @if (true)/*(Context.Session.GetString("ScreenName") != null)*/
-                {
-                <b-nav-item-dropdown text="@("@" + Context.Session.GetString("ScreenName"))">
-                    <b-dropdown-item href="/users"><a href="/users" style="color:inherit">@Locale.Menu_MyTweet</a></b-dropdown-item>
-                    <b-dropdown-item href="/timeline"><a href="/timeline" style="color:inherit">@Locale.Menu_Timeline</a></b-dropdown-item>
-                    <b-dropdown-divider></b-dropdown-divider>
-                    <b-dropdown-item href="/auth/logout"><a href="/auth/logout" style="color:inherit">@Locale.Menu_Logout</a></b-dropdown-item>
-                </b-nav-item-dropdown>
-                }
-                else
-                {
-                <b-nav-item><a href="/auth/login" rel="nofollow">@Locale.Menu_Login</a></b-nav-item>
-                }
-            </b-navbar-nav>
-            <b-collapse id="bs-example-navbar-collapse-1">
-                <b-navbar-nav>
-                    <b-nav-item href="/featured"><a href="/featured" style="color:inherit">@Locale.Menu_Featured</a></b-nav-item>
-                    <b-nav-item href="/about"><a href="/about" style="color:inherit">@Locale.Menu_About</a></b-nav-item>
-                </b-navbar-nav>
-            </b-collapse>
-            <b-navbar-nav>
-                <b-nav-form>
-                    <b-form-select>
-                        <!--
-                        <option disabled selected style="display:none;">Language</option>
-                        <option value="ja">日本語</option>
-                        <option value="en">English</option>
-                         -->
-                    </b-form-select>
-                </b-nav-form>
-                <b-nav-form>
-                    <b-input-group>
-                        <b-form-input placeholder="@('@')name/URL"></b-form-input>
-                        <b-button variant="outline-primary" type="submit">🔍</b-button>
-                    </b-input-group>
-                </b-nav-form>
-            </b-navbar-nav>
-        </b-navbar>
-
-        <div class="container-fluid body-content">
-            @RenderBody()
-            <hr />
-            <footer>
-                <p class="text-muted"><a class="text-muted" href="/">twigaten.204504byse.info</a> by つ(*ﾟーﾟ) ◆204504bySE</p>
-            </footer>
+    <nav class="navbar" role="navigation">
+        <div class="navbar-brand has-dropdown">
+            <a href="/" class="navbar-item">TwiGaTen</a>
+            @if (true)/*(Context.Session.GetString("ScreenName") != null)*/
+            {
+                <a class="navbar-link is-hoverable">@("@" + Context.Session.GetString("ScreenName"))"</a>
+                <div class="navbar-dropdown is-boxed">
+                    <a href="/users" class="navbar-item">@Locale.Menu_MyTweet</a>
+                    <a href="/timeline" class="navbar-item">@Locale.Menu_Timeline</a>
+                    <hr class="navbar-divider">
+                    <a href="/auth/logout" class="navbar-item">@Locale.Menu_Logout</a>
+                </div>
+            }
+            else
+            {
+                <a href="/auth/login" rel="nofollow" class="navbar-item">@Locale.Menu_Login</a>
+            }
         </div>
+        <div class="navbar-menu">
+            <a href="/featured" class="navbar-item">@Locale.Menu_Featured</a>
+            <a href="/about" class="navbar-item">@Locale.Menu_About</a>
+        </div>
+
+        <div class="field">
+            <div class="select">
+                <select>
+                    <option disabled selected style="display:none;">Language</option>
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+        <form>
+            <div class="field has-addons">
+                <input placeholder="@('@')name/URL" class="input" />
+                <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
+            </div>
+        </form>
+    </nav>
+
+    <div class="body-content">
+        @RenderBody()
+        <hr />
+        <footer>
+            <p class="text-muted"><a class="text-muted" href="/">twigaten.204504byse.info</a> by つ(*ﾟーﾟ) ◆204504bySE</p>
+        </footer>
     </div>
-    <environment include="Development">
-        <script src="/lib/vue/vue.js"></script>
-        <script src="/lib/bootstrap-vue/dist/bootstrap-vue.js"></script>
-    </environment>
-    <environment exclude="Development">
-        <script src="/lib/vue/vue.min.js"></script>
-        <script src="/lib/bootstrap-vue/dist/bootstrap-vue.min.js"></script>
-    </environment>
     @RenderSection("scripts", required: false)
     <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 </body>

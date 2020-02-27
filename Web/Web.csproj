@@ -9,12 +9,15 @@
 
   <ItemGroup>
     <Folder Include="Pages\Auth\" />
-    <Folder Include="wwwroot\lib\" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CoreTweet" Version="1.0.0.483" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
+    <PackageReference Include="Microsoft.TypeScript.MSBuild" Version="3.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="3.1.1" />
     <PackageReference Include="MySqlConnector" Version="0.61.0" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.11.0" />
