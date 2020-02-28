@@ -1,0 +1,136 @@
+﻿@page
+@using Microsoft.AspNetCore.Http;
+@using Twigaten.Web.Locale;
+@model Twigaten.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "このサイトについて";
+}
+@section Scripts{
+}
+@section TwitterCard{
+    <twitter-card-description />
+    <twitter-card-image />
+}
+<style>
+    ul {
+        list-style: disc;
+        padding: 0.2rem 2rem;
+        font-size: 0.85rem;
+    }
+</style>
+<h2>@ViewBag.Title</h2>
+<h3>概要</h3>
+<p>
+    Twitter上の画像付きツイートを収集し、よく似た画像同士をまとめて表示します。<br />
+    <span class="text-warning">
+        1ツイートに複数の画像が含まれる場合は、1枚ずつ類似判定を行って別々に表示します。<br />
+        また、よく似た画像が見つからなかったツイートは表示されません。
+    </span><br />
+    収集対象はこのサイトにサインインしたTwitterアカウントのタイムラインです。
+</p>
+<h3>検索機能</h3>
+<p>
+    右上の検索窓に、アカウント名(@@*****)または<br />
+    ツイートのURL(https://twitter.com/****/status/****)を入力して検索できます。
+</p>
+<h3>人気のツイート</h3>
+<p>
+    類似画像が見つかったツイートを、お気に入り(いいねに改称)とリツイートの合計が大きい順に表示します。<br />
+    対象は公開アカウントのみです。
+</p>
+<h3>タイムライン</h3>
+<p>@Html.ActionLink("サインインすると使用できます。", "Twitter", "Auth")</p>
+<p>
+    あなたのタイムラインから、類似画像が見つかったツイートを新しい順に表示します。<br />
+    リツイートの表示/非表示の切替ができます。
+</p>
+
+<h3>非公開アカウントの表示</h3>
+<p>
+    サインインすると、あなたがフォローしている非公開アカウントのツイートが表示されるようになります。<br />
+    あなた自身が非公開アカウントを所持している場合でもサインインが必要です。
+</p>
+
+<h3>ツイートの収集を停止する</h3>
+<p>
+    <a href="http://www.atmarkit.co.jp/ait/articles/1407/18/news030.html">http://www.atmarkit.co.jp/ait/articles/1407/18/news030.html</a><br />
+    ↑の方法で「TwiGaTen」のアプリ連携を解除してください。
+</p>
+
+<h3>問い合わせ</h3>
+<p>
+    ┌（┌；・o・）┐・・・ <a href="https://twitter.com/204504bySE">@@204504bySE</a><br />
+    リプライでもなんでも投げてください。<br /><br />
+    Twitterアカウントがない場合等は<br />
+    <a href="mailto:204504byse@204504byse.info">204504byse@204504byse.info</a><br />
+    までメールでお問い合わせください。
+</p>
+
+<h3>プライバシーポリシー</h3>
+    <p>このサイトでは、以下の目的のためにCookieを使用しています。</p>
+    <ul>
+        <li>Twitterアカウントによるログイン</li>
+        <li>ツイート検索設定の保存</li>
+    </ul>
+</p>
+
+<h3>ソースコード</h3>
+<p>
+    <a href="https://github.com/204504bySE/twigatencore">https://github.com/204504bySE/twigatencore</a><br />
+    ┌（┌ ＾o＾）＾o＾）┐動かして遊ぼう！(動くとは言ってない)
+</p>
+
+<h3>オープンソースライセンス</h3>
+<ul>
+    <li>
+        Font Awesome
+        <ul>
+            <li><a href="https://fontawesome.com/">https://fontawesome.com//</a></li>
+            <li>CC BY 4.0 <a href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a></li>
+            <li>TwiGaTenではアイコン(svgファイル)のみ使用しています アイコン以外のライセンスは異なります</li>
+        </ul>
+    </li>
+</ul>
+<ul>
+    <li>
+        Zstandard.Net
+        <ul>
+            <li><a href="https://github.com/bp74/Zstandard.Net">https://github.com/bp74/Zstandard.Net</a></li>
+            <li>The 3-Clause BSD License <a href="https://opensource.org/licenses/BSD-3-Clause">https://opensource.org/licenses/BSD-3-Clause</a></li>
+        </ul>
+    </li>
+</ul>
+<p>以下はMIT License <a href="http://opensource.org/licenses/mit-license.php">http://opensource.org/licenses/mit-license.php</a></p>
+<ul>
+    <li>
+        CoreTweet
+        <ul>
+            <li><a href="http://coretweet.github.io/">http://coretweet.github.io/</a></li>
+            <li>日本語版wiki <a href="https://github.com/CoreTweet/CoreTweet/wiki/Home%28%E6%97%A5%E6%9C%AC%E8%AA%9E%29">https://github.com/CoreTweet/CoreTweet/wiki/Home(日本語)</a></li>
+        </ul>
+    </li>
+    <li>
+        Bulma
+        <ul>
+            <li><a href="https://github.com/jgthms/bulma">https://github.com/jgthms/bulma</a></li>
+        </ul>
+    </li>
+    <li>
+        NModbus
+        <ul>
+            <li><a href="https://github.com/NModbus/NModbus">https://github.com/NModbus/NModbus</a></li>
+        </ul>
+    </li>
+    <li>
+        ini-parser
+        <ul>
+            <li><a href="https://github.com/rickyah/ini-parser">https://github.com/rickyah/ini-parser</a></li>
+        </ul>
+    </li>
+    <li>
+        MySqlConnector
+        <ul>
+            <li><a href="https://mysql-net.github.io/MySqlConnector/">https://mysql-net.github.io/MySqlConnector/</a></li>
+        </ul>
+    </li>
+</ul>
