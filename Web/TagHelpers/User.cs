@@ -16,7 +16,7 @@ namespace Twigaten.Web.TagHelpers
         /// <summary>
         /// リツイートしたやつ表示用ならtrue
         /// </summary>
-        public bool Retweet { get; set; }
+        public bool StyleRetweet { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
             if (string.IsNullOrEmpty(User.local_profile_image_url)) { output.SuppressOutput(); return; }
@@ -24,7 +24,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagMode = TagMode.StartTagOnly;
             output.Attributes.SetAttribute("src", User.local_profile_image_url);
             output.Attributes.SetAttribute("loading", "lazy");
-            output.Attributes.SetAttribute("class", Retweet ? "twigaten-icon twigaten-icon-retweet" : "twigaten-icon");
+            output.Attributes.SetAttribute("class", StyleRetweet ? "twigaten-icon twigaten-icon-retweet" : "twigaten-icon");
         }
     }
 

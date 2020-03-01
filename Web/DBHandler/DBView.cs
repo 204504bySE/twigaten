@@ -2,12 +2,10 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using CoreTweet;
 using MySql.Data.MySqlClient;
 using Twigaten.Lib;
 
@@ -513,6 +511,7 @@ ORDER BY o.tweet_id " + (Before ? "DESC" : "ASC") + " LIMIT @limitplus;";
                 cmd.Parameters.Add("@lasttweet", MySqlDbType.Int64).Value = LastTweet;
                 //類似画像が表示できない画像を弾くときだけ多めに取得する
                 cmd.Parameters.Add("@limitplus", MySqlDbType.Int64).Value = ShowNoDup ? TweetCount : TweetCount + MultipleMediaOffset;
+                var a = cmd.CommandText;
                 ret = await TableToTweet(cmd, login_user_id, SimilarLimit, ShowNoDup).ConfigureAwait(false);
             }
             if (!Before) { ret = ret.Reverse().ToArray(); }
@@ -655,14 +654,7 @@ m.media_id, mt.media_url, mt.type,
         {
             var GetSimilarsBlock = new ActionBlock<SimilarMediaTweet>(async (rettmp) =>
             {
-                if (rettmp.tweet.retweet == null)
-                {
-                    rettmp.Similars = await SimilarMedia(rettmp.media.media_id, SimilarLimit, rettmp.tweet.tweet_id, login_user_id).ConfigureAwait(false);
-                }
-                else
-                {
-                    rettmp.Similars = await SimilarMedia(rettmp.media.media_id, SimilarLimit, rettmp.tweet.retweet.tweet_id, login_user_id).ConfigureAwait(false);
-                }
+                rettmp.Similars = await SimilarMedia(rettmp.media.media_id, SimilarLimit, (rettmp.tweet.retweet ?? rettmp.tweet).tweet_id, login_user_id).ConfigureAwait(false);
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
             var TweetList = new List<SimilarMediaTweet>();
@@ -676,7 +668,7 @@ m.media_id, mt.media_url, mt.type,
                 rettmp.tweet.user.isprotected =r.GetBoolean(4);
                 rettmp.tweet.tweet_id = r.GetInt64(6);
                 rettmp.tweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
-                rettmp.tweet.text_html = LocalText.TextToLink(r.GetString(8));
+                rettmp.tweet.text_html = r.IsDBNull(8) ? null : LocalText.TextToLink(r.GetString(8));
                 rettmp.tweet.favorite_count = r.GetInt32(9);
                 rettmp.tweet.retweet_count = r.GetInt32(10);
 

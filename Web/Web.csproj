@@ -8,7 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\Auth\" />
+    <Compile Remove="Pages\Auth\**" />
+    <Content Remove="Pages\Auth\**" />
+    <EmbeddedResource Remove="Pages\Auth\**" />
+    <None Remove="Pages\Auth\**" />
+    <TypeScriptCompile Remove="Pages\Auth\**" />
   </ItemGroup>
 
   <ItemGroup>

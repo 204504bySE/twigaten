@@ -1,8 +1,8 @@
 ﻿@page "{TweetId}/{More?}"
 @using Twigaten.Web.Locale;
-@model Twigaten.Web.Pages.Tweet.IndexModel
+@model Twigaten.Web.Pages.Tweet.TweetModel
 @section Scripts{
-    <script async src="~/js/tweet.js"></script>
+    <script async src="~/js/unixtime.js"></script>
 }
 @{
     if (Model.Tweets.Length > 0)

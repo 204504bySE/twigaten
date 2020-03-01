@@ -1,7 +1,7 @@
 ﻿@page
 @using Microsoft.AspNetCore.Http;
 @using Twigaten.Web.Locale;
-@model Twigaten.Web.Pages.IndexModel
+@model Twigaten.Web.Pages.AboutModel
 @{
     ViewData["Title"] = "このサイトについて";
 }
@@ -11,13 +11,6 @@
     <twitter-card-description />
     <twitter-card-image />
 }
-<style>
-    ul {
-        list-style: disc;
-        padding: 0.2rem 2rem;
-        font-size: 0.85rem;
-    }
-</style>
 <h2>@ViewBag.Title</h2>
 <h3>概要</h3>
 <p>
@@ -68,7 +61,7 @@
 
 <h3>プライバシーポリシー</h3>
     <p>このサイトでは、以下の目的のためにCookieを使用しています。</p>
-    <ul>
+    <ul class="simple">
         <li>Twitterアカウントによるログイン</li>
         <li>ツイート検索設定の保存</li>
     </ul>
@@ -81,55 +74,55 @@
 </p>
 
 <h3>オープンソースライセンス</h3>
-<ul>
+<ul class="simple">
     <li>
         Font Awesome
-        <ul>
+        <ul class="simple">
             <li><a href="https://fontawesome.com/">https://fontawesome.com//</a></li>
             <li>CC BY 4.0 <a href="https://creativecommons.org/licenses/by/4.0/">https://creativecommons.org/licenses/by/4.0/</a></li>
             <li>TwiGaTenではアイコン(svgファイル)のみ使用しています アイコン以外のライセンスは異なります</li>
         </ul>
     </li>
 </ul>
-<ul>
+<ul class="simple">
     <li>
         Zstandard.Net
-        <ul>
+        <ul class="simple">
             <li><a href="https://github.com/bp74/Zstandard.Net">https://github.com/bp74/Zstandard.Net</a></li>
             <li>The 3-Clause BSD License <a href="https://opensource.org/licenses/BSD-3-Clause">https://opensource.org/licenses/BSD-3-Clause</a></li>
         </ul>
     </li>
 </ul>
 <p>以下はMIT License <a href="http://opensource.org/licenses/mit-license.php">http://opensource.org/licenses/mit-license.php</a></p>
-<ul>
+<ul class="simple">
     <li>
         CoreTweet
-        <ul>
+        <ul class="simple">
             <li><a href="http://coretweet.github.io/">http://coretweet.github.io/</a></li>
             <li>日本語版wiki <a href="https://github.com/CoreTweet/CoreTweet/wiki/Home%28%E6%97%A5%E6%9C%AC%E8%AA%9E%29">https://github.com/CoreTweet/CoreTweet/wiki/Home(日本語)</a></li>
         </ul>
     </li>
     <li>
         Bulma
-        <ul>
+        <ul class="simple">
             <li><a href="https://github.com/jgthms/bulma">https://github.com/jgthms/bulma</a></li>
         </ul>
     </li>
     <li>
         NModbus
-        <ul>
+        <ul class="simple">
             <li><a href="https://github.com/NModbus/NModbus">https://github.com/NModbus/NModbus</a></li>
         </ul>
     </li>
     <li>
         ini-parser
-        <ul>
+        <ul class="simple">
             <li><a href="https://github.com/rickyah/ini-parser">https://github.com/rickyah/ini-parser</a></li>
         </ul>
     </li>
     <li>
         MySqlConnector
-        <ul>
+        <ul class="simple">
             <li><a href="https://mysql-net.github.io/MySqlConnector/">https://mysql-net.github.io/MySqlConnector/</a></li>
         </ul>
     </li>

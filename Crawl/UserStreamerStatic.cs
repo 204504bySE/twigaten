@@ -242,7 +242,7 @@ namespace Twigaten.Crawl
                     string MediaUrl = m.MediaUrlHttps ?? m.MediaUrl;
 
                     //画像の保存先パスを生成しておく
-                    string LocalPaththumb = MediaFolderPath.ThumbPath(m.Id, MediaUrl);
+                    string LocalPaththumb = Path.Combine(config.crawl.PictPaththumb, MediaFolderPath.ThumbPath(m.Id, MediaUrl));
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
                     Counter.MediaToStore.Increment();
                     for (int RetryCount = 0; RetryCount < 3; RetryCount++)

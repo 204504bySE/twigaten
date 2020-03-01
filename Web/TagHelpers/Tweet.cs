@@ -39,26 +39,36 @@ namespace Twigaten.Web.TagHelpers
         public TweetData._tweet Tweet { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
-            output.TagName = "span";
+            output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
-            output.Attributes.SetAttribute("class", " twigaten-twitterbird");
-            output.Content.SetHtmlContent(@"<a href=""https://twitter.com/" + Tweet.user.screen_name + @"/status/" + Tweet.tweet_id.ToString() + @""" rel=""nofollow""><img src=""/img/Twitter_bird_logo_2012.svg"" class=""twigaten-glyph"" /></a>");
+            output.Attributes.SetAttribute("href", "https://twitter.com/" + Tweet.user.screen_name + @"/status/" + Tweet.tweet_id.ToString());
+            output.Attributes.SetAttribute("rel", "nofollow");
+            output.Content.SetHtmlContent(@"<img src=""/img/Twitter_bird_logo_2012.svg"" class=""twigaten-twitterbird"" />");
         }
     }
 
+    /// <summary>
+    /// 投稿時刻→ツイートへのTwigaten内リンク
+    /// 時刻を表示させるにはdata-unixtimeを読んで時刻に変換するJavaScriptが必要
+    /// </summary>
     [HtmlTargetElement("tweet-date-link")]
     public class TweetDateLinkTagHelper : TagHelper
     {
         public TweetData._tweet Tweet { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
-            output.TagName = "a-unixtime";
+            output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
-            output.Attributes.Add("href", @"https://twitter.com/" + Tweet.user.screen_name + @"/status/" + Tweet.tweet_id.ToString());
-            output.Attributes.Add("unixtime", Tweet.created_at.ToUnixTimeSeconds());
+            output.Attributes.Add("href", @"/users/" + Tweet.tweet_id.ToString());
+            output.Attributes.SetAttribute("class", "twigaten-unixtime");
+            output.Attributes.Add("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
         }
     }
 
+    /// <summary>
+    /// 投稿時刻のテキスト(リンクなし)
+    /// 時刻を表示させるにはdata-unixtimeを読んで時刻に変換するJavaScriptが必要
+    /// </summary>
     [HtmlTargetElement("tweet-date-text")]
     public class TweetDateTextTagHelper : TagHelper
     {
@@ -67,10 +77,8 @@ namespace Twigaten.Web.TagHelpers
         {
             output.TagName = "span";
             output.TagMode = TagMode.StartTagAndEndTag;
-            output.Attributes.SetAttribute("class", "text_muted");
-            output.Attributes.SetAttribute("onload", new HtmlString(@"(function(e) => { e.innerHtml=(new Date("
-                + (Tweet.created_at.ToUnixTimeSeconds() * 1000).ToString()
-                + @") + new Date().getTimezoneOffset()).toLocaleDateString() })(this);"));
+            output.Attributes.SetAttribute("class", "text_muted twigaten-unixtime");
+            output.Attributes.SetAttribute("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
         }
     }
 }

@@ -13,12 +13,12 @@ namespace Twigaten.Web.Parameters
         ///<summary>Cookie</summary>
         public TweetOrder? Order { get; set; }
 
-        public override Task InitValidate(HttpContext _Context)
+        public override async Task InitValidate(HttpContext _Context)
         {
+            await base.InitValidate(_Context).ConfigureAwait(false);
             if (TryGetCookie(nameof(Order), out string OrderStr) && Enum.TryParse(typeof(TweetOrder), OrderStr, out var ParsedOrder))
             { Order = (TweetOrder)ParsedOrder; }
             else { Order = TweetOrder.Featured; }
-            return base.InitValidate(_Context);
         }
         public FeaturedParameters() : base() { }
     }
@@ -26,18 +26,15 @@ namespace Twigaten.Web.Parameters
     public class TLUserParameters : LoginParameters
     {
         ///<summary>Cookie</summary>
-        public int? Count { get; set; }
+        public int Count { get; set; }
         ///<summary>Cookie</summary>
-        public bool? RT { get; set; }
+        public bool RT { get; set; }
         ///<summary>Cookie</summary>
-        public bool? Show0 { get; set; }
-        ///<summary>URL</summary>
-        public long? Before { get; set; }
-        ///<summary>URL</summary>
-        public long? After { get; set; }
+        public bool Show0 { get; set; }
 
-        public override Task InitValidate(HttpContext _Context)
+        public override async Task InitValidate(HttpContext _Context)
         {
+            await base.InitValidate(_Context).ConfigureAwait(false);
             if (TryGetCookie(nameof(Count), out string CountStr) && int.TryParse(CountStr, out int CountValue)) 
             {
                 Count = CountValue;
@@ -51,8 +48,6 @@ namespace Twigaten.Web.Parameters
 
             if (TryGetCookie(nameof(Show0), out string Show0Str) && bool.TryParse(Show0Str, out bool Show0Value)) { Show0 = Show0Value; }
             else { Show0 = false; }
-
-            return base.InitValidate(_Context);
         }
         public TLUserParameters() : base() { }
     }

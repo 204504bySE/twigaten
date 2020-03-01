@@ -30,8 +30,8 @@
             @if (Model.tweet.retweet != null)
             {
                 <p>
-                    <user-icon tweet="Model.tweet" retweet="true" />
-                    <span class="glyphicon glyphicon-retweet"></span>
+                    <user-icon user="Model.tweet.user" style-retweet="true" />
+                    <svg class="twigaten-glyph fill-retweet"><use xlink:href="/img/fontawesome.svg#retweet" /></svg>
                     <user-screenname-link user="Model.tweet.user" /><br />
                     @Model.tweet.user.name<br />
                     <tweet-date-text tweet=Model.tweet />

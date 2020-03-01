@@ -1,0 +1,79 @@
+﻿@page "{UserId}"
+@using Twigaten.Web.Locale;
+@model Twigaten.Web.Pages.Tweet.UsersModel
+@section Scripts{
+    <script async src="~/js/unixtime.js"></script>
+}
+@section MetaTags{
+    <meta name="robots" content="noindex" />
+}
+@section TwitterCard{
+    <twitter-card-description />
+    <twitter-card-image />
+}
+@if (Model.Tweets.Length > 0)
+{
+    ViewData["Title"] = string.Format(Locale.Title_OneTweet, Model.Tweets[0].tweet.user.screen_name,
+        Model.Tweets[0].tweet.created_at.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss"));
+}
+else
+{
+    ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.UserId);
+}
+<nav class="tabs is-toggle">
+    <div class="twigaten-tabgroup">
+        <ul>
+            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId">@Locale.Pager_Latest</a></li>
+            @if (Model.IsLatest || Model.NextNew == null)
+            {
+                <li class="disabled"><a>@Locale.Pager_Newer</a></li>
+            }
+            else
+            {
+                <li><a href="/users/@(Model.UserId)?after=@Model.NextNew">@Locale.Pager_Newer</a></li>
+            }
+            @if (Model.NextOld == null)
+            {
+                <li class="disabled"><a>@Locale.Pager_Older</a></li>
+            }
+            else
+            {
+                <li><a href="/users/@(Model.UserId)?before=@Model.NextOld">@Locale.Pager_Older</a></li>
+            }
+        </ul>
+    </div>
+    <div class="twigaten-tabgroup">
+        <p>
+            <svg class="twigaten-glyph fill-retweet"><use xlink:href="/img/fontawesome.svg#retweet" /></svg>
+            RT
+        </p>
+        <ul>
+            <li @Html.Raw(Model.Params.RT ? @"class=""is-active""" : "")><a href="">@Locale.Pager_Show</a></li>
+            <li @Html.Raw(!Model.Params.RT ? @"class=""is-active""" : "")><a href="">@Locale.Pager_Hide</a></li>
+        </ul>
+    </div>
+    <div class="twigaten-tabgroup">
+        <p>@Locale.SimilarMedia_ShowNoDup</p>
+        <ul>
+            <li @Html.Raw(Model.Params.Show0 ? @"class=""is-active""" : "")><a href="">@Locale.Pager_Show</a></li>
+            <li @Html.Raw(!Model.Params.Show0 ? @"class=""is-active""" : "")><a href="">@Locale.Pager_Hide</a></li>
+        </ul>
+    </div>
+</nav>
+@if (Model.Tweets.Length > 0)
+{
+    <h2>@string.Format(Locale.Headline_UserTweet, Model.Tweets[0].tweet.user.screen_name)</h2>
+    <p><tweet-permalink screen-name="@Model.Tweets[0].tweet.user.screen_name" tweet-id=@Model.Tweets[0].tweet.tweet_id /></p>
+    <p><tweet-button path="@("/tweet/" + Model.Tweets[0].tweet.tweet_id.ToString())" /></p>
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+    foreach (var Tweet in Model.Tweets)
+    {
+        <partial name="OneTweet" model="Tweet" />
+    }
+}
+else
+{
+    <h2>@Html.Raw(string.Format(Locale.Headline_UserNotFound, Model.UserId))</h2>
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+    <partial name="NoTweetToShow" />
+}

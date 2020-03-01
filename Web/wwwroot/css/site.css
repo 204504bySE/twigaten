@@ -14,19 +14,48 @@ html, body {
     word-wrap: break-word;
 }
 
-p{
+a {
+    color: hsl(217, 71%, 53%);
+}
+
+p, ul {
     font-size: 0.85rem;
 }
 
-a {
-    color: hsl(217, 71%, 53%);
+input.input{
+    width: unset;
+}
+
+ul.simple {
+    list-style: disc;
+    padding: 0.2rem 2rem;
+}
+
+.tabs {
+    justify-content: unset;
+    flex-wrap: wrap;
+}
+
+div.twigaten-tabgroup {
+    display:inline-flex;
+    margin-top:10px;
+}
+
+.twigaten-tabgroup.ul{
+    flex-grow: 0;
+}
+
+.twigaten-tabgroup.p {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5em;
 }
 
 iframe.twitter-share-button {
     vertical-align: text-bottom;
 }
 
-svg.twigaten-glyph, img.twigaten-glyph {
+svg.twigaten-glyph {
     width: 16px;
     height: 14px;
 }
@@ -154,10 +183,11 @@ a.twigaten-google-image {
     padding: 1px;
 }
 
-span.twigaten-twitterbird {
+img.twigaten-twitterbird {
+    width: 16px;
+    height: 16px;
     float: right;
     margin-right: 1em;
-    word-break: break-all;
 }
 
 p.twigaten-tweettext {

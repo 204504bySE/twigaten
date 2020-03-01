@@ -55,7 +55,7 @@ namespace Twigaten.Web
         {   //Viewに使う画像のURLを返す
             //orig_media_urlとmedia_idが必要
             if(Media.orig_media_url == null) { return null; }
-            else{ return config.crawl.PictPaththumb + Media.media_id.ToString() + Path.GetExtension(Media.orig_media_url); }
+            else{ return MediaFolderPath.ThumbPath(Media.media_id, Media.orig_media_url); }
         }
 
         ///<summary>Viewに使うアイコンのURLを返す(ホスト名より後だけ)

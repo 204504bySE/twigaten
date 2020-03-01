@@ -10,12 +10,14 @@ using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Pages.Tweet
 {
-    public class IndexModel : PageModel
+    public class TweetModel : PageModel
     {
         [BindProperty(SupportsGet = true)]
         public long TweetId{ get; set; }
         [BindProperty(SupportsGet = true)]
         public string MoreStr { get; set; }
+        public bool More => MoreStr == "more";
+
         public SimilarMediaTweet[] Tweets;
         public LoginParameters Params;
 
@@ -25,7 +27,7 @@ namespace Twigaten.Web.Pages.Tweet
             Params = new LoginParameters();
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
-            if (MoreStr == "more") { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID, 99).ConfigureAwait(false); }
+            if (More) { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID, 99).ConfigureAwait(false); }
             else { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID).ConfigureAwait(false); }
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
         }

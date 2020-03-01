@@ -168,7 +168,7 @@ namespace Twigaten.Lib
                     }
                 }
             }
-            catch { }
+            catch(Exception e) { }
             return false;
         }
 
