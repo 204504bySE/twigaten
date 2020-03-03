@@ -29,8 +29,8 @@
             <p class="twigaten-tweettext">@Html.Raw(tw.text_html)</p>
             @if (Model.tweet.retweet != null)
             {
+                <user-icon user="Model.tweet.user" style-retweet="true" />
                 <p>
-                    <user-icon user="Model.tweet.user" style-retweet="true" />
                     <svg class="twigaten-glyph fill-retweet"><use xlink:href="/img/fontawesome.svg#retweet" /></svg>
                     <user-screenname-link user="Model.tweet.user" /><br />
                     @Model.tweet.user.name<br />

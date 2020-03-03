@@ -26,21 +26,32 @@ namespace Twigaten.Web.Pages.Tweet
         public long? NextOld => (Tweets.Length > 0) ? Tweets.Last().tweet.tweet_id : null as long?;
         public long? NextNew => (!IsLatest && Tweets.Length > 0) ? Tweets.First().tweet.tweet_id : null as long?;
 
-        public SimilarMediaTweet[] Tweets;
-        public TLUserParameters Params;
+        public SimilarMediaTweet[] Tweets { get; private set; }
+        public TweetData._user TargetUser { get; private set; }
+        public TLUserParameters Params { get; private set; }
+
 
         public long QueryElapsedMilliseconds { get; private set; }
         public async Task OnGetAsync()
         {
+            var sw = Stopwatch.StartNew();
+
+            //一瞬でも速くしたいので先にTaskを作って必要なところでawaitする
+            var TargetUserTask = DBView.SelectUser(UserId);
             Params = new TLUserParameters();
-            await Params.InitValidate(HttpContext).ConfigureAwait(false);
-            var sw = Stopwatch.StartNew();            
+            var ParamsTask = Params.InitValidate(HttpContext);
+
             long LastTweet = Date.HasValue 
                 ? SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeMilliseconds(Date.Value), true)
                 : ( Before ?? After ?? SnowFlake.Now(true));
             bool IsBefore = Date.HasValue || Before.HasValue || !After.HasValue;
 
-            Tweets = await DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore).ConfigureAwait(false);
+            await ParamsTask.ConfigureAwait(false);
+            var TweetsTask = DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore);
+
+            await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
+            TargetUser = TargetUserTask.Result;
+            Tweets = TweetsTask.Result;
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
         }
     }

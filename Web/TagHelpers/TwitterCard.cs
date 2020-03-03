@@ -55,7 +55,7 @@ namespace Twigaten.Web.TagHelpers
 
             Uri.Scheme = Request.IsHttps ? "https" : "http";
             Uri.Host = Request.Host.Host;
-            Uri.Port = Request.Host.Port.HasValue ? Request.Host.Port.Value : -1;
+            Uri.Port = Request.Host.Port ?? -1;
             Uri.Path = Path ?? "/img/ten120.png";
             output.Attributes.SetAttribute("content", Uri.ToString());
         }

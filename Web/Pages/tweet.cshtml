@@ -2,13 +2,12 @@
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.Tweet.TweetModel
 @section Scripts{
-    <script async src="~/js/unixtime.js"></script>
+    <script defer src="/js/twigaten-tweet.js"></script>
 }
 @{
     if (Model.Tweets.Length > 0)
     {
-        ViewData["Title"] = string.Format(Locale.Title_OneTweet, Model.Tweets[0].tweet.user.screen_name,
-            Model.Tweets[0].tweet.created_at.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss"));
+        ViewData["Title"] = string.Format(Locale.Title_OneTweet, Model.Tweets[0].tweet.user.screen_name);
     }
     else
     {
@@ -31,7 +30,7 @@
 
     <h2>@Html.Raw(string.Format(Locale.Headline_OneTweet, "<a href=\"/users/" + Model.Tweets[0].tweet.user.user_id.ToString() + "\">@" + Model.Tweets[0].tweet.user.screen_name + "</a>"))</h2>
     <p><tweet-permalink screen-name="@Model.Tweets[0].tweet.user.screen_name" tweet-id=@Model.Tweets[0].tweet.tweet_id /></p>
-    <p><tweet-button path="@("/tweet/" + Model.Tweets[0].tweet.tweet_id.ToString())" /></p>
+    <p><tweet-intent path="@("/tweet/" + Model.Tweets[0].tweet.tweet_id.ToString())" /></p>
     <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
     foreach (var Tweet in Model.Tweets)
     {

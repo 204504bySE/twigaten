@@ -190,16 +190,16 @@
     <value>ツイート({0})が見つかりませんでした</value>
   </data>
   <data name="Title_OneTweet" xml:space="preserve">
-    <value>@{0} のツイートと類似画像({1})</value>
+    <value>@{0} のツイートと類似画像</value>
   </data>
   <data name="Title_Timeline" xml:space="preserve">
-    <value>@{0} のタイムライン上の類似画像{1}</value>
+    <value>@{0} のタイムライン上の類似画像</value>
   </data>
   <data name="Title_UserNotFound" xml:space="preserve">
     <value>ユーザーが見つかりませんでした</value>
   </data>
   <data name="Title_UserTweet" xml:space="preserve">
-    <value>@{0} のツイートと類似画像{1}</value>
+    <value>@{0} のツイートと類似画像</value>
   </data>
   <data name="Auth_BackTop" xml:space="preserve">
     <value>« トップページに戻る</value>
@@ -215,9 +215,6 @@
   </data>
   <data name="SimilarMedia_ViewMore" xml:space="preserve">
     <value>もっと見る</value>
-  </data>
-  <data name="TweetButton_Lang" xml:space="preserve">
-    <value>ja</value>
   </data>
   <data name="TweetButton_Tweet" xml:space="preserve">
     <value>ツイート</value>
@@ -236,5 +233,8 @@
   </data>
   <data name="SimilarMedia_ShowNoDup" xml:space="preserve">
     <value>ぼっち画像</value>
+  </data>
+  <data name="Headline_NoTweetToShow" xml:space="preserve">
+    <value>ツイートが見つかりませんでした</value>
   </data>
 </root>

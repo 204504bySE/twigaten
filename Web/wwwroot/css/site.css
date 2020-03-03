@@ -18,11 +18,20 @@ a {
     color: hsl(217, 71%, 53%);
 }
 
-p, ul {
+p, ul, nav {
     font-size: 0.85rem;
 }
 
-input.input{
+.tabs.is-toggle li.is-disabled a {
+    text-decoration: line-through;
+}
+
+    .tabs.is-toggle li.is-disabled a:hover {
+        background-color: unset;
+        border-color: #eee;
+    }
+
+input.input {
     width: unset;
 }
 
@@ -37,22 +46,15 @@ ul.simple {
 }
 
 div.twigaten-tabgroup {
-    display:inline-flex;
-    margin-top:10px;
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
 }
 
-.twigaten-tabgroup.ul{
-    flex-grow: 0;
-}
-
-.twigaten-tabgroup.p {
+.twigaten-tabgroup > p {
     display: inline-flex;
     align-items: center;
     margin-left: 0.5em;
-}
-
-iframe.twitter-share-button {
-    vertical-align: text-bottom;
 }
 
 svg.twigaten-glyph {
@@ -64,25 +66,21 @@ svg.fill-retweet {
     fill: #aab8c2;
 }
 
-svg.fill-retweet:hover {
-    fill: #19cf86;
-}
+    svg.fill-retweet:hover {
+        fill: #19cf86;
+    }
 
 svg.fill-star {
     fill: #aab8c2;
 }
 
-svg.fill-star:hover {
-    fill: #feac33;
-}
+    svg.fill-star:hover {
+        fill: #feac33;
+    }
 
 .collapsing {
     -webkit-transition: none;
     transition: none;
-}
-
-.navbar-nav > li {
-    float: left;
 }
 
 .pagination {
@@ -98,12 +96,7 @@ h3, .h3 {
     font-size: 20px;
 }
 
-.h1, .h2, .h3, h1, h2, h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
-}
-
-@media (min-width: 520px) {
+@media (min-width:520px) {
     h2, .h2 {
         font-size: 30px;
     }
@@ -114,7 +107,6 @@ h3, .h3 {
 
     .h1, .h2, .h3, h1, h2, h3 {
         margin-top: 20px;
-        margin-bottom: 10px;
     }
 }
 
@@ -133,7 +125,7 @@ div.twigaten-tweet-frame {
 }
 
 div.twigaten-tweet {
-    display: inline-block;    
+    display: inline-block;
     vertical-align: top;
     width: 100%;
 }
@@ -150,6 +142,7 @@ div.twigaten-media {
 @media (min-width:520px) {
     div.twigaten-tweet {
         width: 216px;
+        margin: 0 4px;
     }
 
     div.twigaten-media {
@@ -158,9 +151,22 @@ div.twigaten-media {
     }
 }
 
+div.twigaten-thumb {
+    display: inline-block;
+    width: 150px;
+    height: 150px;
+}
+
 img.twigaten-thumb {
     max-width: 150px;
     max-height: 150px;
+}
+
+div.twigaten-icon {
+    display: inline-block;
+    float: left;
+    width: 48px;
+    height: 48px;
 }
 
 img.twigaten-icon {
@@ -178,9 +184,9 @@ img.twigaten-icon-retweet {
     float: left;
 }
 
-a.twigaten-google-image {
-    display: inline;
+a.button-xsmall {
     padding: 1px;
+    height: unset;
 }
 
 img.twigaten-twitterbird {
@@ -198,4 +204,23 @@ p.twigaten-tweettext {
 
 a.twigaten-screenname {
     word-break: break-all;
+}
+
+.navbar-item.is-active .navbar-dropdown, .navbar-item.is-hoverable:focus .navbar-dropdown, .navbar-item.is-hoverable:focus-within .navbar-dropdown, .navbar-item.is-hoverable:hover .navbar-dropdown {
+    display: block;
+}
+
+.navbar-dropdown {
+    background-color: #fff;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-top: 2px solid #eee;
+    box-shadow: 0 8px 8px rgba(10,10,10,.1);
+    display: none;
+    font-size: .875rem;
+    left: 0;
+    min-width: 100%;
+    position: absolute;
+    top: 100%;
+    z-index: 20;
 }

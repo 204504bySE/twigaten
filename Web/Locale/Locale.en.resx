@@ -216,9 +216,6 @@
   <data name="SimilarMedia_ViewMore" xml:space="preserve">
     <value>View more</value>
   </data>
-  <data name="TweetButton_Lang" xml:space="preserve">
-    <value>en</value>
-  </data>
   <data name="TweetButton_Tweet" xml:space="preserve">
     <value>Tweet</value>
   </data>
@@ -236,5 +233,8 @@
   </data>
   <data name="SimilarMedia_ShowNoDup" xml:space="preserve">
     <value>Isolated images</value>
+  </data>
+  <data name="Headline_NoTweetToShow" xml:space="preserve">
+    <value>Tweet Not Found</value>
   </data>
 </root>

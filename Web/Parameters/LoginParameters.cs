@@ -31,7 +31,6 @@ namespace Twigaten.Web.Parameters
                 {
                     string IDStr = value.ToString();
                     SetCookie(nameof(ID), IDStr);
-                    Context.Session.SetString(nameof(ID), IDStr);
                 } 
                 else { ClearCookie(nameof(ID)); } 
             }
@@ -47,8 +46,8 @@ namespace Twigaten.Web.Parameters
         ///<summary>アカウント名(Session)</summary>
         public string ScreenName 
         {
-            get { return Context.Session.GetString(nameof(ScreenName)); }
-            set { if (value != null) { Context.Session.SetString(nameof(ScreenName), value); } else { Context.Session.Remove(nameof(ScreenName)); } }
+            get { return TryGetCookie(nameof(ScreenName), out string ret) ? ret : null; }
+            set { if (value != null) { SetCookie(nameof(ScreenName), value); } else { ClearCookie(nameof(ScreenName)); } }
         }
 
         /// <summary>
@@ -74,7 +73,6 @@ namespace Twigaten.Web.Parameters
                     //Cookieの有効期限を延長する
                     ID = ID;
                     LoginToken = LoginToken;
-
                     if (ScreenName == null) { ScreenName = (await DBView.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
                 }
                 else
@@ -93,6 +91,7 @@ namespace Twigaten.Web.Parameters
         {
             Context.Session.Clear();
             ID = null;
+            ScreenName = null;
             LoginToken = null;
 
             //overrideでは解決できない #ウンコード

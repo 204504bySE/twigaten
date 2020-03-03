@@ -97,6 +97,15 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
+        ///   ツイートが見つかりませんでした に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Headline_NoTweetToShow {
+            get {
+                return ResourceManager.GetString("Headline_NoTweetToShow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   ツイート&lt;small&gt;({0})&lt;/small&gt;が見つかりませんでした に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Headline_NoTweetToShow_HTML {
@@ -349,7 +358,7 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   @{0} のツイートと類似画像({1}) に類似しているローカライズされた文字列を検索します。
+        ///   @{0} のツイートと類似画像 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Title_OneTweet {
             get {
@@ -376,7 +385,7 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   @{0} のタイムライン上の類似画像{1} に類似しているローカライズされた文字列を検索します。
+        ///   @{0} のタイムライン上の類似画像 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Title_Timeline {
             get {
@@ -394,20 +403,11 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   @{0} のツイートと類似画像{1} に類似しているローカライズされた文字列を検索します。
+        ///   @{0} のツイートと類似画像 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Title_UserTweet {
             get {
                 return ResourceManager.GetString("Title_UserTweet", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   ja に類似しているローカライズされた文字列を検索します。
-        /// </summary>
-        public static string TweetButton_Lang {
-            get {
-                return ResourceManager.GetString("TweetButton_Lang", resourceCulture);
             }
         }
         

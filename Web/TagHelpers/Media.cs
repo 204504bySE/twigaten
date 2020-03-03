@@ -16,11 +16,10 @@ namespace Twigaten.Web.TagHelpers
         public TweetData._media Media { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
-            output.TagName = "img";
-            output.TagMode = TagMode.StartTagOnly;
-            output.Attributes.SetAttribute("src", Media.local_media_url);
-            output.Attributes.SetAttribute("loading", "lazy");
+            output.TagName = "div";
+            output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("class", "twigaten-thumb");
+            output.Content.SetHtmlContent(@"<img src=""" + Media.local_media_url + @""" loading=""lazy"" class=""twigaten-thumb"">");
         }
     }
 
@@ -67,8 +66,9 @@ namespace Twigaten.Web.TagHelpers
                 : Media.orig_media_url;
 
             output.Attributes.SetAttribute("href", "https://www.google.com/searchbyimage?image_url=" + WebUtility.UrlEncode(MediaUrl));
-            output.Attributes.SetAttribute("class", "button is-light is-small twigaten-google-image");
-            output.Attributes.SetAttribute("rel", "nofollow");
+            output.Attributes.SetAttribute("rel", "nofollow noopener noreferrer");
+            output.Attributes.SetAttribute("target", "_blank");
+            output.Attributes.SetAttribute("class", "button is-light is-small button-xsmall");
             output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#search""/></svg>" + Locale.Locale.SimilarMedia_GoogleImage);
         }
     }

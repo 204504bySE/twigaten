@@ -7,6 +7,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] - TwiGaTen</title>
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@('@')204504bySE" />
     <meta property="og:title" content="@ViewData["Title"] - TwiGaTen" />
@@ -14,33 +15,37 @@
     @RenderSection("MetaTags", false)
     <link rel="stylesheet" href="/css/bulmaswatch.min.css" />
     <link rel="stylesheet" href="/css/site.css" />
-    <title>@ViewData["Title"] - TwiGaTen</title>
+    <script defer src="/js/js.cookie-2.2.1.min.js"></script>
+    <script defer src="/js/twigaten-common.js"></script>
+    @RenderSection("scripts", required: false)
 </head>
 <body>
     <nav class="navbar" role="navigation">
         <div class="navbar-brand has-dropdown">
-            <a href="/" class="navbar-item">TwiGaTen</a>
-            @if (true)/*(Context.Session.GetString("ScreenName") != null)*/
-            {
-                <a class="navbar-link is-hoverable">@("@" + Context.Session.GetString("ScreenName"))"</a>
-                <div class="navbar-dropdown is-boxed">
-                    <a href="/users" class="navbar-item">@Locale.Menu_MyTweet</a>
-                    <a href="/timeline" class="navbar-item">@Locale.Menu_Timeline</a>
+            <a href="/" class="navbar-item" style="font-size:1rem;">TwiGaTen</a>
+            <div id="menu-user" class="navbar-item has-dropdown" style="display:flex;">
+                <a id="menu-screenname" class="navbar-link"></a>
+                <div id="menu-user-dropdown" class="navbar-dropdown">
+                    <a id="menu-mytweet" class="navbar-item">@Locale.Menu_MyTweet</a>
+                    <a id="menu-timeline" class="navbar-item">@Locale.Menu_Timeline</a>
                     <hr class="navbar-divider">
                     <a href="/auth/logout" class="navbar-item">@Locale.Menu_Logout</a>
                 </div>
-            }
-            else
-            {
+            </div>
+            <div id="menu-login" style="display:flex;">
                 <a href="/auth/login" rel="nofollow" class="navbar-item">@Locale.Menu_Login</a>
-            }
+            </div>
+            <a id="menu-burger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" style="float:right;">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
         </div>
-        <div class="navbar-menu">
+        <div id="menu-burgered" class="navbar-menu">
             <a href="/featured" class="navbar-item">@Locale.Menu_Featured</a>
             <a href="/about" class="navbar-item">@Locale.Menu_About</a>
         </div>
-
-        <div class="field">
+        <div class="field" style="display:inline;">
             <div class="select">
                 <select>
                     <option disabled selected style="display:none;">Language</option>
@@ -49,22 +54,18 @@
                 </select>
             </div>
         </div>
-        <form>
-            <div class="field has-addons">
-                <input placeholder="@('@')name/URL" class="input" />
-                <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
-            </div>
-        </form>
+        <div class="field has-addons" style="display:inline-block;">
+            <input placeholder="@('@')name/URL" class="input" />
+            <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
+        </div>
     </nav>
 
     <div class="body-content">
         @RenderBody()
         <hr />
         <footer>
-            <p class="text-muted"><a class="text-muted" href="/">twigaten.204504byse.info</a> by つ(*ﾟーﾟ) ◆204504bySE</p>
+            <p class="text-muted"><a href="/">twigaten.204504byse.info</a> by つ(*ﾟーﾟ) ◆204504bySE</p>
         </footer>
     </div>
-    @RenderSection("scripts", required: false)
-    <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 </body>
 </html>

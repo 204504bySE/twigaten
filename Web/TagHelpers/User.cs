@@ -20,11 +20,10 @@ namespace Twigaten.Web.TagHelpers
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
             if (string.IsNullOrEmpty(User.local_profile_image_url)) { output.SuppressOutput(); return; }
-            output.TagName = "img";
-            output.TagMode = TagMode.StartTagOnly;
-            output.Attributes.SetAttribute("src", User.local_profile_image_url);
-            output.Attributes.SetAttribute("loading", "lazy");
-            output.Attributes.SetAttribute("class", StyleRetweet ? "twigaten-icon twigaten-icon-retweet" : "twigaten-icon");
+            output.TagName = "div";
+            output.TagMode = TagMode.StartTagAndEndTag;
+            output.Attributes.SetAttribute("class", "twigaten-icon");
+            output.Content.SetHtmlContent(@"<img src=""" + User.local_profile_image_url + @""" loading=""lazy"" class=""twigaten-icon" + (StyleRetweet ? @" twigaten-icon-retweet"">" : @""">"));
         }
     }
 

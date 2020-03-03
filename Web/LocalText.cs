@@ -55,7 +55,7 @@ namespace Twigaten.Web
         {   //Viewに使う画像のURLを返す
             //orig_media_urlとmedia_idが必要
             if(Media.orig_media_url == null) { return null; }
-            else{ return MediaFolderPath.ThumbPath(Media.media_id, Media.orig_media_url); }
+            else{ return "/twimg/thumb/" + Media.media_id.ToString() + Path.GetExtension(Media.orig_media_url); }
         }
 
         ///<summary>Viewに使うアイコンのURLを返す(ホスト名より後だけ)
@@ -64,7 +64,7 @@ namespace Twigaten.Web
         {
             if (User.local_profile_image_url == null) { return null; }
             if (IsDefaultProfileImage) { return config.crawl.PictPathProfileImage + '_' + Path.GetFileName(User.local_profile_image_url); }
-            else { return config.crawl.PictPathProfileImage + User.user_id.ToString() + Path.GetExtension(User.local_profile_image_url); }
+            else { return "/twimg/profile_image/" + User.user_id.ToString() + Path.GetExtension(User.local_profile_image_url); }
         }
 
         ///<summary>単語のどこでも改行できるようにするだけ</summary>
