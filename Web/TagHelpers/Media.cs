@@ -68,7 +68,7 @@ namespace Twigaten.Web.TagHelpers
             output.Attributes.SetAttribute("href", "https://www.google.com/searchbyimage?image_url=" + WebUtility.UrlEncode(MediaUrl));
             output.Attributes.SetAttribute("rel", "nofollow noopener noreferrer");
             output.Attributes.SetAttribute("target", "_blank");
-            output.Attributes.SetAttribute("class", "button is-light is-small button-xsmall");
+            output.Attributes.SetAttribute("class", "button is-light is-small button-googlemedia");
             output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#search""/></svg>" + Locale.Locale.SimilarMedia_GoogleImage);
         }
     }

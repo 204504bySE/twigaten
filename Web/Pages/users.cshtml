@@ -4,6 +4,7 @@
 @model Twigaten.Web.Pages.Tweet.UsersModel
 @section Scripts{
     <partial name="TweetScript" />
+    <partial name="DatePickerScript" />
 }
 @section MetaTags{
     <meta name="robots" content="noindex" />
@@ -64,12 +65,19 @@
 </nav>
 <nav>
     <div class="select twigaten-navgroup">
-        <p>表示件数</p>
+        <p>@Locale.Pager_ResultsPerPage</p>
         <select class="twigaten-cookie-select" data-key="Count">
             <option value="10">10</option>
             <option value="20">20</option>
             <option value="50">50</option>
         </select>
+    </div>
+    <div class="twigaten-navgroup">
+        <p>@Locale.Pager_Datetimepicker</p>
+        <form action="/users" method="get" class="twigaten-datepicker-form">
+            <input name="date" class="flatpickr input" type="text" placeholder="@Locale.Pager_Datetimepicker" readonly="readonly" />
+            <button type="submit" class="button is-small is-primary">Go</button>
+        </form>
     </div>
 </nav>
 @if (Model.Tweets.Length > 0)

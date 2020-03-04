@@ -7,7 +7,7 @@
         function (event) {
             const lazyLoadInstance = event.detail.instance;
             if (document.readyState === 'loading') {
-                windows.addEventListener('DOMContentLoaded', function () {
+                window.addEventListener('DOMContentLoaded', function () {
                     lazyLoadInstance.update();
                 });
             }

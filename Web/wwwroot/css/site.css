@@ -18,18 +18,23 @@ a {
     color: hsl(217, 71%, 53%);
 }
 
-p, ul, nav, nav.tabs, input.input {
+p, ul, nav, nav.tabs, input.input, button.button {
     font-size: 0.85rem;
+}
+
+a.button-googlemedia {
+    padding: 1px;
+    height: unset;
 }
 
 .tabs.is-toggle li.is-disabled a {
     text-decoration: line-through;
 }
 
-    .tabs.is-toggle li.is-disabled a:hover {
-        background-color: unset;
-        border-color: #eee;
-    }
+.tabs.is-toggle li.is-disabled a:hover {
+    background-color: unset;
+    border-color: #eee;
+}
 
 input.input {
     width: unset;
@@ -185,11 +190,6 @@ img.twigaten-icon {
 
 img.twigaten-icon-retweet {
     float: left;
-}
-
-a.button-xsmall {
-    padding: 1px;
-    height: unset;
 }
 
 img.twigaten-twitterbird {

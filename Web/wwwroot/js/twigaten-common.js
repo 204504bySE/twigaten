@@ -7,8 +7,8 @@ var twigatenCookies = twigatenCookies || {};
     const Count = Cookies.get('Count');
     const RT = Cookies.get('RT');
     const Show0 = Cookies.get('Show0');
-    // restore all cookies
-    twigatenCookies.set = function () {
+    // 検索設定のCookieを復元する(複数タブで設定を不揃いにしても大丈夫)
+    twigatenCookies.set = () => {
         if (UserLikeMode) { Cookies.set('UserLikeMode', UserLikeMode, cookieOption); }
         if (Order) { Cookies.set('Order', Order, cookieOption); }
         if (Count) { Cookies.set('Count', Count, cookieOption); }
@@ -18,7 +18,7 @@ var twigatenCookies = twigatenCookies || {};
 })();
 
 (function () {
-    //init navbar;
+    // navbar初期化
     const screenName = Cookies.get('ScreenName');
     if (screenName) {
         document.getElementById('menu-login').style.display = 'none';
@@ -49,9 +49,10 @@ var twigatenCookies = twigatenCookies || {};
     document.getElementById('menu-burger').addEventListener('click', () => {
         menuBurgered.classList.toggle('is-active');
     });
-    // set cookie then navigate(with href) / reload(w/o href)
-    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-click'), function (x) {
-        x.addEventListener('click', function (event) {
+    // クリックしたらCookieをセットして移動/リロードするやつ
+    // <a>は data-keyとdata-valueなCookieをセット → hrefがあれば移動,なければリロード
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-click'), (x) => {
+        x.addEventListener('click', (event) => {
             event.preventDefault();
             twigatenCookies.set();
             Cookies.set(event.currentTarget.dataset.key, event.currentTarget.dataset.value, twigatenCookies.cookieOption);
@@ -64,8 +65,9 @@ var twigatenCookies = twigatenCookies || {};
             }
         });
     });
-    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-select'), function (x) {
-        x.addEventListener('change', function (event) {
+    // <select>は <select data-key="">と<option value="">を参照する
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-select'), (x) => {
+        x.addEventListener('change', (event) => {
             event.preventDefault();
             twigatenCookies.set();
             Cookies.set(event.currentTarget.dataset.key, event.currentTarget.value, twigatenCookies.cookieOption);

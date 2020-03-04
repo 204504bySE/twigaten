@@ -15,10 +15,20 @@ namespace Twigaten.Web.Pages.Tweet
     {
         [BindProperty(SupportsGet = true)]
         public long UserId { get; set; }
+        /// <summary>
+        /// これより古いツイを検索する(SnowFlake)
+        /// </summary>
         [BindProperty(SupportsGet = true)]
         public long? Before { get; set; }
+        /// <summary>
+        /// これより新しいツイを検索する(SnowFlake)
+        /// </summary>
         [BindProperty(SupportsGet = true)]
         public long? After { get; set; }
+        /// <summary>
+        /// これより古いツイを検索する(UnixSeconds)
+        /// これに値が入っていたらSnowFlakeにしてBeforeに入れる
+        /// </summary>
         [BindProperty(SupportsGet = true)]
         public long? Date { get; set; }
 
@@ -41,10 +51,9 @@ namespace Twigaten.Web.Pages.Tweet
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
 
-            long LastTweet = Date.HasValue 
-                ? SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeMilliseconds(Date.Value), true)
-                : ( Before ?? After ?? SnowFlake.Now(true));
-            bool IsBefore = Date.HasValue || Before.HasValue || !After.HasValue;
+            if (Date.HasValue) { Before = SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeMilliseconds(Date.Value), true); }
+            long LastTweet = Before ?? After ?? SnowFlake.Now(true);
+            bool IsBefore = Before.HasValue || !After.HasValue;
 
             await ParamsTask.ConfigureAwait(false);
             var TweetsTask = DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore);
