@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 using MySql.Data.MySqlClient;
 using System.Text;
 using System.Data;
 using System.Threading;
-using System.IO;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Data.Common;
-using System.Runtime.CompilerServices;
 
 namespace Twigaten.Lib
 {    public class DBHandler
@@ -299,71 +296,7 @@ namespace Twigaten.Lib
         }
     }
 
-    ///<summary>Twittter Snowflakeを計算する</summary>
-    static class SnowFlake
-    {
-        public const long msinSnowFlake = 0x400000L;   //1msはこれだ
-        const long TwEpoch = 1288834974657L;
-        public static long SecondinSnowFlake(long TimeSeconds, bool Larger)
-        {
-            if (Larger) { return (TimeSeconds * 1000 + 999 - TwEpoch) << 22 | 0x3FFFFFL; }
-            else { return (TimeSeconds * 1000 - TwEpoch) << 22; }
-        }
-        public static long SecondinSnowFlake(DateTimeOffset TimeSeconds, bool Larger)
-        {
-            return SecondinSnowFlake(TimeSeconds.ToUnixTimeSeconds(), Larger);
-        }
-        　
-        public static long Now(bool Larger)
-        {
-            if (Larger) { return (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - TwEpoch) << 22 | 0x3FFFFFL; }
-            else { return (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - TwEpoch) << 22; }
-        }
-        public static DateTimeOffset DatefromSnowFlake(long SnowFlake)
-        {
-            return DateTimeOffset.FromUnixTimeMilliseconds((SnowFlake >> 22) + TwEpoch);
-        }
-    }
-
-    public class RemoveOldSet<T>
-    {
-        HashSet<T> OldSet;
-        HashSet<T> NewSet;
-
-        int MaxSize { get; }
-        public RemoveOldSet(int MaxSize)
-        {
-            //各Setあたりのサイズに変換する
-            this.MaxSize = Math.Max(MaxSize >> 1, 1);
-
-            OldSet = new HashSet<T>();
-            NewSet = new HashSet<T>();
-        }
-
-        public bool Add(T Value)
-        {
-            RemoveOld();
-            return !OldSet.Contains(Value) && NewSet.Add(Value);
-        }
-
-        public bool Contains(T Value)
-        {
-            return OldSet.Contains(Value) || NewSet.Contains(Value);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void RemoveOld()
-        {
-            if (NewSet.Count >= MaxSize)
-            {
-                OldSet.Clear();
-                var TempSet = OldSet;
-                OldSet = NewSet;
-                NewSet = TempSet;
-            }
-        }
-    }
-    
+   
     static class CheckOldProcess
     {
         public static void CheckandExit()

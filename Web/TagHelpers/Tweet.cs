@@ -60,7 +60,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.Add("href", @"/users/" + Tweet.tweet_id.ToString());
-            output.Attributes.SetAttribute("class", "twigaten-unixtime twigaten-cookie-href");
+            output.Attributes.SetAttribute("class", "twigaten-unixtime twigaten-cookie-click");
             output.Attributes.Add("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
         }
     }

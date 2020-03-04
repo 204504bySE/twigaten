@@ -14,7 +14,7 @@ namespace Twigaten.Web.TagHelpers
     {
         public TweetData._user User { get; set; }
         /// <summary>
-        /// リツイートしたやつ表示用ならtrue
+        /// リツイートしたやつ表示用ならtrue(float:left相当)
         /// </summary>
         public bool StyleRetweet { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
@@ -23,7 +23,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagName = "div";
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("class", "twigaten-icon");
-            output.Content.SetHtmlContent(@"<img src=""" + User.local_profile_image_url + @""" loading=""lazy"" class=""twigaten-icon" + (StyleRetweet ? @" twigaten-icon-retweet"">" : @""">"));
+            output.Content.SetHtmlContent(@"<img data-src=""" + User.local_profile_image_url + @""" class=""twigaten-icon" + (StyleRetweet ? @" twigaten-icon-retweet"">" : @""">"));
         }
     }
 
@@ -39,7 +39,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", "/users/" + User.user_id.ToString());
-            output.Attributes.SetAttribute("class", "twigaten-screenname twigaten-cookie-href");
+            output.Attributes.SetAttribute("class", "twigaten-screenname twigaten-cookie-click");
             output.Content.SetContent("@" + User.screen_name);
         }
     }

@@ -15,6 +15,7 @@ using System.Globalization;
 using Twigaten.Web.Parameters;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
+using Microsoft.Extensions.Options;
 
 namespace Twigaten.Web
 {
@@ -37,7 +38,7 @@ namespace Twigaten.Web
             services.AddResponseCompression(options => 
             {
                 options.EnableForHttps = true;
-                options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[] { "image/svg+xml" });
+                options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[] { "image/svg+xml", "image/x-icon" });
                 options.Providers.Add<BrotliCompressionProvider>();
                 options.Providers.Add<GzipCompressionProvider>();
             });
@@ -78,12 +79,18 @@ namespace Twigaten.Web
                 new CultureInfo("ja"),
                 new CultureInfo("en")
             };
-            app.UseRequestLocalization(new RequestLocalizationOptions()
-            {
-                DefaultRequestCulture = new RequestCulture("ja"),
-                SupportedCultures = SupportedCultures,
-                SupportedUICultures = SupportedCultures
-            });
+
+            //https://stackoverflow.com/questions/43871234/how-to-get-cookiename-used-in-cookierequestcultureprovider
+            //cookieの値は"c=en-UK|uic=en-US"のようにする(cとuic両方書かないと効かなかった)
+            var Localize = app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>();
+            var cookieProvider = Localize.Value.RequestCultureProviders
+                .OfType<CookieRequestCultureProvider>()
+                .First();
+            cookieProvider.CookieName = "Locale";
+            Localize.Value.DefaultRequestCulture = new RequestCulture("ja");
+            Localize.Value.SupportedCultures = SupportedCultures;
+            Localize.Value.SupportedUICultures = SupportedCultures;
+            app.UseRequestLocalization(Localize.Value);
 
             app.UseSession();
             //app.UseCookiePolicy();

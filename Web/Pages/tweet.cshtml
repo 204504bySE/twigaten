@@ -2,7 +2,7 @@
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.Tweet.TweetModel
 @section Scripts{
-    <script defer src="/js/twigaten-tweet.js"></script>
+    <partial name="TweetScript" />
 }
 @{
     if (Model.Tweets.Length > 0)
@@ -28,7 +28,7 @@
 @if (Model.Tweets.Length > 0)
 {
 
-    <h2>@Html.Raw(string.Format(Locale.Headline_OneTweet, "<a href=\"/users/" + Model.Tweets[0].tweet.user.user_id.ToString() + "\" class=\"twigaten-cookie-href\">@" + Model.Tweets[0].tweet.user.screen_name + "</a>"))</h2>
+    <h2>@Html.Raw(string.Format(Locale.Headline_OneTweet, "<a href=\"/users/" + Model.Tweets[0].tweet.user.user_id.ToString() + "\" class=\"twigaten-cookie-click\">@" + Model.Tweets[0].tweet.user.screen_name + "</a>"))</h2>
     <p><tweet-permalink screen-name="@Model.Tweets[0].tweet.user.screen_name" tweet-id=@Model.Tweets[0].tweet.tweet_id /></p>
     <p><tweet-intent path="@("/tweet/" + Model.Tweets[0].tweet.tweet_id.ToString())" /></p>
     <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>

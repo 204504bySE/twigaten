@@ -18,7 +18,7 @@ a {
     color: hsl(217, 71%, 53%);
 }
 
-p, ul, nav {
+p, ul, nav, nav.tabs, input.input {
     font-size: 0.85rem;
 }
 
@@ -45,13 +45,12 @@ ul.simple {
     flex-wrap: wrap;
 }
 
-div.twigaten-tabgroup {
+div.twigaten-navgroup {
     display: inline-flex;
     align-items: center;
-    margin-top: 10px;
 }
 
-.twigaten-tabgroup > p {
+.twigaten-navgroup > p {
     display: inline-flex;
     align-items: center;
     margin-left: 0.5em;
@@ -134,8 +133,14 @@ div.twigaten-tweet-main {
     background: #ffffff;
 }
 
-div.twigaten-media {
+div.twigaten-thumb {
+    width: 150px;
+    height: 150px;
     float: left;
+    margin: 4px;
+}
+
+div.twigaten-usermargin {
     margin: 4px;
 }
 
@@ -145,16 +150,14 @@ div.twigaten-media {
         margin: 0 4px;
     }
 
-    div.twigaten-media {
+    div.twigaten-thumb {
         float: none;
-        text-align: center;
+        margin: auto;
     }
-}
 
-div.twigaten-thumb {
-    display: inline-block;
-    width: 150px;
-    height: 150px;
+    div.twigaten-thumbmargin {
+        margin: 4px;
+    }
 }
 
 img.twigaten-thumb {

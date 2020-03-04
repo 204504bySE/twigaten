@@ -1,14 +1,13 @@
 ﻿"use strict";
 var twigatenCookies = twigatenCookies || {};
 (function () {
-    // set current cookie before navigation
+    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: location.protocol === 'https:' };    
     const UserLikeMode = Cookies.get('UserLikeMode');
     const Order = Cookies.get('Order');
     const Count = Cookies.get('Count');
     const RT = Cookies.get('RT');
     const Show0 = Cookies.get('Show0');
-    const cookieOption = { expires: 365, path: '' };
-
+    // restore all cookies
     twigatenCookies.set = function () {
         if (UserLikeMode) { Cookies.set('UserLikeMode', UserLikeMode, cookieOption); }
         if (Order) { Cookies.set('Order', Order, cookieOption); }
@@ -16,19 +15,10 @@ var twigatenCookies = twigatenCookies || {};
         if (RT) { Cookies.set('RT', RT, cookieOption); }
         if (Show0) { Cookies.set('Show0', Show0, cookieOption); }
     };
-    twigatenCookies.setNavigate = function (event) {
-        event.preventDefault();
-        setCookies();
-        location.href = event.currentTarget.getAttribute('href');
-    };
-    twigatenCookies.setReload = function (event) {
-        event.preventDefault();
-        setCookies();
-        location.reload();
-    };
 })();
-//set menubar
+
 (function () {
+    //init navbar;
     const screenName = Cookies.get('ScreenName');
     if (screenName) {
         document.getElementById('menu-login').style.display = 'none';
@@ -58,5 +48,28 @@ var twigatenCookies = twigatenCookies || {};
     const menuBurgered = document.getElementById('menu-burgered');
     document.getElementById('menu-burger').addEventListener('click', () => {
         menuBurgered.classList.toggle('is-active');
+    });
+    // set cookie then navigate(with href) / reload(w/o href)
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-click'), function (x) {
+        x.addEventListener('click', function (event) {
+            event.preventDefault();
+            twigatenCookies.set();
+            Cookies.set(event.currentTarget.dataset.key, event.currentTarget.dataset.value, twigatenCookies.cookieOption);
+            const href = event.currentTarget.getAttribute('href');
+            if (href) {
+                location.href = href;
+            }
+            else {
+                location.reload();
+            }
+        });
+    });
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-select'), function (x) {
+        x.addEventListener('change', function (event) {
+            event.preventDefault();
+            twigatenCookies.set();
+            Cookies.set(event.currentTarget.dataset.key, event.currentTarget.value, twigatenCookies.cookieOption);
+            location.reload();
+        });
     });
 })();
