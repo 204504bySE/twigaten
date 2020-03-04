@@ -39,7 +39,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", "/users/" + User.user_id.ToString());
-            output.Attributes.SetAttribute("class", "twigaten-screenname");
+            output.Attributes.SetAttribute("class", "twigaten-screenname twigaten-cookie-href");
             output.Content.SetContent("@" + User.screen_name);
         }
     }

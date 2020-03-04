@@ -24,14 +24,14 @@
 <nav class="tabs is-toggle">
     <div class="twigaten-tabgroup">
         <ul>
-            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId">@Locale.Pager_Latest</a></li>
+            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId" class="twigaten-cookie-href">@Locale.Pager_Latest</a></li>
             @if (Model.IsLatest || Model.NextNew == null)
             {
                 <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
             }
             else
             {
-                <li><a href="/users/@(Model.UserId)?after=@Model.NextNew">@Locale.Pager_Newer</a></li>
+                <li><a href="/users/@(Model.UserId)?after=@Model.NextNew" class="twigaten-cookie-href">@Locale.Pager_Newer</a></li>
             }
             @if (Model.NextOld == null)
             {
@@ -39,7 +39,7 @@
             }
             else
             {
-                <li><a href="/users/@(Model.UserId)?before=@Model.NextOld">@Locale.Pager_Older</a></li>
+                <li><a href="/users/@(Model.UserId)?before=@Model.NextOld" class="twigaten-cookie-href">@Locale.Pager_Older</a></li>
             }
         </ul>
     </div>
@@ -49,15 +49,15 @@
             RT
         </p>
         <ul>
-            <li @Html.Raw(Model.Params.RT ? @"class=""is-active""" : "")><a data-name="RT" data-value="true">@Locale.Pager_Show</a></li>
-            <li @Html.Raw(!Model.Params.RT ? @"class=""is-active""" : "")><a data-name="RT" data-value="false">@Locale.Pager_Hide</a></li>
+            <li class="twigaten-cookie-href @Html.Raw(Model.Params.RT ? @"""is-active""" : "")"><a data-name="RT" data-value="true">@Locale.Pager_Show</a></li>
+            <li class="twigaten-cookie-href @Html.Raw(!Model.Params.RT ? @"""is-active""" : "")"><a data-name="RT" data-value="false">@Locale.Pager_Hide</a></li>
         </ul>
     </div>
     <div class="twigaten-tabgroup">
         <p>@Locale.SimilarMedia_ShowNoDup</p>
         <ul>
-            <li @Html.Raw(Model.Params.Show0 ? @"class=""is-active""" : "")><a data->@Locale.Pager_Show</a></li>
-            <li @Html.Raw(!Model.Params.Show0 ? @"class=""is-active""" : "")><a href="">@Locale.Pager_Hide</a></li>
+            <li  class="twigaten-cookie-href @Html.Raw(Model.Params.Show0 ? @"""is-active""" : "")"><a data->@Locale.Pager_Show</a></li>
+            <li  class="twigaten-cookie-href @Html.Raw(!Model.Params.Show0 ? @"""is-active""" : "")"><a href="">@Locale.Pager_Hide</a></li>
         </ul>
     </div>
 </nav>
@@ -80,14 +80,14 @@ else
 <nav class="tabs is-toggle">
     <div class="twigaten-tabgroup">
         <ul>
-            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId">@Locale.Pager_Latest</a></li>
+            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId" class="twigaten-cookie-href">@Locale.Pager_Latest</a></li>
             @if (Model.IsLatest || Model.NextNew == null)
             {
                 <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
             }
             else
             {
-                <li><a href="/users/@(Model.UserId)?after=@Model.NextNew">@Locale.Pager_Newer</a></li>
+                <li><a href="/users/@(Model.UserId)?after=@Model.NextNew" class="twigaten-cookie-href">@Locale.Pager_Newer</a></li>
             }
             @if (Model.NextOld == null)
             {
@@ -95,7 +95,7 @@ else
             }
             else
             {
-                <li><a href="/users/@(Model.UserId)?before=@Model.NextOld">@Locale.Pager_Older</a></li>
+                <li><a href="/users/@(Model.UserId)?before=@Model.NextOld" class="twigaten-cookie-href">@Locale.Pager_Older</a></li>
             }
         </ul>
     </div>
