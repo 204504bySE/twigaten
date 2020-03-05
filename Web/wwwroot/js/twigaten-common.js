@@ -25,15 +25,11 @@ var twigatenCookies = twigatenCookies || {};
         document.getElementById('menu-screenname').textContent = '@' + screenName;
         const userId = Cookies.get('ID');
         if (userId) {
-            //set event/link for menu items
+            //「自分のツイート」
             const menuMyTweet = document.getElementById('menu-mytweet');
-            const menuTimeline = document.getElementById('menu-timeline');
             menuMyTweet.setAttribute('href', '/users/' + userId);
-            menuTimeline.setAttribute('href', '/timeline/' + userId);
-            menuMyTweet.addEventListener('click', twigatenCookies.setNavigate)
-            menuMyTimeline.addEventListener('click', twigatenCookies.setNavigate)
 
-            //set event for dropdown
+            //ドロップダウン
             const menuUser = document.getElementById('menu-user');
             const menuDropDown = document.getElementById('menu-user-dropdown');
             menuUser.addEventListener('click', () => { menuDropDown.classList.toggle('is-block'); });
@@ -44,11 +40,24 @@ var twigatenCookies = twigatenCookies || {};
     }
     else { document.getElementById('menu-user').style.display = 'none'; }
 
-    //set event of the humberger menu
+    //検索ボックス
+    Array.prototype.forEach.call(document.getElementsByClassName("twigaten-search"), (x) => {
+        x.addEventListener('submit', (event) => {
+            event.preventDefault();
+            twigatenCookies.set();
+            const href = event.currentTarget.getAttribute('action');
+            let url = href ? new URL(event.currentTarget.getAttribute('action'), location.href) : location.href;
+            url.searchParams.append('date', new Date(event.currentTarget.elements['date'].value) / 1000);
+            location.href = url;
+        });
+    });
+
+    //ハンバーガーメニュー
     const menuBurgered = document.getElementById('menu-burgered');
     document.getElementById('menu-burger').addEventListener('click', () => {
         menuBurgered.classList.toggle('is-active');
     });
+
     // クリックしたらCookieをセットして移動/リロードするやつ
     // <a>は data-keyとdata-valueなCookieをセット → hrefがあれば移動,なければリロード
     Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-click'), (x) => {

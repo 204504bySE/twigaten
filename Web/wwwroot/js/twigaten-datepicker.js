@@ -6,13 +6,13 @@
         enableTime: true,
         time_24hr: true
     });
-    Array.prototype.forEach.call(document.getElementsByClassName("twigaten-datepicker-form"), (x) => {
+    Array.prototype.forEach.call(document.getElementsByClassName("twigaten-datepicker"), (x) => {
         x.addEventListener('submit', (event) => {
             event.preventDefault();
             twigatenCookies.set();
             const href = event.currentTarget.getAttribute('action');
             let url = href ? new URL(event.currentTarget.getAttribute('action'), location.href) : location.href;
-            url.searchParams.append('date', event.currentTarget.elements['date'].value);
+            url.searchParams.append('date', new Date(event.currentTarget.elements['date'].value) / 1000);
             location.href = url;
         });
     });

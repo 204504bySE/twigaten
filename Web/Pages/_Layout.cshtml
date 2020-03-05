@@ -26,8 +26,8 @@
             <div id="menu-user" class="navbar-item has-dropdown" style="display:flex;">
                 <a id="menu-screenname" class="navbar-link"></a>
                 <div id="menu-user-dropdown" class="navbar-dropdown">
-                    <a id="menu-mytweet" class="navbar-item">@Locale.Menu_MyTweet</a>
-                    <a id="menu-timeline" class="navbar-item">@Locale.Menu_Timeline</a>
+                    <a id="menu-mytweet" class="navbar-item twigaten-cookie-click">@Locale.Menu_MyTweet</a>
+                    <a href="/timeline" class="navbar-item twigaten-cookie-click">@Locale.Menu_Timeline</a>
                     <hr class="navbar-divider">
                     <a href="/auth/logout" class="navbar-item">@Locale.Menu_Logout</a>
                 </div>
@@ -54,12 +54,11 @@
                 </select>
             </div>
         </div>
-        <div class="field has-addons" style="display:inline-block;">
-            <input placeholder="@('@')name/URL" class="input" />
+        <form class="field has-addons twigaten-search" style="display:inline-block;">
+            <input name="q" placeholder="@('@')name/URL" class="input" />
             <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
-        </div>
+        </form>
     </nav>
-
     <div class="body-content">
         @RenderBody()
         <hr />
