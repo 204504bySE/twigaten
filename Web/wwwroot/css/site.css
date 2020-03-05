@@ -81,17 +81,7 @@ svg.fill-star {
     svg.fill-star:hover {
         fill: #feac33;
     }
-
-.collapsing {
-    -webkit-transition: none;
-    transition: none;
-}
-
-.pagination {
-    margin: 0 0 20px 0;
-    vertical-align: middle
-}
-
+    
 h2, .h2 {
     font-size: 20px;
 }

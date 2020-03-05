@@ -68,7 +68,7 @@ namespace Twigaten.Web.DBHandler
         public async Task<TweetData._user[]> SelectUserLike(string Pattern, long? login_user_id, SelectUserLikeMode Mode, int Limit)
         {
             System.Text.StringBuilder cmdBuilder = new System.Text.StringBuilder(GetUsersHead);
-            cmdBuilder.Append(@"FROM user AS u WHERE screen_name LIKE @screen_name ");
+            cmdBuilder.Append(@"WHERE screen_name LIKE @screen_name ");
             switch (Mode)
             {
                 case SelectUserLikeMode.Show:
@@ -112,9 +112,10 @@ user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_i
                     name = r.GetString(1),
                     screen_name = r.GetString(2),
                     isprotected = r.GetBoolean(3),
+                    local_profile_image_url = r.GetString(4),
                     is_default_profile_image = r.GetBoolean(5),
-                    location = r.GetString(6),
-                    description_html = LocalText.TextToLink(r.GetString(7))
+                    location = r.IsDBNull(6) ? null : r.GetString(6),
+                    description_html = r.IsDBNull(7) ? null : LocalText.TextToLink(r.GetString(7))
                 };
                 tmpuser.local_profile_image_url = LocalText.ProfileImageUrl(tmpuser, r.GetBoolean(5));
                 users.Add(tmpuser);

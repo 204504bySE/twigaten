@@ -17,6 +17,11 @@
     <link rel="stylesheet" href="/css/site.css" />
     <script defer src="/js/js.cookie-2.2.1.min.js"></script>
     <script defer src="/js/twigaten-common.js"></script>
+    <environment include="development">
+        <script>
+            const twigatenDevelopment = true;
+        </script>
+    </environment>
     @RenderSection("scripts", required: false)
 </head>
 <body>

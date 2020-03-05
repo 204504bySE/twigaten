@@ -1,0 +1,30 @@
+﻿@page
+@model Twigaten.Web.indexModel
+@{
+    ViewData["Title"] = "検索";
+}
+@section Scripts{ 
+    <script defer src="/js/twigaten-mediasearch.js"></script>
+}
+@section TwitterCard{
+    <twitter-card-description />
+    <twitter-card-image />
+}
+<h2>検索</h2>
+<p>ユーザーのアカウント名、またはツイートのURL(twitter.com/***/status/***)で検索できます。</p>
+<form class="field has-addons twigaten-search">
+    <input name="q" placeholder="@('@')name/URL" class="input" style="min-width:80%;" />
+    <input name="direct" value="false" type="hidden" />
+    <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
+</form>
+
+<div id="twigaten-media-drop" style="border: dashed;">
+    <p>
+        画像で検索(仮)<br />
+        出てこないときも多いけどしょうがないね(´・ω・`)<br />
+        画像をこの辺にドラッグドロップしても動くかも。
+    </p>
+    <form id="twigaten-media-form" action="/search/media" method="post" enctype="multipart/form-data" class="form-inline">
+        <input id="twigaten-media-input" name="file" accept="image/*" type="file" />
+    </form>
+</div>

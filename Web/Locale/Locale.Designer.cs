@@ -151,6 +151,15 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
+        ///   @{0} の検索結果 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Headline_UserSearch {
+            get {
+                return ResourceManager.GetString("Headline_UserSearch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   @{0} のツイート に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Headline_UserTweet {
@@ -417,6 +426,33 @@ namespace Twigaten.Web.Locale {
         public static string TweetButton_Tweet {
             get {
                 return ResourceManager.GetString("TweetButton_Tweet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   全て に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string UserSearch_All {
+            get {
+                return ResourceManager.GetString("UserSearch_All", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   フォローしている に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string UserSearch_Following {
+            get {
+                return ResourceManager.GetString("UserSearch_Following", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   閲覧可能 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string UserSearch_Show {
+            get {
+                return ResourceManager.GetString("UserSearch_Show", resourceCulture);
             }
         }
     }

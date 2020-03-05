@@ -161,7 +161,7 @@ namespace Twigaten.Lib
                             await tran.CommitAsync().ConfigureAwait(false);
                             return true;
                         }
-                        catch (MySqlException) { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
+                        catch (MySqlException e) { reader?.Close(); await tran.RollbackAsync().ConfigureAwait(false); }
                     }
                 }
             }

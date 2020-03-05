@@ -97,12 +97,13 @@ namespace Twigaten.Web.Parameters
             //overrideでは解決できない #ウンコード
             if (Manually)
             {
-                ClearCookie("UserLikeMode");
                 ClearCookie("Order");
                 ClearCookie("Count");
                 ClearCookie("RT");
                 ClearCookie("Show0");
             }
+            //これはログインしてないと使えないので消す
+            ClearCookie("UserLikeMode");
         }
 
         /// <summary>

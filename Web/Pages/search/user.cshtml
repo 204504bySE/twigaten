@@ -1,0 +1,73 @@
+﻿@page
+@model Twigaten.Web.UserModel
+@using Twigaten.Web.Locale;
+@using static Twigaten.Web.DBHandler.DBView;
+
+@{
+    if (Model.Users.Length >= Model.Limit)
+    {
+        ViewData["Title"] = string.Format(Locale.Headline_UserSearch, Model.ScreenName) + "(≧" + Model.Limit.ToString() + ")";
+    }
+    else
+    {
+        ViewData["Title"] = string.Format(Locale.Headline_UserSearch, Model.ScreenName) + "(" + Model.Limit.ToString() + ")";
+    }
+}
+<h2>@ViewData["Title"]</h2>
+<p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+@if (Model.Users.Length >= Model.Limit)
+{
+    <p class="has-text-danger">@(Model.Limit)人以上見つかったので全ては表示しません(｀・ω・´)</p>
+}
+<nav class="tabs is-toggle" style="margin-top:10px;">
+    <div class="twigaten-navgroup">
+        <ul>
+            <li @(Model.Params.UserLikeMode == SelectUserLikeMode.Show ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserLikeMode" data-value="Show">@Locale.UserSearch_Show</a></li>
+            @if (Model.Params.ID.HasValue)
+            {
+                <li @(Model.Params.UserLikeMode == SelectUserLikeMode.Following ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserLikeMode" data-value="Following">@Locale.UserSearch_Following</a>)</li>
+            }
+            else
+            {
+                <li class="is-disabled"><a>@Locale.UserSearch_Following</a></li>
+            }
+            <li @(Model.Params.UserLikeMode == SelectUserLikeMode.All ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserLikeMode" data-value="All">@Locale.UserSearch_All</a></li>
+        </ul>
+    </div>
+</nav>
+
+<form class="field has-addons twigaten-search">
+    <input name="q" placeholder="@('@')name/URL" class="input" style="min-width:80%;" />
+    <input name="direct" value="false" type="hidden" />
+    <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
+</form>
+
+@if (Model.Users.Length > 0)
+{
+    foreach (TweetData._user user in Model.Users)
+    {
+        <div class="card twigaten-tweet-frame">
+            <user-icon user="user" />
+            <p class="subtitle">
+                @if (user.isprotected)
+                {
+                    <svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#lock" /></svg>
+                }
+                <user-screenname-link user="user" />
+            </p>
+            <p>@Html.Raw(user.description_html)</p>
+        </div>
+    }
+}
+else
+{
+    <div>
+        該当するアカウントが見つかりませんでした。
+        <ul class="simple">
+            <li>大小文字は区別しません</li>
+            <li>「閲覧可能」は非公開かつフォロー外のアカウントを除外します</li>
+            <li>画像収集の対象になったことがないアカウントは出てきません</li>
+            <li>登録ユーザーのタイムライン上の画像のみを収集しています</li>
+        </ul>
+    </div>
+}

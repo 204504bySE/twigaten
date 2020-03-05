@@ -237,4 +237,16 @@
   <data name="Headline_NoTweetToShow" xml:space="preserve">
     <value>ツイートが見つかりませんでした</value>
   </data>
+  <data name="UserSearch_All" xml:space="preserve">
+    <value>全て</value>
+  </data>
+  <data name="UserSearch_Following" xml:space="preserve">
+    <value>フォローしている</value>
+  </data>
+  <data name="UserSearch_Show" xml:space="preserve">
+    <value>閲覧可能</value>
+  </data>
+  <data name="Headline_UserSearch" xml:space="preserve">
+    <value>@{0} の検索結果</value>
+  </data>
 </root>
