@@ -69,6 +69,29 @@ JOIN crawlprocess USING (user_id)
             }
         }
 
+        public async Task<UserStreamerSetting?>SelectUserStreamerSetting(long user_id)
+        {
+            using (var cmd = new MySqlCommand(@"SELECT
+user_id, token, token_secret, rest_my_tweet, last_status_id
+FROM token
+WHERE user_id = @user_id;"))
+            {
+                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
+
+                UserStreamerSetting? ret = null;           
+                if (await ExecuteReader(cmd, (r) =>
+                {
+                    ret = new UserStreamerSetting()
+                    {
+                        Token = Tokens.Create(config.token.ConsumerKey, config.token.ConsumerSecret, r.GetString(1), r.GetString(2), r.GetInt64(0)),
+                        rest_my_tweet = r.GetBoolean(3),
+                        last_status_id = r.GetInt64(4)
+                    };
+                }).ConfigureAwait(false)) { return ret; }
+                else { return null; }//一応全取得に成功しない限り返さない
+            }
+        }
+
 
         ///<summary>最新の処理済みツイートのIDやら自分のツイートをrest取得するかどうかなどをDBに保存
         ///Tokenはuser_idだけ使用する</summary>

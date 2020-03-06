@@ -38,7 +38,7 @@ namespace Twigaten.Web.Controllers
             public string oauth_verifier { get; set; }
             /// <summary>
             /// セッションから都度読み込む
-            /// 書き込み時はセッションに直接書き込む( JsonSerializer.SerializeToUtf8Bytesを使う)
+            /// 書き込み時はセッションに直接書き込む(JsonSerializer.SerializeToUtf8Bytesを使う)
             /// </summary>
             public OAuth.OAuthSession OAuthSession
                 => Context.Session.TryGetValue(nameof(OAuthSession), out var Bytes)
@@ -90,13 +90,15 @@ namespace Twigaten.Web.Controllers
                 var VeryfyTokenResult = await p.StoreNewLogin(token, HttpContext).ConfigureAwait(false);
 
                 //127.0.0.1だとInvalid Hostnameされる localhostだとおｋ
-                if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist)
-                {
-                    return RedirectToRoute(new { controller = "SimilarMedia", action = "UserTweet", UserID = token.UserId });
-                }
-                else { return Ok(); }
+                if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) { return Redirect("/users/" + token.UserId.ToString()); }
+                else { return Redirect("/"); }
             }
-            catch { return StatusCode(StatusCodes.Status500InternalServerError); }
+            catch { return Redirect("/"); }
+            finally
+            {
+                //セッションはOAuthにしか使ってないので消す
+                HttpContext.Session.Clear();
+            }
         }
 
         [HttpGet("logout")]
@@ -104,7 +106,7 @@ namespace Twigaten.Web.Controllers
         {
             await p.InitValidate(HttpContext).ConfigureAwait(false);
             p.Logout(true);
-            return RedirectToRoute(new { controller = "Home", action = "Index" });
+            return Redirect("/");
         }
     }
 }

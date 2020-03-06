@@ -23,7 +23,6 @@ namespace Twigaten.Web.TagHelpers
         }
     }
 
-
     /// <summary>
     /// 動画やgifアニメを示すアイコンを表示するやつ
     /// </summary>
@@ -52,6 +51,9 @@ namespace Twigaten.Web.TagHelpers
         }
     }
 
+    /// <summary>
+    /// 「画像でググる」ボタン
+    /// </summary>
     [HtmlTargetElement("media-search-google-button")]
     public class MediaSearchGoogleButton : TagHelper
     {

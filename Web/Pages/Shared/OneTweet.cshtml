@@ -4,6 +4,7 @@
 @model SimilarMediaTweet
 @addTagHelper *, Twigaten.Web
 @using Twigaten.Web
+@using Twigaten.Web.Locale;
 
 <div class="card twigaten-tweet-frame">
     @{
@@ -66,5 +67,15 @@
                 <p class="twigaten-tweettext">@Html.Raw(Tweet.tweet.text_html)</p>
             </div>
         }
+        <nav>
+            <div class="twigaten-navgroup twigaten-navgroup-viewmore">
+                <p>@string.Format(Locale.SimilarMedia_ResultCount, Model.SimilarMediaCount)</p>
+                @if ((ViewData["IsMore"] as bool?) != true)
+                {
+                    <tweet-more-button tweet="Model.tweet" media="Model.media" is-more="Model.ExistsMoreMedia" />
+                }
+                <tweet-intent path="@("/tweet/" + Model.tweet.tweet_id.ToString())" fragment="@Model.media.media_id.ToString()" />
+            </div>
+        </nav>
     }
 </div>

@@ -61,6 +61,15 @@ div.twigaten-navgroup {
     margin-left: 0.5em;
 }
 
+div.twigaten-navgroup-viewmore {
+    margin-bottom: 10px;
+}
+
+a.button-viewmore {
+    margin: 0 10px;
+    font-size: unset;
+}
+
 svg.twigaten-glyph {
     width: 16px;
     height: 14px;

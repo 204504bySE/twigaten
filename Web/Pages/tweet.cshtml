@@ -1,8 +1,19 @@
-﻿@page "{TweetId}/{More?}"
+﻿@page "{TweetId}/{MoreStr?}"
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.Tweet.TweetModel
 @section Scripts{
     <partial name="TweetScript" />
+}
+@section TwitterCard{
+    @if (Model.Tweets.Length > 0)
+    {
+        <twitter-card-description content="@Model.Tweets[0].tweet.text_html" />
+        <twitter-card-image path="@LocalText.MediaUrl(Model.Tweets[0].media)" />
+    }
+    else
+    {
+        <twitter-card-description content="このツイートは収集されていないか、削除されたか、または非公開アカウントのツイートです。" />
+    }
 }
 @{
     if (Model.Tweets.Length > 0)
@@ -13,17 +24,7 @@
     {
         ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.TweetId);
     }
-    @section TwitterCard{
-        @if (Model.Tweets.Length > 0)
-        {
-            <twitter-card-description content="@Model.Tweets[0].tweet.text_html" />
-            <twitter-card-image path="@LocalText.MediaUrl(Model.Tweets[0].media)" />
-        }
-        else
-        {
-            <twitter-card-description content="このツイートは収集されていないか、削除されたか、または非公開アカウントのツイートです。" />
-        }
-    }
+    ViewData["IsMore"] = Model.More;
 }
 @if (Model.Tweets.Length > 0)
 {

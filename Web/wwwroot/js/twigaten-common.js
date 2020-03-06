@@ -58,7 +58,7 @@ var twigatenCookies = twigatenCookies || {};
             else {
                 // (?<=twitter\.com\/|@|^)[_\w]+(?=[\/_\w]*$)
                 const screenNameMatch = new RegExp('(?:twitter\\.com\\/|@|^)([_\\w]+)(?=[\\/_\\w]*$)').exec(queryText);
-                if (screenNameMatch && 2 < screenNameMatch.length) {
+                if (screenNameMatch && 2 <= screenNameMatch.length) {
                     location.href = '/search/user?q=' + screenNameMatch[1];
                 }
                 else { location.href = '/search?q=' + queryText;}

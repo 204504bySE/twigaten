@@ -81,4 +81,23 @@ namespace Twigaten.Web.TagHelpers
             output.Attributes.SetAttribute("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
         }
     }
+
+    /// <summary>
+    /// 「もっと見る」「別ページで見る」ボタン
+    /// </summary>
+    [HtmlTargetElement("tweet-more-button")]
+    public class TweetMoreButtonTagHelper : TagHelper
+    {
+        public TweetData._tweet Tweet { get; set; }
+        public TweetData._media Media { get; set; }
+        public bool IsMore { get; set; }
+        public override void Process(TagHelperContext context, TagHelperOutput output)
+        {
+            output.TagName = "a";
+            output.TagMode = TagMode.StartTagAndEndTag;
+            output.Attributes.SetAttribute("href", "/tweet/" + Tweet.tweet_id.ToString() + (IsMore ? "/more#" : "#") + Media.media_id.ToString());
+            output.Attributes.SetAttribute("class", "button button-viewmore " + (IsMore ? "is-primary" : "is-light"));
+            output.Content.SetContent(IsMore ? Locale.Locale.SimilarMedia_ViewMore : Locale.Locale.SimilarMedia_SeparatePage);
+        }
+    }
 }

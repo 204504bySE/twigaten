@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
@@ -38,6 +39,7 @@ namespace Twigaten.Web.TagHelpers
         {
             output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
+
             output.Attributes.SetAttribute("href", "https://twitter.com/intent/favorite?tweet_id=" + Tweet.tweet_id.ToString());
             output.Attributes.SetAttribute("rel", "nofollow");
             output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph fill-star""><use xlink:href=""/img/fontawesome.svg#star""/></svg>");
@@ -54,6 +56,7 @@ namespace Twigaten.Web.TagHelpers
         [ViewContext]
         public ViewContext ViewContext { get; set; }
         public string Path { get; set; }
+        public string Fragment { get; set; }
 
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
@@ -64,11 +67,12 @@ namespace Twigaten.Web.TagHelpers
             Builder.Host = Request.Host.Host;
             Builder.Port = Request.Host.Port.HasValue ? Request.Host.Port.Value : -1;
             Builder.Path = Path ?? Request.Path;
-            output.Attributes.SetAttribute("content", Builder.ToString());
+            if (!string.IsNullOrWhiteSpace(Fragment)) { Builder.Fragment = Fragment; }
 
             output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
-            output.Attributes.SetAttribute("href", "https://twitter.com/intent/tweet?text=" + Uri.EscapeDataString(ViewContext.ViewData["title"] + " - TwiGaTen") + "&url=" + Uri.EscapeDataString(Builder.ToString()));
+
+            output.Attributes.SetAttribute("href", new HtmlString("https://twitter.com/intent/tweet?text=" + Uri.EscapeDataString(ViewContext.ViewData["title"] + " - TwiGaTen") + "&url=" + Uri.EscapeDataString(Builder.ToString())));
             output.Attributes.SetAttribute("rel", "nofollow noopener noreferrer");
             output.Attributes.SetAttribute("target", "_blank");
             output.Attributes.SetAttribute("class", "button is-outlined is-primary is-small");

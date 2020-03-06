@@ -102,7 +102,7 @@ namespace Twigaten.Web.Parameters
                 ClearCookie("RT");
                 ClearCookie("Show0");
             }
-            //これはログインしてないと使えないので消す
+            //これはログインしてないと「フォローしている」が使えないので消す
             ClearCookie("UserLikeMode");
         }
 

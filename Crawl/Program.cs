@@ -35,6 +35,12 @@ namespace Twigaten.Crawl
                 Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
                 return;
             }
+            else if (args.Length >= 1 && long.TryParse(args[0], out long user_id))
+            {
+                Console.WriteLine("App: Running in user_id mode: {0}", user_id);
+                await new RestManager().OneAccount(user_id).ConfigureAwait(false);
+                return;
+            }
 
             await Task.Delay(10000).ConfigureAwait(false);
             var manager = await UserStreamerManager.Create().ConfigureAwait(false);

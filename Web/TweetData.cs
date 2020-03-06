@@ -9,7 +9,14 @@ namespace Twigaten.Web
         public _tweet tweet = new _tweet();
         public _media media = new _media();
         public SimilarMediaTweet[] Similars;
-        public long SimilarMediaCount { get; set; }  //類似画像の個数(見れないやつを含む
+        /// <summary>
+        /// //類似画像の個数(見れないやつを含む
+        /// </summary>
+        public long SimilarMediaCount { get; set; }
+        /// <summary>
+        /// 「もっと見る」ボタンが必要ならtrue
+        /// </summary>
+        public bool ExistsMoreMedia { get; set; }
     }
 
     public class TweetData

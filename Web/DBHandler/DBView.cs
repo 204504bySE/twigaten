@@ -148,7 +148,7 @@ user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_i
         /// <param name="dcthash"></param>
         /// <param name="login_user_id"></param>
         /// <returns>(tweet_id, media_id) 見つからなければnull</returns>
-        public async Task<(long, long)?> HashtoTweet(long? dcthash, long? login_user_id)
+        public async Task<(long tweet_id, long media_id)?> HashtoTweet(long? dcthash, long? login_user_id)
         {
             if (dcthash == null) { return null; }
 
@@ -653,10 +653,15 @@ m.media_id, mt.media_url, mt.type,
         /// <returns></returns>
         async Task<SimilarMediaTweet[]> TableToTweet(MySqlCommand cmd, long? login_user_id, int SimilarLimit, bool GetIsolated = false, bool GetSimilars = true)
         {
-            var GetSimilarsBlock = new ActionBlock<SimilarMediaTweet>(async (rettmp) =>
+            ActionBlock<SimilarMediaTweet> GetSimilarsBlock = null;
+            if (GetSimilars)
             {
-                rettmp.Similars = await SimilarMedia(rettmp.media.media_id, SimilarLimit, (rettmp.tweet.retweet ?? rettmp.tweet).tweet_id, login_user_id).ConfigureAwait(false);
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
+                GetSimilarsBlock = new ActionBlock<SimilarMediaTweet>(async (rettmp) =>
+                {
+                    //この中でTableToTweet()が呼ばれる
+                    rettmp.Similars = await SimilarMedia(rettmp.media.media_id, SimilarLimit, (rettmp.tweet.retweet ?? rettmp.tweet).tweet_id, login_user_id).ConfigureAwait(false);
+                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
+            }
 
             var TweetList = new List<SimilarMediaTweet>();
             await ExecuteReader(cmd, (r) =>
@@ -698,6 +703,7 @@ m.media_id, mt.media_url, mt.type,
                 rettmp.media.type = r.GetString(24);
                 rettmp.media.local_media_url = LocalText.MediaUrl(rettmp.media);
                 rettmp.SimilarMediaCount = r.IsDBNull(25) ? -1 : r.GetInt64(25);    //COUNTはNOT NULLじゃない
+                rettmp.ExistsMoreMedia = SimilarLimit < rettmp.SimilarMediaCount;
 
                 TweetList.Add(rettmp);
                 if (GetSimilars) { GetSimilarsBlock.Post(rettmp); }
@@ -724,7 +730,7 @@ m.media_id, mt.media_url, mt.type,
         /// <param name="login_user_id"></param>
         /// <returns></returns>
 
-        public async Task<SimilarMediaTweet[]> SimilarMedia(long media_id, int SimilarLimit, long except_tweet_id, long? login_user_id = null)
+        async Task<SimilarMediaTweet[]> SimilarMedia(long media_id, int SimilarLimit, long except_tweet_id, long? login_user_id = null)
         {
             //先に画像のハッシュ値を取得する #ウンコード
             long media_hash;
