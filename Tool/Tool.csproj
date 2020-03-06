@@ -5,6 +5,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <RootNamespace>Twigaten.Tool</RootNamespace>
+    <AssemblyName>Twigaten.Tool</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
