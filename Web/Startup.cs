@@ -44,6 +44,7 @@ namespace Twigaten.Web
             });
             services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
             services.Configure<GzipCompressionProviderOptions>(options => { options.Level = CompressionLevel.Fastest; });
+
             services.AddSession(options => 
             {
                 options.IdleTimeout = TimeSpan.FromSeconds(600);
@@ -76,6 +77,11 @@ namespace Twigaten.Web
             app.UseResponseCompression();
             app.UseDefaultFiles();
             app.UseStaticFiles();
+
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 

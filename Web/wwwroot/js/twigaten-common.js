@@ -3,7 +3,7 @@
 // 検索設定のCookieを復元するやつ(複数タブで設定を不揃いにしても大丈夫)
 var twigatenCookies = twigatenCookies || {};
 (function () {
-    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: !twigatenDevelopment };
+    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: true };
     const UserLikeMode = Cookies.get('UserLikeMode');
     const Order = Cookies.get('Order');
     const Count = Cookies.get('Count');
