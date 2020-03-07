@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Twigaten.Lib;
 using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Parameters
@@ -144,7 +146,9 @@ namespace Twigaten.Web.Parameters
         }
     }
 
-        ///<summary>logintokenテーブルの認証用文字列を暗号化したりする</summary>
+    /// <summary>
+    /// logintokenテーブルの認証用文字列を暗号化したりする
+    /// </summary>
     static class LoginTokenEncrypt
     {
         static readonly RNGCryptoServiceProvider RNG = new RNGCryptoServiceProvider();

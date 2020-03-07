@@ -13,12 +13,11 @@ using static Twigaten.Web.DBHandler.DB;
 namespace Twigaten.Web.Pages.Tweet
 {
     /// <summary>
-    /// ユーザーのツイート一覧
+    /// ユーザーのタイムライン
+    /// サインインした本人のやつしか見れない
     /// </summary>
-    public class UsersModel : PageModel
+    public class TimelineModel : PageModel
     {
-        [BindProperty(SupportsGet = true)]
-        public long UserId { get; set; }
         /// <summary>
         /// これより古いツイを検索する(SnowFlake)
         /// </summary>
@@ -46,12 +45,11 @@ namespace Twigaten.Web.Pages.Tweet
 
 
         public long QueryElapsedMilliseconds { get; private set; }
-        public async Task OnGetAsync()
+        public async Task<ActionResult> OnGetAsync()
         {
             var sw = Stopwatch.StartNew();
 
             //一瞬でも速くしたいので先にTaskを作って必要なところでawaitする
-            var TargetUserTask = DBView.SelectUser(UserId);
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
 
@@ -60,13 +58,16 @@ namespace Twigaten.Web.Pages.Tweet
             bool IsBefore = Before.HasValue || !After.HasValue;
 
             await ParamsTask.ConfigureAwait(false);
-            var TweetsTask = DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore);
+            if (!Params.ID.HasValue) { return Redirect("/"); }
+            var TargetUserTask = DBView.SelectUser(Params.ID.Value);
+            var TweetsTask = DBView.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
             TargetUser = TargetUserTask.Result;
             Tweets = TweetsTask.Result;
             if (Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
+            return Page();
         }
     }
 }

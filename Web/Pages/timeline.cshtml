@@ -1,7 +1,7 @@
-﻿@page "{UserId}"
+﻿@page
 @using Twigaten.Web.Locale;
 @using Twigaten.Lib;
-@model Twigaten.Web.Pages.Tweet.UsersModel
+@model Twigaten.Web.Pages.Tweet.TimelineModel
 @section Scripts{
     <partial name="TweetScript" />
     <partial name="DatePickerScript" />
@@ -15,7 +15,7 @@
 }
 @if (Model.Tweets.Length > 0)
 {
-    ViewData["Title"] = string.Format(Locale.Title_UserTweet, Model.TargetUser.screen_name);
+    ViewData["Title"] = string.Format(Locale.Title_Timeline, Model.TargetUser.screen_name);
 }
 else
 {
@@ -24,14 +24,14 @@ else
 <nav class="tabs is-toggle" style="margin-top:10px;">
     <div class="twigaten-navgroup">
         <ul>
-            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
+            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/timeline" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
             @if (Model.IsLatest || !Model.NextNew.HasValue)
             {
                 <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
             }
             else
             {
-                <li><a href="/users/@Model.UserId?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
+                <li><a href="/timeline?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
             }
             @if (!Model.NextOld.HasValue)
             {
@@ -39,7 +39,7 @@ else
             }
             else
             {
-                <li><a href="/users/@Model.UserId?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
+                <li><a href="/timeline?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
             }
         </ul>
     </div>
@@ -72,16 +72,15 @@ else
     </div>
     <div class="twigaten-navgroup">
         <p>@Locale.Pager_Datetimepicker</p>
-        <form action="/users/@Model.UserId" method="get" class="twigaten-datepicker">
+        <form action="/timeline" method="get" class="twigaten-datepicker">
             <input name="date" class="flatpickr input" type="text" placeholder="@Locale.Pager_Datetimepicker" readonly="readonly" />
             <button type="submit" class="button is-small is-primary">Go</button>
         </form>
     </div>
 </nav>
-
 @if (Model.TargetUser != null)
 {
-    <h2>@string.Format(Locale.Headline_UserTweet, Model.TargetUser.screen_name)</h2>
+    <h2>@string.Format(Locale.Headline_Timeline, Model.TargetUser.screen_name)</h2>
     <h3 style="margin:0;">
         @if (Model.IsLatest)
         {
@@ -107,14 +106,14 @@ else
         <nav class="tabs is-toggle">
             <div class="twigaten-navgroup">
                 <ul>
-                    <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
+                    <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/timeline" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
                     @if (Model.IsLatest || Model.NextNew == null)
                     {
                         <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
                     }
                     else
                     {
-                        <li><a href="/users/@Model.UserId?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
+                        <li><a href="/timeline?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
                     }
                     @if (Model.NextOld == null)
                     {
@@ -122,7 +121,7 @@ else
                     }
                     else
                     {
-                        <li><a href="/users/@Model.UserId?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
+                        <li><a href="/timeline?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
                     }
                 </ul>
             </div>
@@ -134,6 +133,7 @@ else
         <h2>@Locale.Headline_NoTweetToShow</h2>
         <partial name="NoTweetToShow" />
     }
+
 }
 else
 {
@@ -141,4 +141,3 @@ else
     <h2>@Locale.Headline_UserNotFound</h2>
     <partial name="NoTweetToShow" />
 }
-

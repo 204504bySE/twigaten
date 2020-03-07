@@ -69,6 +69,10 @@ namespace Twigaten.Web
                 //ついでにここで自前Cookieの設定もやる
                 LoginParameters.IsDevelopment = true;
             }
+            else
+            {
+                app.UseExceptionHandler("/error");
+            }
             app.UseResponseCompression();
             app.UseDefaultFiles();
             app.UseStaticFiles();

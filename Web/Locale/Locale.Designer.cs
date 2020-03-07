@@ -376,11 +376,11 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   登録完了 に類似しているローカライズされた文字列を検索します。
+        ///   サインインしました に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        public static string Title_Registration_Completed {
+        public static string Title_SignIn_Complete {
             get {
-                return ResourceManager.GetString("Title_Registration_Completed", resourceCulture);
+                return ResourceManager.GetString("Title_SignIn_Complete", resourceCulture);
             }
         }
         

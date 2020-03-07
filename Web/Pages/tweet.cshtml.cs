@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Twigaten.Web.Parameters;
@@ -29,6 +30,8 @@ namespace Twigaten.Web.Pages.Tweet
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
             if (More) { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID, 99).ConfigureAwait(false); }
             else { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID).ConfigureAwait(false); }
+
+            if(Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
         }
     }

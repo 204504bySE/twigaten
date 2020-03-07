@@ -44,10 +44,10 @@ namespace Twigaten.Web.TagHelpers
                     output.SuppressOutput();
                     return;
             }
-            output.TagName = "p";
+            output.TagName = "div";
             output.TagMode = TagMode.StartTagAndEndTag;
 
-            output.Attributes.SetAttribute("class", "text-center");
+            output.Attributes.SetAttribute("class", "twigaten-mediatype");
         }
     }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CoreTweet;
@@ -17,7 +18,10 @@ namespace Twigaten.Web.Controllers
     {
         static readonly Config config = Config.Instance;
 
-        // GET: Auth
+        /// <summary>
+        /// 「Twitterでサインイン」を始める
+        /// </summary>
+        /// <returns></returns>
         //http://nakaji.hatenablog.com/entry/2014/09/19/024341
         [HttpGet("login")]
         public ActionResult Login()
@@ -29,7 +33,15 @@ namespace Twigaten.Web.Controllers
             HttpContext.Session.Set(nameof(OAuthSession), JsonSerializer.SerializeToUtf8Bytes(OAuthSession));
             return Redirect(OAuthSession.AuthorizeUri.OriginalString);
         }
-        
+
+        [HttpGet("logout")]
+        public async Task<ActionResult> Logout(LoginParameters p)
+        {
+            await p.InitValidate(HttpContext).ConfigureAwait(false);
+            p.Logout(true);
+            return Redirect("/");
+        }
+
         public class TwitterCallbackParameters : LoginParameters
         {
             [FromQuery]
@@ -43,7 +55,7 @@ namespace Twigaten.Web.Controllers
             public OAuth.OAuthSession OAuthSession
                 => Context.Session.TryGetValue(nameof(OAuthSession), out var Bytes)
                     ? JsonSerializer.Deserialize<OAuth.OAuthSession>(Bytes)
-                    : null; 
+                    : null;
 
 
             //(新規)ログインの処理
@@ -76,37 +88,51 @@ namespace Twigaten.Web.Controllers
                 return vt;
             }
         }
+
+        /// <summary>
+        /// Twitterでアクセスを許可するとこいつにアクセストークンが飛んでくる
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
         //http://nakaji.hatenablog.com/entry/2014/09/19/024341
         [HttpGet("callback")]
         public async Task<ActionResult> TwitterCallback(TwitterCallbackParameters p)
         {
             await p.InitValidate(HttpContext).ConfigureAwait(false);
-            try
-            {
-                Tokens token = p.OAuthSession.GetTokens(p.oauth_verifier);
-                // token から AccessToken と AccessTokenSecret を永続化しておくとか、
-                // セッション情報に格納しておけば毎回認証しなくて良いかも
 
-                var VeryfyTokenResult = await p.StoreNewLogin(token, HttpContext).ConfigureAwait(false);
+            // tokenをDBに保存
+            Tokens token = p.OAuthSession.GetTokens(p.oauth_verifier);
+            var VeryfyTokenResult = await p.StoreNewLogin(token, HttpContext).ConfigureAwait(false);
 
-                //127.0.0.1だとInvalid Hostnameされる localhostだとおｋ
-                if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) { return Redirect("/users/" + token.UserId.ToString()); }
-                else { return Redirect("/"); }
-            }
-            catch { return Redirect("/"); }
-            finally
+            //すでにサインインしてたユーザーならそいつのページに飛ばす
+            if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) { return Redirect("/users/" + token.UserId.ToString()); }
+            else 
             {
-                //セッションはOAuthにしか使ってないので消す
-                HttpContext.Session.Clear();
+                //新規ユーザーはツイート等を取得させる
+                //セッションに認証用の項目を用意して1回しか実行させないようにする
+                HttpContext.Session.Set(nameof(FirstProcess), new byte[0]);
+                return Redirect("/auth/first"); 
             }
         }
 
-        [HttpGet("logout")]
-        public async Task<ActionResult> Logout(LoginParameters p)
+        /// <summary>
+        /// 新規ユーザーのツイート等を取得する
+        /// 完了後はそいつのページに飛ばす
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("firstprocess")]
+        public async Task<ActionResult> FirstProcess()
         {
-            await p.InitValidate(HttpContext).ConfigureAwait(false);
-            p.Logout(true);
-            return Redirect("/");
+            var Params = new LoginParameters();
+            await Params.InitValidate(HttpContext).ConfigureAwait(false);
+            if (!Params.ID.HasValue) { return Redirect("/"); }
+
+            //セッション内の認証用の項目を確認する
+            if (!HttpContext.Session.TryGetValue(nameof(FirstProcess), out var _)){ return Redirect("/"); }
+            HttpContext.Session.Remove(nameof(FirstProcess));
+
+            await CrawlManager.Run(Params.ID.Value).ConfigureAwait(false);
+            return Redirect("/users/" + Params.ID.ToString());
         }
     }
 }

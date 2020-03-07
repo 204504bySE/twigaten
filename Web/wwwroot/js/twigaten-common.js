@@ -3,7 +3,7 @@
 // 検索設定のCookieを復元するやつ(複数タブで設定を不揃いにしても大丈夫)
 var twigatenCookies = twigatenCookies || {};
 (function () {
-    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: !twigatenDevelopment };    
+    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: !twigatenDevelopment };
     const UserLikeMode = Cookies.get('UserLikeMode');
     const Order = Cookies.get('Order');
     const Count = Cookies.get('Count');
@@ -23,24 +23,27 @@ var twigatenCookies = twigatenCookies || {};
     // navbar初期化
     const screenName = Cookies.get('ScreenName');
     if (screenName) {
-        document.getElementById('menu-login').style.display = 'none';
         document.getElementById('menu-screenname').textContent = '@' + screenName;
-        const userId = Cookies.get('ID');
-        if (userId) {
-            //「自分のツイート」
-            const menuMyTweet = document.getElementById('menu-mytweet');
-            menuMyTweet.setAttribute('href', '/users/' + userId);
-
-            //ドロップダウン
-            const menuUser = document.getElementById('menu-user');
-            const menuDropDown = document.getElementById('menu-user-dropdown');
-            menuUser.addEventListener('click', () => { menuDropDown.classList.toggle('is-block'); });
-            menuUser.addEventListener('mouseenter', () => { menuDropDown.classList.add('is-block'); });
-            menuUser.addEventListener('mouseleave', () => { menuDropDown.classList.remove('is-block'); });
-        }
-        else { Cookies.remove('ScreenName'); }
     }
-    else { document.getElementById('menu-user').style.display = 'none'; }
+    const userId = Cookies.get('ID');
+    if (userId) {
+        document.getElementById('menu-login').style.display = 'none';
+        //「自分のツイート」
+        const menuMyTweet = document.getElementById('menu-mytweet');
+        menuMyTweet.setAttribute('href', '/users/' + userId);
+
+        //ドロップダウン
+        const menuUser = document.getElementById('menu-user');
+        const menuDropDown = document.getElementById('menu-user-dropdown');
+        menuUser.addEventListener('click', () => { menuDropDown.classList.toggle('is-block'); });
+        menuUser.addEventListener('mouseenter', () => { menuDropDown.classList.add('is-block'); });
+        menuUser.addEventListener('mouseleave', () => { menuDropDown.classList.remove('is-block'); });
+    }
+    else {
+        Cookies.remove('ScreenName');
+        document.getElementById('menu-user').style.display = 'none';
+    }
+
 
     //検索ボックス
     Array.prototype.forEach.call(document.getElementsByClassName("twigaten-search"), (x) => {
@@ -61,7 +64,7 @@ var twigatenCookies = twigatenCookies || {};
                 if (screenNameMatch && 2 <= screenNameMatch.length) {
                     location.href = '/search/user?q=' + screenNameMatch[1];
                 }
-                else { location.href = '/search?q=' + queryText;}
+                else { location.href = '/search/?q=' + queryText; }
             }
         });
     });
@@ -78,7 +81,9 @@ var twigatenCookies = twigatenCookies || {};
         x.addEventListener('click', (event) => {
             event.preventDefault();
             twigatenCookies.set();
-            Cookies.set(event.currentTarget.dataset.key, event.currentTarget.dataset.value, twigatenCookies.cookieOption);
+            if (event.currentTarget.dataset.key) {
+                Cookies.set(event.currentTarget.dataset.key, event.currentTarget.dataset.value, twigatenCookies.cookieOption);
+            }
             const href = event.currentTarget.getAttribute('href');
             if (href) {
                 location.href = href;
@@ -93,7 +98,9 @@ var twigatenCookies = twigatenCookies || {};
         x.addEventListener('change', (event) => {
             event.preventDefault();
             twigatenCookies.set();
-            Cookies.set(event.currentTarget.dataset.key, event.currentTarget.value, twigatenCookies.cookieOption);
+            if (event.currentTarget.dataset.key) {
+                Cookies.set(event.currentTarget.dataset.key, event.currentTarget.dataset.value, twigatenCookies.cookieOption);
+            }
             location.reload();
         });
     });

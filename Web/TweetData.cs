@@ -47,11 +47,11 @@ namespace Twigaten.Web
         public class _media
         {
             public long media_id { get; set; }
-            public long source_tweet_id { get; set; }
+            //public long source_tweet_id { get; set; }
             public string type { get; set; }
             public string orig_media_url { get; set; }
             public string local_media_url { get; set; }
-            public long dcthash { get; set; }
+            //public long dcthash { get; set; }
         }
     }
 }

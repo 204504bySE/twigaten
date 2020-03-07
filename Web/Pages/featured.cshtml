@@ -1,0 +1,95 @@
+﻿@page
+@using Twigaten.Web.Locale;
+@using Twigaten.Lib;
+@model Twigaten.Web.Pages.Tweet.FeaturedModel
+@section Scripts{
+    <partial name="TweetScript" />
+    <partial name="DatePickerScript" />
+}
+@section MetaTags{
+    <meta name="robots" content="noindex" />
+}
+@section TwitterCard{
+    <twitter-card-description />
+    <twitter-card-image />
+}
+@if (Model.Tweets.Length > 0)
+{
+    ViewData["Title"] = Locale.Title_Featured;
+}
+else
+{
+    ViewData["Title"] = Locale.Title_NoTweetToShow;
+}
+<nav class="tabs is-toggle" style="margin-top:10px;">
+    <div class="twigaten-navgroup">
+        <ul>
+            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/featured" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
+            @if (Model.IsLatest || !Model.NextNew.HasValue)
+            {
+                <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
+            }
+            else
+            {
+                <li><a href="/featured?date=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
+            }
+            @if (!Model.NextOld.HasValue)
+            {
+                <li class="is-disabled"><a>@Locale.Pager_Older</a></li>
+            }
+            else
+            {
+                <li><a href="/featured?date=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
+            }
+        </ul>
+    </div>
+    <div class="twigaten-navgroup">
+        <p>@Locale.Pager_Datetimepicker</p>
+        <form action="/featured" method="get" class="twigaten-datepicker">
+            <input name="date" class="flatpickr input" type="text" placeholder="@Locale.Pager_Datetimepicker" readonly="readonly" />
+            <button type="submit" class="button is-small is-primary">Go</button>
+        </form>
+    </div>
+</nav>
+@if (Model.Tweets.Length > 0)
+{
+    <h2>@Locale.Headline_Featured</h2>
+    <h3 style="margin:0;">
+        (<span class="twigaten-unixtime" data-unixtime="@((Model.Date ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds()) - 3600)"></span> ~ <span class="twigaten-unixtime" data-unixtime="@(Model.Date ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds())"></span>)
+    </h3>
+    <p><tweet-intent /></p>
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+    foreach (var Tweet in Model.Tweets)
+    {
+        <partial name="OneTweet" model="Tweet" />
+    }
+    <nav class="tabs is-toggle">
+        <div class="twigaten-navgroup">
+            <ul>
+                <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/featured" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
+                @if (Model.IsLatest || !Model.NextNew.HasValue)
+                {
+                    <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
+                }
+                else
+                {
+                    <li><a href="/featured?date=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
+                }
+                @if (!Model.NextOld.HasValue)
+                {
+                    <li class="is-disabled"><a>@Locale.Pager_Older</a></li>
+                }
+                else
+                {
+                    <li><a href="/featured?date=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
+                }
+            </ul>
+        </div>
+    </nav>
+}
+else
+{
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+    <h2>@Locale.Headline_NoTweetToShow</h2>
+    <partial name="NoTweetToShow" />
+}

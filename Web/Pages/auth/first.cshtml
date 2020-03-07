@@ -1,0 +1,48 @@
+﻿@page
+@model Twigaten.Web.firstModel
+@using Twigaten.Web.Locale
+@section Scripts
+{
+    <script>
+        (function () {
+            window.addEventListener('load', (event) => {
+                //先にアニメーションを始める
+                var frames = document.getElementById('animation-frames').getElementsByTagName('span');
+                var i = 0;
+                function nextFrame() {
+                    frames[i].style.display = 'none';
+                    i++;
+                    if (frames.length <= i) { i = 0; }
+                    frames[i].style.display = '';
+                    setTimeout(nextFrame, 200);
+                };
+                nextFrame();
+
+                location.href = '/auth/firstprocess';
+            });
+        })();
+    </script>
+}
+@{
+    ViewData["Title"] = Locale.Title_SignIn_Complete;
+}
+<h2>@ViewData["Title"]</h2>
+<div id="animation-frames">
+    <span>(　　　)</span>
+    <span style="display:none;">(`　　 )</span>
+    <span style="display:none;">(･`　　)</span>
+    <span style="display:none;">(ω･`　)</span>
+    <span style="display:none;">(´･ω･`)</span>
+    <span style="display:none;">( ´･ω･)</span>
+    <span style="display:none;">(　´･ω)</span>
+    <span style="display:none;">( 　 ´･)</span>
+    <span style="display:none;">( 　　´)</span>
+</div>
+<p>
+    <br />
+    初回サインイン時の処理を行っています。<br />
+    完了すると自動で移動します。<br />
+    <br />
+    Processing of first sign-in.<br />
+    Please wait.
+</p>

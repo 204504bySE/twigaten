@@ -162,6 +162,10 @@ div.twigaten-usermargin {
     div.twigaten-thumbmargin {
         margin: 4px;
     }
+
+    div.twigaten-mediatype {
+        text-align: center;
+    }
 }
 
 img.twigaten-thumb {

@@ -15,15 +15,15 @@
         <twitter-card-description content="このツイートは収集されていないか、削除されたか、または非公開アカウントのツイートです。" />
     }
 }
-@{
-    if (Model.Tweets.Length > 0)
-    {
-        ViewData["Title"] = string.Format(Locale.Title_OneTweet, Model.Tweets[0].tweet.user.screen_name);
-    }
-    else
-    {
-        ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.TweetId);
-    }
+
+@if (Model.Tweets.Length > 0)
+{
+    ViewData["Title"] = string.Format(Locale.Title_OneTweet, Model.Tweets[0].tweet.user.screen_name);
+}
+else
+{
+    ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.TweetId);
+}
     ViewData["IsMore"] = Model.More;
 }
 @if (Model.Tweets.Length > 0)
