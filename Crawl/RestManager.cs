@@ -68,6 +68,7 @@ namespace Twigaten.Crawl
 
         /// <summary>
         /// 指定したアカウントのツイート, フォロー等を取得する
+        /// 新規ログイン向け
         /// 常に最大数のツイートを取得する
         /// </summary>
         /// <param name="user_id"></param>
@@ -84,7 +85,10 @@ namespace Twigaten.Crawl
             var tweet = s.RestMyTweet();
             var cred = s.VerifyCredentials();
             await Task.WhenAll(friend, block, tweet, cred).ConfigureAwait(false);
-            await UserStreamerStatic.Complete().ConfigureAwait(false);
+            //最後に取得したツイートIDを保存する
+            var savesetting = s.Setting;
+            savesetting.rest_my_tweet = false;
+            await Task.WhenAll(db.StoreUserStreamerSetting(new[] { savesetting }), UserStreamerStatic.Complete()).ConfigureAwait(false);
             Console.WriteLine("{0}: Profile stored\t{1}, {2}", user_id, friend.Result, block.Result);
             Counter.PrintReset();
         }

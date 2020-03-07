@@ -24,7 +24,7 @@ namespace Twigaten.Web.Controllers
         /// <returns></returns>
         //http://nakaji.hatenablog.com/entry/2014/09/19/024341
         [HttpGet("login")]
-        public async Task<ActionResult> Login()
+        public ActionResult Login()
         {
             //"{TwitterApiKey}", "{TwitterApiKeySecret}", "http://mydomain.com:63543/AuthCallback/Twitter"
             var OAuthSession = OAuth.Authorize(config.token.ConsumerKey, config.token.ConsumerSecret, config.web.CallBackUrl);
@@ -105,7 +105,7 @@ namespace Twigaten.Web.Controllers
             {
                 //新規ユーザーはツイート等を取得させる
                 //セッションに認証用の項目を用意して1回しか実行させないようにする
-                HttpContext.Session.SetInt32(nameof(FirstProcess), 0);
+                HttpContext.Session.Set(nameof(FirstProcess), new byte[] { 0 });
                 return Redirect("/auth/first"); 
             }
         }
@@ -123,11 +123,16 @@ namespace Twigaten.Web.Controllers
             if (!Params.ID.HasValue) { return Redirect("/"); }
 
             //セッション内の認証用の項目を確認する
-            if (!HttpContext.Session.TryGetValue(nameof(FirstProcess), out var _)){ return Redirect("/"); }
-            HttpContext.Session.Remove(nameof(FirstProcess));
+            if (HttpContext.Session.TryGetValue(nameof(FirstProcess), out var Bytes)
+                && 1 <= Bytes.Length && Bytes[0] == 0)
+            {
+                //なんでもいいので0以外の値を入れる
+                HttpContext.Session.Set(nameof(FirstProcess), new byte[] { 255 });
 
-            await CrawlManager.Run(Params.ID.Value).ConfigureAwait(false);
-            return Redirect("/users/" + Params.ID.ToString());
+                await CrawlManager.Run(Params.ID.Value).ConfigureAwait(false);
+                return Redirect("/users/" + Params.ID.ToString());
+            }
+            else { return Redirect("/"); }
         }
     }
 }

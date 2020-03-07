@@ -163,7 +163,7 @@
     <value>Time</value>
   </data>
   <data name="Pager_Datetimepicker" xml:space="preserve">
-    <value>Jump to date(UTC+9)</value>
+    <value>Jump to date</value>
   </data>
   <data name="Pager_Latest" xml:space="preserve">
     <value>Latest</value>
@@ -219,8 +219,8 @@
   <data name="TweetButton_Tweet" xml:space="preserve">
     <value>Tweet</value>
   </data>
-  <data name="Title_SignIn_Complete" xml:space="preserve">
-    <value>Sign in Completed</value>
+  <data name="Title_SignIn_Success" xml:space="preserve">
+    <value>Sign in Success</value>
   </data>
   <data name="Title_SignIn_Failure" xml:space="preserve">
     <value>Sign in Failed</value>

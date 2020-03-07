@@ -219,7 +219,7 @@
   <data name="TweetButton_Tweet" xml:space="preserve">
     <value>ツイート</value>
   </data>
-  <data name="Title_SignIn_Complete" xml:space="preserve">
+  <data name="Title_SignIn_Success" xml:space="preserve">
     <value>サインインしました</value>
   </data>
   <data name="Title_SignIn_Failure" xml:space="preserve">

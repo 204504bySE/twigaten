@@ -55,7 +55,14 @@ else
 {
     <h2>@Locale.Headline_Featured</h2>
     <h3 style="margin:0;">
-        (<span class="twigaten-unixtime" data-unixtime="@((Model.Date ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds()) - 3600)"></span> ~ <span class="twigaten-unixtime" data-unixtime="@(Model.Date ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds())"></span>)
+        @if (Model.IsLatest)
+        {
+            @("(")@Locale.Headline_LatestTime@(")")
+        }
+        else
+        {
+            @("(")<span class="twigaten-unixtime" data-unixtime="@((Model.Date ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds()) - 3600)"></span> @("~") <span class="twigaten-unixtime" data-unixtime="@(Model.Date ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds())"></span>@(")")
+        }
     </h3>
     <p><tweet-intent /></p>
     <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>

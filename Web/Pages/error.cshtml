@@ -5,6 +5,9 @@
 @{
     ViewData["Title"] = Locale.Error_Title;
 }
+@section MetaTags{ 
+    <meta name="robots" content="noindex" />
+}
 <h3>@ViewData["Title"]</h3>
 <ul class="simple">
     <li>サインイン時にこの画面が出た場合は、もう一度サインインすると多分直ります。</li>
@@ -20,3 +23,4 @@
     <li>Just unlucky</li>
     <li>(´・ω・`)</li>
 </ul>
+
