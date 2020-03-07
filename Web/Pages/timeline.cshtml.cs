@@ -60,7 +60,7 @@ namespace Twigaten.Web.Pages.Tweet
             await ParamsTask.ConfigureAwait(false);
             if (!Params.ID.HasValue) { return Redirect("/"); }
             var TargetUserTask = DBView.SelectUser(Params.ID.Value);
-            var TweetsTask = DBView.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore);
+            var TweetsTask = DBView.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
             TargetUser = TargetUserTask.Result;

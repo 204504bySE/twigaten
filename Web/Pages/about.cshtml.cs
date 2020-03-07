@@ -9,9 +9,9 @@ namespace Twigaten.Web.Pages
 {
     public class AboutModel : PageModel
     {
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            
+            await new Parameters.LoginParameters().InitValidate(HttpContext).ConfigureAwait(false);
         }
     }
 }

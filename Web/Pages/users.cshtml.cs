@@ -60,7 +60,7 @@ namespace Twigaten.Web.Pages.Tweet
             bool IsBefore = Before.HasValue || !After.HasValue;
 
             await ParamsTask.ConfigureAwait(false);
-            var TweetsTask = DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.Count, 3, Params.RT, Params.Show0, IsBefore);
+            var TweetsTask = DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
             TargetUser = TargetUserTask.Result;

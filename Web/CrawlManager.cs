@@ -20,9 +20,8 @@ namespace Twigaten.Web
         public static Task Run(long user_id)
         {
             var info = string.IsNullOrWhiteSpace(config.crawlparent.DotNetChild) ?
-                new ProcessStartInfo(config.crawlparent.ChildPath) :
-                new ProcessStartInfo(config.crawlparent.DotNetChild, config.crawlparent.ChildPath);
-            info.Arguments = user_id.ToString();
+                new ProcessStartInfo(config.crawlparent.ChildPath, user_id.ToString()) :
+                new ProcessStartInfo(config.crawlparent.DotNetChild, config.crawlparent.ChildPath + " " + user_id.ToString());
             info.WorkingDirectory = Path.GetDirectoryName(config.crawlparent.ChildPath);
             info.WindowStyle = ProcessWindowStyle.Minimized;
 

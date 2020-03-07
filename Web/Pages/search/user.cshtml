@@ -22,16 +22,16 @@
 <nav class="tabs is-toggle" style="margin-top:10px;">
     <div class="twigaten-navgroup">
         <ul>
-            <li @(Model.Params.UserLikeMode == SelectUserLikeMode.Show ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserLikeMode" data-value="Show">@Locale.UserSearch_Show</a></li>
+            <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.Show ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="Show">@Locale.UserSearch_Show</a></li>
             @if (Model.Params.ID.HasValue)
             {
-                <li @(Model.Params.UserLikeMode == SelectUserLikeMode.Following ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserLikeMode" data-value="Following">@Locale.UserSearch_Following</a>)</li>
+                <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.Following ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="Following">@Locale.UserSearch_Following</a>)</li>
             }
             else
             {
                 <li class="is-disabled"><a>@Locale.UserSearch_Following</a></li>
             }
-            <li @(Model.Params.UserLikeMode == SelectUserLikeMode.All ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserLikeMode" data-value="All">@Locale.UserSearch_All</a></li>
+            <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.All ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="All">@Locale.UserSearch_All</a></li>
         </ul>
     </div>
 </nav>

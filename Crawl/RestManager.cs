@@ -19,7 +19,8 @@ namespace Twigaten.Crawl
         static readonly DBHandler db = DBHandler.Instance;
 
         /// <summary>
-        /// サインインした全アカウントのツイート等を取得する
+        /// サインインした全アカウントのツイート, フォロー等を取得する
+        /// 常に最大数のツイートを取得する
         /// </summary>
         /// <returns></returns>
         public async Task<int> Proceed()
@@ -66,7 +67,8 @@ namespace Twigaten.Crawl
         }
 
         /// <summary>
-        /// 指定したアカウントのツイート等を取得する
+        /// 指定したアカウントのツイート, フォロー等を取得する
+        /// 常に最大数のツイートを取得する
         /// </summary>
         /// <param name="user_id"></param>
         /// <returns></returns>
@@ -76,10 +78,15 @@ namespace Twigaten.Crawl
             if (!t.HasValue) { return; }
             //無条件でAPIの最大数のツイートを取得するためにToken以外は捨てる
             var s = new UserStreamer(new UserStreamer.UserStreamerSetting() { Token = t.Value.Token });
-            await s.RestFriend().ConfigureAwait(false);
-            await s.RestBlock().ConfigureAwait(false);
-            await s.RestMyTweet().ConfigureAwait(false);
-            await s.VerifyCredentials().ConfigureAwait(false);
+
+            var friend = s.RestFriend();
+            var block = s.RestBlock();
+            var tweet = s.RestMyTweet();
+            var cred = s.VerifyCredentials();
+            await Task.WhenAll(friend, block, tweet, cred).ConfigureAwait(false);
+            await UserStreamerStatic.Complete().ConfigureAwait(false);
+            Console.WriteLine("{0}: Profile stored\t{1}, {2}", user_id, friend.Result, block.Result);
+            Counter.PrintReset();
         }
     }
 }

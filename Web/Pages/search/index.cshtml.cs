@@ -15,9 +15,9 @@ namespace Twigaten.Web
         [BindProperty(SupportsGet = true)]
         public string Q { get; set; }
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-
+            await new Parameters.LoginParameters().InitValidate(HttpContext).ConfigureAwait(false);
         }
     }
 }

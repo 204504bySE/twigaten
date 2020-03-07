@@ -10,14 +10,14 @@ namespace Twigaten.Web.Parameters
     public class UserSearchParameters : LoginParameters
     {
         ///<summary>Cookie</summary>
-        public SelectUserLikeMode? UserLikeMode { get; set; }
+        public SelectUserLikeMode? UserSearch_LikeMode { get; set; }
 
         public override async Task InitValidate(HttpContext _Context)
         {
             await base.InitValidate(_Context).ConfigureAwait(false);
-            if (TryGetCookie(nameof(UserLikeMode), out string ModeStr) && Enum.TryParse(typeof(SelectUserLikeMode), ModeStr, out var Parsed))
-            { UserLikeMode = (SelectUserLikeMode)Parsed; }
-            else { UserLikeMode = SelectUserLikeMode.Show; }
+            if (TryGetCookie(nameof(UserSearch_LikeMode), out string ModeStr) && Enum.TryParse(typeof(SelectUserLikeMode), ModeStr, out var Parsed))
+            { UserSearch_LikeMode = (SelectUserLikeMode)Parsed; }
+            else { UserSearch_LikeMode = SelectUserLikeMode.Show; }
         }
         public UserSearchParameters() : base() { }
     }

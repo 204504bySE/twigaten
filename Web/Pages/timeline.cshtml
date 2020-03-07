@@ -49,22 +49,22 @@ else
             RT
         </p>
         <ul>
-            <li @Html.Raw(Model.Params.RT ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="RT" data-value="true">@Locale.Pager_Show</a></li>
-            <li @Html.Raw(!Model.Params.RT ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="RT" data-value="false">@Locale.Pager_Hide</a></li>
+            <li @Html.Raw(Model.Params.TLUser_RT ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="TLUser_RT" data-value="true">@Locale.Pager_Show</a></li>
+            <li @Html.Raw(!Model.Params.TLUser_RT ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="TLUser_RT" data-value="false">@Locale.Pager_Hide</a></li>
         </ul>
     </div>
     <div class="twigaten-navgroup">
         <p>@Locale.SimilarMedia_ShowNoDup</p>
         <ul>
-            <li @Html.Raw(Model.Params.Show0 ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="Show0" data-value="true">@Locale.Pager_Show</a></li>
-            <li @Html.Raw(!Model.Params.Show0 ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="Show0" data-value="false">@Locale.Pager_Hide</a></li>
+            <li @Html.Raw(Model.Params.TLUser_Show0 ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="TLUser_Show0" data-value="true">@Locale.Pager_Show</a></li>
+            <li @Html.Raw(!Model.Params.TLUser_Show0 ? @"class=""is-active""" : "")><a class="twigaten-cookie-click" data-key="TLUser_Show0" data-value="false">@Locale.Pager_Hide</a></li>
         </ul>
     </div>
 </nav>
 <nav>
     <div class="select twigaten-navgroup">
         <p>@Locale.Pager_ResultsPerPage</p>
-        <select class="twigaten-cookie-select" data-key="Count">
+        <select class="twigaten-cookie-select" data-key="TLUser_Count">
             <option value="10">10</option>
             <option value="20">20</option>
             <option value="50">50</option>

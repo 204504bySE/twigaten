@@ -16,6 +16,8 @@ using Twigaten.Web.Parameters;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Twigaten.Web
 {
@@ -45,20 +47,12 @@ namespace Twigaten.Web
             services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
             services.Configure<GzipCompressionProviderOptions>(options => { options.Level = CompressionLevel.Fastest; });
 
-            services.AddSession(options => 
-            {
-                options.IdleTimeout = TimeSpan.FromSeconds(600);
-                options.Cookie.Name = "session";
-                options.Cookie.IsEssential = true;
-                options.Cookie.SameSite = SameSiteMode.Strict;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                
-            });
+            services.Configure<CookiePolicyOptions>(options => { options.CheckConsentNeeded = context => false; });
+            services.AddSession();
+
             services.AddLocalization(options => { options.ResourcesPath = "Locale"; });
             services.AddControllers();
             services.AddRazorPages();
-            
-            //services.Configure<CookiePolicyOptions>(options => { options.CheckConsentNeeded = context => true; });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -75,13 +69,14 @@ namespace Twigaten.Web
                 app.UseExceptionHandler("/error");
             }
             app.UseResponseCompression();
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
 
             app.UseForwardedHeaders(new ForwardedHeadersOptions
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 
@@ -96,26 +91,19 @@ namespace Twigaten.Web
             var cookieProvider = Localize.Value.RequestCultureProviders
                 .OfType<CookieRequestCultureProvider>()
                 .First();
-            cookieProvider.CookieName = "Locale";
+            cookieProvider.CookieName = "ASP_Locale";
             Localize.Value.DefaultRequestCulture = new RequestCulture("ja");
             Localize.Value.SupportedCultures = SupportedCultures;
             Localize.Value.SupportedUICultures = SupportedCultures;
             app.UseRequestLocalization(Localize.Value);
 
+            app.UseCookiePolicy();
             app.UseSession();
-            //app.UseCookiePolicy();
-
             app.UseRouting();
-            //app.UseAuthentication();
-            //app.UseAuthorization();
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
-                //endpoints.MapControllerRoute(
-                //    name: "default",
-                //    pattern: "{controller=Home}/{action=Index}/{id?}");
             });
         }
     }

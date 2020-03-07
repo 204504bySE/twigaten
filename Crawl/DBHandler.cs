@@ -69,10 +69,16 @@ JOIN crawlprocess USING (user_id)
             }
         }
 
+        /// <summary>
+        /// 指定したアカウントのTokenを取得する
+        /// 付帯する他の情報(最後に取得したツイートIDなど)は取得しない
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <returns></returns>
         public async Task<UserStreamerSetting?>SelectUserStreamerSetting(long user_id)
         {
             using (var cmd = new MySqlCommand(@"SELECT
-user_id, token, token_secret, rest_my_tweet, last_status_id
+user_id, token, token_secret
 FROM token
 WHERE user_id = @user_id;"))
             {
@@ -84,8 +90,6 @@ WHERE user_id = @user_id;"))
                     ret = new UserStreamerSetting()
                     {
                         Token = Tokens.Create(config.token.ConsumerKey, config.token.ConsumerSecret, r.GetString(1), r.GetString(2), r.GetInt64(0)),
-                        rest_my_tweet = r.GetBoolean(3),
-                        last_status_id = r.GetInt64(4)
                     };
                 }).ConfigureAwait(false)) { return ret; }
                 else { return null; }//一応全取得に成功しない限り返さない

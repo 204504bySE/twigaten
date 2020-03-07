@@ -32,7 +32,7 @@ namespace Twigaten.Web
         public int Limit { get; private set; }
         public long QueryElapsedMilliseconds { get; private set; }
 
-        public async Task<IActionResult> OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
             if (string.IsNullOrWhiteSpace(Q)) { return Redirect("/search/"); }
             ScreenName = ScreenNameRegex.Match(Q.Trim()).Value;
@@ -45,7 +45,7 @@ namespace Twigaten.Web
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
             Limit = 100;
             //screen_nameを前方一致検索する
-            Users = await DBView.SelectUserLike(ScreenName.Replace(' ', '%').Replace("_", @"\_") + "%", Params.ID, Params.UserLikeMode.Value, Limit).ConfigureAwait(false);
+            Users = await DBView.SelectUserLike(ScreenName.Replace(' ', '%').Replace("_", @"\_") + "%", Params.ID, Params.UserSearch_LikeMode.Value, Limit).ConfigureAwait(false);
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
 
             return Page(); 

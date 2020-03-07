@@ -31,8 +31,7 @@ namespace Twigaten.Web.Parameters
                 _ID = value;
                 if (value.HasValue)
                 {
-                    string IDStr = value.ToString();
-                    SetCookie(nameof(ID), IDStr);
+                    SetCookie(nameof(ID), value.Value.ToString(), false);
                 } 
                 else { ClearCookie(nameof(ID)); } 
             }
@@ -43,13 +42,13 @@ namespace Twigaten.Web.Parameters
         public string LoginToken 
         {
             get { return _LoginToken; }
-            set { if (value != null) { SetCookie(nameof(LoginToken), value); } else { ClearCookie(nameof(LoginToken)); } }
+            set { if (value != null) { SetCookie(nameof(LoginToken), value, true); } else { ClearCookie(nameof(LoginToken)); } }
         }
         ///<summary>アカウント名(Session)</summary>
         public string ScreenName 
         {
             get { return TryGetCookie(nameof(ScreenName), out string ret) ? ret : null; }
-            set { if (value != null) { SetCookie(nameof(ScreenName), value); } else { ClearCookie(nameof(ScreenName)); } }
+            set { if (value != null) { SetCookie(nameof(ScreenName), value, false); } else { ClearCookie(nameof(ScreenName)); } }
         }
 
         /// <summary>
@@ -99,13 +98,13 @@ namespace Twigaten.Web.Parameters
             //overrideでは解決できない #ウンコード
             if (Manually)
             {
-                ClearCookie("Order");
-                ClearCookie("Count");
-                ClearCookie("RT");
-                ClearCookie("Show0");
+                ClearCookie("Featured_Order");
+                ClearCookie("TLUser_Count");
+                ClearCookie("TLUser_RT");
+                ClearCookie("TLUser_Show0");
             }
             //これはログインしてないと「フォローしている」が使えないので消す
-            ClearCookie("UserLikeMode");
+            ClearCookie("UserSearch_LikeMode");
         }
 
         /// <summary>
@@ -126,13 +125,13 @@ namespace Twigaten.Web.Parameters
         /// <param name="Name"></param>
         /// <param name="Value"></param>
         /// <param name="Ephemeral">ブラウザを閉じたら消すやつ</param>
-        protected void SetCookie(string Name, string Value, bool Ephemeral = false)
+        protected void SetCookie(string Name, string Value, bool HttpOnly)
         {
             Context.Response.Cookies.Append(Name, Value, new CookieOptions()
             {
-                HttpOnly = true,
-                Secure = IsDevelopment,
-                Expires = Ephemeral ? null as DateTimeOffset? : DateTimeOffset.UtcNow.AddYears(1)  //有効期限
+                HttpOnly = HttpOnly,
+                Secure = !IsDevelopment,
+                Expires = DateTimeOffset.UtcNow.AddYears(1)
             });
         }
 
@@ -142,7 +141,12 @@ namespace Twigaten.Web.Parameters
         /// <param name="Name"></param>
         protected void ClearCookie(string Name)
         {
-            Context.Response.Cookies.Delete(Name);
+            Context.Response.Cookies.Append(Name, "", new CookieOptions()
+            {
+                HttpOnly = false,
+                Secure = IsDevelopment,
+                Expires = DateTimeOffset.FromUnixTimeSeconds(0)
+            });
         }
     }
 
