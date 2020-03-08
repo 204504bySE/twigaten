@@ -31,7 +31,6 @@ namespace Twigaten.Web.Controllers
 
             // セッション情報にOAuthSessionの内容を保存
             HttpContext.Session.Set(nameof(OAuthSession), JsonSerializer.SerializeToUtf8Bytes(OAuthSession));
-            //HttpContext.Session.SetString(nameof(OAuthSession), JsonConvert.SerializeObject(OAuthSession));            
             return Redirect(OAuthSession.AuthorizeUri.OriginalString);
         }
 
@@ -56,11 +55,13 @@ namespace Twigaten.Web.Controllers
 
             public OAuth.OAuthSession OAuthSession()
                 => JsonSerializer.Deserialize<OAuth.OAuthSession>(Context.Session.Get(nameof(OAuthSession)));
-                //=> JsonConvert.DeserializeObject<OAuth.OAuthSession>(Context.Session.GetString(nameof(OAuthSession)));
 
             //(新規)ログインの処理
             public async Task<DBToken.VerifytokenResult> StoreNewLogin(Tokens Token)
             {
+                //先にVerifyCredentialsを呼んでおく
+                var SelfUserInfoTask = Token.Account.VerifyCredentialsAsync();
+
                 DBToken.VerifytokenResult vt = await DB.DBToken.Verifytoken(Token).ConfigureAwait(false);
                 if (vt != DBToken.VerifytokenResult.Exist)
                 {
@@ -69,17 +70,18 @@ namespace Twigaten.Web.Controllers
                         throw (new Exception("トークンの保存に失敗しました"));
                     }
                 }
-                var SelfUserInfo = await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false);
-                await DB.DBToken.StoreUserProfile(SelfUserInfo).ConfigureAwait(false);
-
                 var NewToken = LoginTokenEncrypt.NewToken();
                 if (await DB.DBToken.StoreUserLoginToken(Token.UserId, NewToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
+
+                await SelfUserInfoTask.ConfigureAwait(false);
+                var StoreUserProfileTask = DB.DBToken.StoreUserProfile(SelfUserInfoTask.Result);
 
                 //ここでCookieにも保存する
                 ID = Token.UserId;
                 LoginToken = NewToken.Text88;
-                ScreenName = SelfUserInfo.ScreenName;
+                ScreenName = SelfUserInfoTask.Result.ScreenName;
 
+                await StoreUserProfileTask.ConfigureAwait(false);
                 return vt;
             }
         }
