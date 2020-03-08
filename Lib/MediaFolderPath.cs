@@ -100,20 +100,27 @@ namespace Twigaten.Lib
         /// <param name="media_url">元URL</param>
         /// <returns>…/(00~ff)/(00~ff)/user_id.xxx(初期アイコンを除く)</returns>
         public static string ProfileImagePath(long user_id, bool is_default_profile_image, string media_url)
-        {
-            //初期アイコンは専用フォルダにファイル名そのままで保存する
-            if (is_default_profile_image)
-            {
-                return Path.Combine(config.crawl.PictPathProfileImage,
-                    DefaultProfileImageDir, 
-                    Path.GetFileName(media_url));
-            }
+        {            
+            if (is_default_profile_image) { return DefaultProfileImagePath(Path.GetFileName(media_url)); }
             else
             {
                 return Path.Combine(config.crawl.PictPathProfileImage,
                     Crc2Dir(BitConverter.GetBytes(user_id)),
                     user_id.ToString() + Path.GetExtension(media_url));
             }
+        }
+
+        /// <summary>
+        /// 初期アイコンの保存先パスを生成する
+        /// 専用フォルダにファイル名そのままで保存する
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public static string DefaultProfileImagePath(string filename)
+        {
+            return Path.Combine(config.crawl.PictPathProfileImage,
+                DefaultProfileImageDir,
+                filename);
         }
 
 

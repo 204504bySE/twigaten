@@ -47,7 +47,20 @@ namespace Twigaten.Web.Controllers
         [HttpGet("profile_image/{FileName}")]
         public async Task<IActionResult> profile_image(string FileName)
         {
-            if (!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long user_id)) { return StatusCode(400); }
+            //変な文字列を突っ込まれてたときの安易な対策
+            FileName = Path.GetFileName(FileName);
+
+            //ファイル名の先頭が"_"だったら初期アイコンのURLとみなす
+            if (FileName.StartsWith('_'))
+            {
+                string trimmedname = MediaFolderPath.DefaultProfileImagePath(FileName.Substring(1));
+                if (System.IO.File.Exists(MediaFolderPath.DefaultProfileImagePath(trimmedname))){ return File(System.IO.File.OpenRead(trimmedname), GetMime(trimmedname), true); }
+                else { return StatusCode(StatusCodes.Status404NotFound); }
+            }
+
+            //↑以外はuser_idとみなす
+            if (!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long user_id)) { return StatusCode(StatusCodes.Status400BadRequest); }
+            
             //まずは鯖内のファイルを探す 拡張子はリクエストURLを信頼して手を抜く
             //初期アイコンではないものとして探す
             string localmedia = MediaFolderPath.ProfileImagePath(user_id, false, FileName);
@@ -55,11 +68,11 @@ namespace Twigaten.Web.Controllers
 
             var ProfileImageInfo = await DB.SelectProfileImageUrl(user_id).ConfigureAwait(false);
             if (ProfileImageInfo == null) { return StatusCode(404); }
-            //初期アイコンなら改めて鯖内を探す
+            //初期アイコンなら改めて鯖内を探す(通常はここには来ない)
             if (ProfileImageInfo.Value.is_default_profile_image)
             {
                 string defaulticon = MediaFolderPath.ProfileImagePath(user_id, true, ProfileImageInfo.Value.profile_image_url);
-                if (System.IO.File.Exists(defaulticon)) { return File(System.IO.File.OpenRead(defaulticon), GetMime(ProfileImageInfo.Value.profile_image_url), true); }
+                if (System.IO.File.Exists(defaulticon)) { return File(System.IO.File.OpenRead(defaulticon), GetMime(Path.GetFileName(ProfileImageInfo.Value.profile_image_url)), true); }
             }
             //鯖内にファイルがなかったのでtwitterから横流しする
             var ret = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url).ConfigureAwait(false);
