@@ -17,7 +17,6 @@ using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Twigaten.Web
 {
@@ -58,7 +57,7 @@ namespace Twigaten.Web
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            if (env.IsDevelopment())
+             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
                 //ついでにここで自前Cookieの設定もやる
@@ -67,6 +66,8 @@ namespace Twigaten.Web
             else
             {
                 app.UseExceptionHandler("/error");
+                //↓CompressedStaticFilesがないので今のところ用なし
+                //PreCompress.Proceed(env.WebRootPath);
             }
             app.UseResponseCompression();
 
@@ -75,8 +76,10 @@ namespace Twigaten.Web
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
             app.UseDefaultFiles();
+            //↓残念ながらCompressedStaticFiles(NuGetパッケージ)は ASP.NET Core 3.1では動いてくれなかった
+            //更新を待とう(´・ω・`)
+            //app.UseCompressedStaticFiles();
             app.UseStaticFiles();
-
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 
@@ -84,7 +87,6 @@ namespace Twigaten.Web
                 new CultureInfo("ja"),
                 new CultureInfo("en")
             };
-
             //https://stackoverflow.com/questions/43871234/how-to-get-cookiename-used-in-cookierequestcultureprovider
             //cookieの値は"c=en-UK|uic=en-US"のようにする(cとuic両方書かないと効かなかった)
             var Localize = app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>();
