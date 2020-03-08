@@ -74,6 +74,10 @@
                 {
                     <tweet-more-button tweet="Model.tweet" media="Model.media" is-more="Model.ExistsMoreMedia" />
                 }
+                else
+                {
+                    <span class="no-viewmore"></span>
+                }
                 <tweet-intent path="@("/tweet/" + Model.tweet.tweet_id.ToString())" fragment="@Model.media.media_id.ToString()" />
             </div>
         </nav>

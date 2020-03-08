@@ -65,7 +65,7 @@ div.twigaten-navgroup-viewmore {
     margin-bottom: 10px;
 }
 
-a.button-viewmore {
+a.button-viewmore, span.no-viewmore {
     margin: 0 10px;
     font-size: unset;
 }

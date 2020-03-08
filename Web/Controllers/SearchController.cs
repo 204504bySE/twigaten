@@ -40,5 +40,4 @@ namespace Twigaten.Web.Controllers
             return LocalRedirect("/tweet/" + MatchMedia.Value.tweet_id.ToString()+ "#" + MatchMedia.Value.media_id.ToString());
         }
     }
-
 }

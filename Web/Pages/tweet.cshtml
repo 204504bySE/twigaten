@@ -24,6 +24,7 @@ else
 {
     ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.TweetId);
 }
+@{ 
     ViewData["IsMore"] = Model.More;
 }
 @if (Model.Tweets.Length > 0)
