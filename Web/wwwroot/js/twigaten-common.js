@@ -1,9 +1,10 @@
-﻿"use strict";
+﻿'use strict';
 
 // 検索設定のCookieを復元するやつ(複数タブで設定を不揃いにしても大丈夫)
 var twigatenCookies = twigatenCookies || {};
 (function () {
-    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: true };
+    const cookieSecure = (typeof twigatenDevelopment === 'undefined' || !twigatenDevelopment);
+    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: cookieSecure };
     const UserSearch_LikeMode = Cookies.get('UserSearch_LikeMode');
     const Featured_Order = Cookies.get('Featured_Order');
     const TLUser_Count = Cookies.get('TLUser_Count');
@@ -35,7 +36,8 @@ var twigatenCookies = twigatenCookies || {};
         //ドロップダウン
         const menuUser = document.getElementById('menu-user');
         const menuDropDown = document.getElementById('menu-user-dropdown');
-        menuUser.addEventListener('click', () => { menuDropDown.classList.toggle('is-block'); });
+        menuUser.addEventListener('touchstart', () => { menuDropDown.classList.add('is-block'); });
+        menuUser.addEventListener('click', () => { menuDropDown.classList.add('is-block'); });
         menuUser.addEventListener('mouseenter', () => { menuDropDown.classList.add('is-block'); });
         menuUser.addEventListener('mouseleave', () => { menuDropDown.classList.remove('is-block'); });
     }

@@ -1,4 +1,4 @@
-﻿"use strict";
+﻿'use strict';
 (function () {
     //convert unixtime
     Array.prototype.forEach.call(document.getElementsByClassName("twigaten-unixtime"), (x) => {

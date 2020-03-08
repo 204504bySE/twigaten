@@ -40,7 +40,7 @@ namespace Twigaten.Web.Controllers
         {
             await p.InitValidate(HttpContext).ConfigureAwait(false);
             p.Logout(true);
-            return Redirect("/");
+            return LocalRedirect("/");
         }
 
         public class TwitterCallbackParameters : LoginParameters
@@ -69,7 +69,7 @@ namespace Twigaten.Web.Controllers
                         throw (new Exception("トークンの保存に失敗しました"));
                     }
                 }
-                UserResponse SelfUserInfo = Token.Account.VerifyCredentials();
+                var SelfUserInfo = await Token.Account.VerifyCredentialsAsync().ConfigureAwait(false);
                 await DB.DBToken.StoreUserProfile(SelfUserInfo).ConfigureAwait(false);
 
                 var NewToken = LoginTokenEncrypt.NewToken();
@@ -100,13 +100,13 @@ namespace Twigaten.Web.Controllers
             var VeryfyTokenResult = await p.StoreNewLogin(token).ConfigureAwait(false);
 
             //すでにサインインしてたユーザーならそいつのページに飛ばす
-            if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) { return Redirect("/users/" + token.UserId.ToString()); }
+            if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) { return LocalRedirect("/users/" + token.UserId.ToString()); }
             else 
             {
                 //新規ユーザーはツイート等を取得させる
                 //セッションに認証用の項目を用意して1回しか実行させないようにする
                 HttpContext.Session.Set(nameof(FirstProcess), new byte[] { 0 });
-                return Redirect("/auth/first"); 
+                return LocalRedirect("/auth/first"); 
             }
         }
 
@@ -120,9 +120,10 @@ namespace Twigaten.Web.Controllers
         {
             var Params = new LoginParameters();
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
-            if (!Params.ID.HasValue) { return Redirect("/"); }
+            if (!Params.ID.HasValue) { return LocalRedirect("/"); }
 
             //セッション内の認証用の項目を確認する
+            // auth/first.cshtml でもやってる
             if (HttpContext.Session.TryGetValue(nameof(FirstProcess), out var Bytes)
                 && 1 <= Bytes.Length && Bytes[0] == 0)
             {
@@ -130,9 +131,9 @@ namespace Twigaten.Web.Controllers
                 HttpContext.Session.Set(nameof(FirstProcess), new byte[] { 255 });
 
                 await CrawlManager.Run(Params.ID.Value).ConfigureAwait(false);
-                return Redirect("/users/" + Params.ID.ToString());
+                return LocalRedirect("/users/" + Params.ID.ToString());
             }
-            else { return Redirect("/"); }
+            else { return LocalRedirect("/"); }
         }
     }
 }

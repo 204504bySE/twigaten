@@ -1,4 +1,5 @@
-﻿(function () {
+﻿'use strict';
+(function () {
     const mediaDrop = document.getElementById('twigaten-media-drop');
     const mediaInput = document.getElementById('twigaten-media-input');
     const mediaForm = document.getElementById('twigaten-media-form');

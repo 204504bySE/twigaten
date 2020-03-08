@@ -58,7 +58,7 @@ namespace Twigaten.Web.Pages.Tweet
             bool IsBefore = Before.HasValue || !After.HasValue;
 
             await ParamsTask.ConfigureAwait(false);
-            if (!Params.ID.HasValue) { return Redirect("/"); }
+            if (!Params.ID.HasValue) { return LocalRedirect("/"); }
             var TargetUserTask = DBView.SelectUser(Params.ID.Value);
             var TweetsTask = DBView.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 

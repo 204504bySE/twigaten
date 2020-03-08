@@ -6,9 +6,12 @@ using System.Threading.Tasks;
 
 namespace Twigaten.Web
 {
+
+    /// <summary>
+    /// パフォーマンスカウンター的な何か
+    /// </summary>
     public static class Counter
     {
-        //パフォーマンスカウンター的な何か
         public struct CounterValue
         {
             int Value;

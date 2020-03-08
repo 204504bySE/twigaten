@@ -1,4 +1,4 @@
-﻿"use strict";
+﻿'use strict';
 (function () {
     flatpickr('.flatpickr', {
         minDate: new Date(1288834974657),

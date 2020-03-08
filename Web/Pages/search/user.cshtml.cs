@@ -34,11 +34,11 @@ namespace Twigaten.Web
 
         public async Task<IActionResult> OnGetAsync()
         {
-            if (string.IsNullOrWhiteSpace(Q)) { return Redirect("/search/"); }
+            if (string.IsNullOrWhiteSpace(Q)) { return LocalRedirect("/search/"); }
             ScreenName = ScreenNameRegex.Match(Q.Trim()).Value;
-            if (string.IsNullOrWhiteSpace(ScreenName)) { return Redirect("/search/"); }
+            if (string.IsNullOrWhiteSpace(ScreenName)) { return LocalRedirect("/search/"); }
             long? TargetUserID = await DBView.SelectID_Unique_screen_name(ScreenName).ConfigureAwait(false);
-            if (Direct != false && TargetUserID.HasValue) { return Redirect("/users/" + TargetUserID.Value.ToString()); }
+            if (Direct != false && TargetUserID.HasValue) { return LocalRedirect("/users/" + TargetUserID.Value.ToString()); }
 
             var sw = Stopwatch.StartNew();
             Params = new UserSearchParameters();

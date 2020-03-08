@@ -11,6 +11,9 @@ using Twigaten.Lib;
 
 namespace Twigaten.Web
 {
+    /// <summary>
+    /// html生成時に文字列をちょっとどうにかするやつ
+    /// </summary>
     public static class LocalText
     {
         static readonly Config config = Config.Instance;
@@ -65,35 +68,6 @@ namespace Twigaten.Web
             if (User.local_profile_image_url == null) { return null; }
             if (IsDefaultProfileImage) { return config.crawl.PictPathProfileImage + '_' + Path.GetFileName(User.local_profile_image_url); }
             else { return "/twimg/profile_image/" + User.user_id.ToString() + Path.GetExtension(User.local_profile_image_url); }
-        }
-
-        ///<summary>単語のどこでも改行できるようにするだけ</summary>
-        public static string wbrEveryLetter(string Input)
-        {
-            if(Input == null || Input.Length < 2) { return Input; }
-            StringBuilder Builder = new StringBuilder(Input, Input.Length * 8 - 14);    //字数ぴったりでおｋ
-            for (int i = Input.Length - 1; i > 0; i--)
-            {
-                Builder.Insert(i, "<wbr />");
-            }
-            return Builder.ToString();
-        }
-
-        static int seed = Environment.TickCount;
-        static readonly ThreadLocal<Random> rand = new ThreadLocal<Random>(() => 
-            { return new Random(Interlocked.Increment(ref seed)); });
-        public static string RandomHash()
-        {
-            return rand.Value.Next().ToString("x8");
-        }
-
-        static Encoding ascii = Encoding.GetEncoding(1252, new EncoderReplacementFallback(""), DecoderFallback.ReplacementFallback);
-        public static string KillNonASCII(string Str)
-        {
-            if (Str == null) { return null; }
-            //ASCII範囲外は消しちゃう(めんどくさい
-            byte[] bytes = ascii.GetBytes(Str);
-            return ascii.GetString(bytes);
         }
     }
 }

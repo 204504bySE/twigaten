@@ -4,24 +4,26 @@
 @section Scripts
 {
     <script>
+        'use strict';
         (function () {
             window.addEventListener('load', () => {
-                //先にアニメーションを始める
                 var frames = document.getElementById('animation-frames').getElementsByTagName('span');
-                var i = 0;
+                var frameIndex = 0;
                 function nextFrame() {
-                    frames[i].style.display = 'none';
-                    i++;
-                    if (frames.length <= i) { i = 0; }
-                    frames[i].style.display = '';
+                    frames[frameIndex].style.display = 'none';
+                    frameIndex++;
+                    if (frames.length <= frameIndex) { frameIndex = 0; }
+                    frames[frameIndex].style.display = '';
                     setTimeout(nextFrame, 200);
                 };
                 nextFrame();
-
                 location.href = '/auth/firstprocess';
             });
         })();
     </script>
+}
+@section MetaTags{
+    <meta name="robots" content="noindex" />
 }
 @{
     ViewData["Title"] = Locale.Title_SignIn_Success;

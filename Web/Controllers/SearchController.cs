@@ -37,7 +37,7 @@ namespace Twigaten.Web.Controllers
             var MatchMedia = await DBView.HashtoTweet(hash, Params.ID).ConfigureAwait(false);
             if (MatchMedia == null) { return LocalRedirect("/search"); }
             //その画像を含む最も古いツイートにリダイレクト
-            return Redirect("/tweet/" + MatchMedia.Value.tweet_id.ToString()+ "#" + MatchMedia.Value.media_id.ToString());
+            return LocalRedirect("/tweet/" + MatchMedia.Value.tweet_id.ToString()+ "#" + MatchMedia.Value.media_id.ToString());
         }
     }
 
