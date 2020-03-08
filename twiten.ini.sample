@@ -1,0 +1,24 @@
+[token]
+ConsumerKey=
+ConsumerSecret=
+
+[crawlparent]
+ChildPath=/path/to/Twigaten.Crawl.dll
+DotNetChild=dotnet
+
+[crawl]
+PictPathProfileImage=/path/to/profile_image/
+PictPaththumb=/path/to/thumb/
+HashServerUrl=http://localhost:12305/hash/dct
+
+[hash]
+MaxHammingDistance = 2
+ExtraBlocks = 2
+TempDir = /tmp/
+
+[web]
+CallBackUrl=https://your.domain/auth/callback
+
+[database]
+Address=localhost
+Protocol=Tcp
