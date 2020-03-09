@@ -130,6 +130,7 @@ namespace Twigaten.Web.Parameters
             Context.Response.Cookies.Append(Name, Value, new CookieOptions()
             {
                 HttpOnly = HttpOnly,
+                SameSite = SameSiteMode.Lax,
                 Secure = !IsDevelopment,
                 Expires = DateTimeOffset.UtcNow.AddYears(1)
             });

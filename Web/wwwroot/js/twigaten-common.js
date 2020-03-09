@@ -4,7 +4,7 @@
 var twigatenCookies = twigatenCookies || {};
 (function () {
     const cookieSecure = (typeof twigatenDevelopment === 'undefined' || !twigatenDevelopment);
-    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'strict', secure: cookieSecure };
+    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'lax', secure: cookieSecure };
     const UserSearch_LikeMode = Cookies.get('UserSearch_LikeMode');
     const Featured_Order = Cookies.get('Featured_Order');
     const TLUser_Count = Cookies.get('TLUser_Count');
