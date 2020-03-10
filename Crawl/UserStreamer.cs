@@ -481,7 +481,8 @@ namespace Twigaten.Crawl
                 {   
                     UserStreamerStatic.HandleTweetRest(s, Token);
                 }
-                for (int i = 0; i < 15; i++)
+                //max_idを付けて3200件または全て取得すると0件になるのでこれで判定できる
+                while (0 < Tweets.Count)
                 {
                     long MinId = Tweets.Select(t => t.Id).Min();
                     Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, max_id => MinId - 1, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
@@ -489,8 +490,6 @@ namespace Twigaten.Crawl
                     {
                         UserStreamerStatic.HandleTweetRest(s, Token);
                     }
-                    //max_idで3200件または全て取得すると0件になる
-                    if(Tweets.Count == 0) { break; }
                 }
             }
             catch (Exception e) { }
