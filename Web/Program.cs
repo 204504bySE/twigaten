@@ -8,35 +8,55 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Mono.Unix;
 using Twigaten.Lib;
 
 namespace Twigaten.Web
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Counter.AutoRefresh();
             //Codepagesを必要とする処理が動くようにする
             //https://stackoverflow.com/questions/49215791/vs-code-c-sharp-system-notsupportedexception-no-data-is-available-for-encodin?noredirect=1&lq=1
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-            BuildWebHost(args).Run();
-        }
 
-        public static IWebHost BuildWebHost(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
+            var config = Config.Instance.web;
+            var host = WebHost.CreateDefaultBuilder(args)
                 .UseKestrel(options =>
                 {
+
                     //LinuxではIPv6だけListenすればIPv4もListenされる
-                    options.Listen(IPAddress.IPv6Loopback, Config.Instance.web.ListenPort);
+                    if (config.ListenIPv6) { options.Listen(IPAddress.IPv6Loopback, config.ListenPort); }
+                    if (config.ListenIPv4) { options.Listen(IPAddress.Loopback, config.ListenPort); }
+
+                    //UNIXソケットを作る際は事前に消す(再起動時に残ってる)
+                    if (!string.IsNullOrWhiteSpace(config.ListenUnixSocketPath))
+                    {
+                        File.Delete(config.ListenUnixSocketPath);
+                        options.ListenUnixSocket(config.ListenUnixSocketPath);
+                    }
                 })
                 .UseStartup<Startup>()
-                .ConfigureLogging((hostingContext, logging) => {
+                .ConfigureLogging((hostingContext, logging) =>
+                {
                     logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
                     logging.SetMinimumLevel(LogLevel.Error);
                     logging.AddConsole();
                     logging.AddDebug();
                 })
                 .Build();
+
+            await host.StartAsync().ConfigureAwait(false);
+
+            //UNIXソケットを作ってから後でパーミッションを変更する
+            if (!string.IsNullOrWhiteSpace(config.ListenUnixSocketPath))
+            { new UnixFileInfo(config.ListenUnixSocketPath).FileAccessPermissions = FileAccessPermissions.DefaultPermissions; }
+
+            await host.WaitForShutdownAsync().ConfigureAwait(false);
+
+        }
+
     }
 }

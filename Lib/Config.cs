@@ -182,11 +182,17 @@ namespace Twigaten.Lib
         public class _web
         {
             public string CallBackUrl { get; }
+            public bool ListenIPv6 { get; }
+            public bool ListenIPv4 { get; }
             public int ListenPort { get; }
+            public string ListenUnixSocketPath { get; }
             public _web(IniData data)
             {
                 CallBackUrl = data["web"][nameof(CallBackUrl)] ?? "";
+                ListenIPv6 = bool.Parse(data["web"][nameof(ListenIPv6)] ?? "true");
+                ListenIPv4 = bool.Parse(data["web"][nameof(ListenIPv4)] ?? "false");
                 ListenPort = int.Parse(data["web"][nameof(ListenPort)] ?? "12309");
+                ListenUnixSocketPath = data["web"][nameof(ListenUnixSocketPath)];
             }
         }
         public _web web;
