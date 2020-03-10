@@ -349,7 +349,7 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   人気のツイートと類似画像({0}) に類似しているローカライズされた文字列を検索します。
+        ///   人気のツイートと類似画像 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Title_Featured {
             get {
@@ -358,7 +358,7 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   ツイート({0})が見つかりませんでした に類似しているローカライズされた文字列を検索します。
+        ///   ツイートが見つかりませんでした に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Title_NoTweetToShow {
             get {

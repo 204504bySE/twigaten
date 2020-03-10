@@ -184,22 +184,22 @@
     <value>Show</value>
   </data>
   <data name="Title_Featured" xml:space="preserve">
-    <value>Popular Tweets Having Similar Images({0})</value>
+    <value>Popular Tweets Having Similar Images</value>
   </data>
   <data name="Title_NoTweetToShow" xml:space="preserve">
-    <value>Tweet({0}) Not Found</value>
+    <value>Tweet Not Found</value>
   </data>
   <data name="Title_OneTweet" xml:space="preserve">
-    <value>Tweet of @{0} and Similar Images({1})</value>
+    <value>Tweet of @{0} and Similar Images</value>
   </data>
   <data name="Title_Timeline" xml:space="preserve">
-    <value>Timeline of @{0} Having Similar Images{1}</value>
+    <value>Timeline of @{0} Having Similar Images</value>
   </data>
   <data name="Title_UserNotFound" xml:space="preserve">
     <value>User Not Found</value>
   </data>
   <data name="Title_UserTweet" xml:space="preserve">
-    <value>Tweets of @{0} Having Similar Images{1}</value>
+    <value>Tweets of @{0} Having Similar Images</value>
   </data>
   <data name="Auth_BackTop" xml:space="preserve">
     <value>« Back to top page</value>
