@@ -149,7 +149,7 @@ namespace Twigaten.Crawl
                         {
                             //TLの速度を測定して必要ならStreamに接続
                             Interlocked.Increment(ref _RestedStreamers);
-                            switch (await Streamer.RecieveRestTimeline().ConfigureAwait(false))
+                            switch (await Streamer.RestTimeline().ConfigureAwait(false))
                             {
                                 case UserStreamer.TokenStatus.Locked:
                                     Streamer.PostponeConnect(); break;

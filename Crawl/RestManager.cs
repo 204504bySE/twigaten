@@ -33,7 +33,7 @@ namespace Twigaten.Crawl
                 var s = new UserStreamer(new UserStreamer.UserStreamerSetting() { Token = t });
                 await s.RestFriend().ConfigureAwait(false);
                 await s.RestBlock().ConfigureAwait(false);
-                await s.RestMyTweet().ConfigureAwait(false);
+                await s.RestMyTweetMax().ConfigureAwait(false);
                 await s.VerifyCredentials().ConfigureAwait(false);
             }, new ExecutionDataflowBlockOptions()
             {
@@ -82,10 +82,11 @@ namespace Twigaten.Crawl
 
             var friend = s.RestFriend();
             var block = s.RestBlock();
-            var tweet = s.RestMyTweet();
+            var tweet = s.RestMyTweetMax();
+            var timeline = s.RestTimeline();
             var cred = s.VerifyCredentials();
-            await Task.WhenAll(friend, block, tweet, cred).ConfigureAwait(false);
-            //最後に取得したツイートIDを保存する
+            await Task.WhenAll(friend, block, tweet, timeline, cred).ConfigureAwait(false);
+            //ツイート等の取得を行ったことをDBに保存する
             var savesetting = s.Setting;
             savesetting.rest_my_tweet = false;
             await Task.WhenAll(db.StoreUserStreamerSetting(new[] { savesetting }), UserStreamerStatic.Complete()).ConfigureAwait(false);

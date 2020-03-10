@@ -373,7 +373,7 @@ namespace Twigaten.Crawl
         /// RESTでホームタイムラインを取得してDBに突っ込む
         /// </summary>
         /// <returns>tokenの有効性など</returns>
-        public async Task<TokenStatus> RecieveRestTimeline()
+        public async Task<TokenStatus> RestTimeline()
         {
             //TLが遅い分は省略
             //とはいえ一定時間取得してなかったら強制的にやる
@@ -451,24 +451,49 @@ namespace Twigaten.Crawl
             }
         }
 
+        /// <summary>
+        /// RESTで取得してツイートをDBに突っ込む 200件(API1回の上限)
+        /// </summary>
+        /// <returns></returns>
         public async Task RestMyTweet()
         {
-            //RESTで取得してツイートをDBに突っ込む
             try
             {
-                CoreTweet.Core.ListedResponse<Status> Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
-
-                //Console.WriteLine("{0} {1}: Handling {2} RESTed tweets", DateTime.Now, Token.UserId, Tweets.Count);
+                var Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
                 foreach (Status s in Tweets)
                 {   //ここでRESTをDBに突っ込む
                     UserStreamerStatic.HandleTweetRest(s, Token);
                 }
-                //Console.WriteLine("{0} {1}: REST tweets success", DateTime.Now, Token.UserId);
             }
-            catch (Exception e)
+            catch (Exception e) { }
+        }
+
+        /// <summary>
+        /// RESTで取得してツイートをDBに突っ込む 3200件(APIの上限)
+        /// </summary>
+        /// <returns></returns>
+        public async Task RestMyTweetMax()
+        {
+            try
             {
-                //Console.WriteLine("{0} {1}: REST tweets failed: {2}", DateTime.Now, Token.UserId, e.Message);
+                var Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
+                foreach (Status s in Tweets)
+                {   
+                    UserStreamerStatic.HandleTweetRest(s, Token);
+                }
+                for (int i = 0; i < 15; i++)
+                {
+                    long MinId = Tweets.Select(t => t.Id).Min();
+                    Tweets = await Token.Statuses.UserTimelineAsync(user_id => Token.UserId, count => 200, max_id => MinId - 1, tweet_mode => TweetMode.Extended).ConfigureAwait(false);
+                    foreach (Status s in Tweets)
+                    {
+                        UserStreamerStatic.HandleTweetRest(s, Token);
+                    }
+                    //max_idで3200件または全て取得すると0件になる
+                    if(Tweets.Count == 0) { break; }
+                }
             }
+            catch (Exception e) { }
         }
 
         /// <summary>
