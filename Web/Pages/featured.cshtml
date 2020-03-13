@@ -21,7 +21,7 @@ else
 {
     ViewData["Title"] = Locale.Title_NoTweetToShow;
 }
-<nav class="tabs is-toggle" style="margin-top:10px;">
+<nav class="tabs is-toggle">
     <div class="twigaten-navgroup">
         <ul>
             <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/featured" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
@@ -54,7 +54,7 @@ else
 @if (Model.Tweets.Length > 0)
 {
     <h2>@Locale.Headline_Featured</h2>
-    <h3 style="margin:0;">
+    <h3 class="twigaten-headline">
         @if (Model.IsLatest)
         {
             @("(")@Locale.Headline_LatestTime@(")")

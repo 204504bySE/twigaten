@@ -1,22 +1,2 @@
-﻿<script>
-    // Set the options to make LazyLoad self-initialize
-    window.lazyLoadOptions = { threshold: 0 };
-    // Listen to the initialization event and get the instance of LazyLoad
-    window.addEventListener(
-        'LazyLoad::Initialized',
-        function (event) {
-            const lazyLoadInstance = event.detail.instance;
-            if (document.readyState === 'loading') {
-                window.addEventListener('DOMContentLoaded', function () {
-                    lazyLoadInstance.update();
-                });
-            }
-            else {
-                lazyLoadInstance.update();
-            }
-        },
-        false
-    );
-</script>
-<script async src="/js/lazyload.iife.min.js"></script>
-<script defer src="/js/twigaten-tweet.js"></script>
+﻿<script defer src="~/js/twigaten-tweet.js" asp-append-version="true"></script>
+<script defer src="~/js/lazyload.iife.min.js" asp-append-version="true"></script>

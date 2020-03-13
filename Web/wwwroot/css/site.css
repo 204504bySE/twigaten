@@ -3,219 +3,54 @@
     padding-bottom: 20px;
     font-family: "メイリオ", "Meiryo", "ヒラギノ角ゴ Pro", "Hiragino Kaku Gothic Pro", "Yu Gothic UI", "Osaka", sans-serif;
 }
-
 html, body {
     margin: 0px;
     padding: 0px;
 }
-
 .body-content {
     margin: 0 10px;
     word-wrap: break-word;
 }
-
 a {
     color: hsl(217, 71%, 53%);
 }
-
 p, ul, nav, nav.tabs, input.input, button.button {
     font-size: 0.85rem;
 }
-
-a.button-googlemedia {
-    padding: 1px;
-    height: unset;
-}
-
-.tabs.is-toggle li.is-disabled a {
-    text-decoration: line-through;
-}
-
-.tabs.is-toggle li.is-disabled a:hover {
-    background-color: unset;
-    border-color: #eee;
-}
-
 input.input {
     width: unset;
 }
-
 ul.simple {
     list-style: disc;
     padding: 0.2rem 2rem;
 }
-
-.tabs {
-    justify-content: unset;
-    flex-wrap: wrap;
-}
-
-div.twigaten-navgroup {
-    display: inline-flex;
-    align-items: center;
-}
-
-.twigaten-navgroup > p {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 0.5em;
-}
-
-div.twigaten-navgroup-viewmore {
-    margin-bottom: 10px;
-}
-
-a.button-viewmore, span.no-viewmore {
-    margin: 0 10px;
-    font-size: unset;
-}
-
-svg.twigaten-glyph {
-    width: 16px;
-    height: 14px;
-}
-
-svg.fill-retweet {
-    fill: #aab8c2;
-}
-
-    svg.fill-retweet:hover {
-        fill: #19cf86;
-    }
-
-svg.fill-star {
-    fill: #aab8c2;
-}
-
-    svg.fill-star:hover {
-        fill: #feac33;
-    }
-    
-h2, .h2 {
+h2 {
     font-size: 20px;
 }
-
-h3, .h3 {
+h3 {
     font-size: 20px;
 }
-
 @media (min-width:520px) {
-    h2, .h2 {
+    h2 {
         font-size: 30px;
     }
 
-    h3, .h3 {
+    h3 {
         font-size: 24px;
     }
 
-    .h1, .h2, .h3, h1, h2, h3 {
+    h1, h2, h3 {
         margin-top: 20px;
     }
 }
-
-a.anchor {
-    display: block;
-    position: relative;
-    top: -150px;
-    visibility: hidden;
+h3.twigaten-headline {
+    margin: 0;
 }
 
-div.twigaten-tweet-frame {
-    box-sizing: border-box;
-    margin: 20px 0;
-    padding: 4px 4px 0 4px;
-    background-color: #eeeeee;
-}
-
-div.twigaten-tweet {
-    display: inline-block;
-    vertical-align: top;
-    width: 100%;
-}
-
-div.twigaten-tweet-main {
-    background: #ffffff;
-}
-
-div.twigaten-thumb {
-    width: 150px;
-    height: 150px;
-    float: left;
-    margin: 4px;
-}
-
-div.twigaten-usermargin {
-    margin: 4px;
-}
-
-@media (min-width:520px) {
-    div.twigaten-tweet {
-        width: 216px;
-        margin: 0 4px;
-    }
-
-    div.twigaten-thumb {
-        float: none;
-        margin: auto;
-    }
-
-    div.twigaten-thumbmargin {
-        margin: 4px;
-    }
-
-    div.twigaten-mediatype {
-        text-align: center;
-    }
-}
-
-img.twigaten-thumb {
-    max-width: 150px;
-    max-height: 150px;
-}
-
-div.twigaten-icon {
-    display: inline-block;
-    float: left;
-    width: 48px;
-    height: 48px;
-}
-
-img.twigaten-icon {
-    max-width: 48px;
-    max-height: 48px;
-}
-
-@media (min-width:520px) {
-    img.twigaten-icon {
-        float: left;
-    }
-}
-
-img.twigaten-icon-retweet {
-    float: left;
-}
-
-img.twigaten-twitterbird {
-    width: 16px;
-    height: 16px;
-    float: right;
-    margin-right: 1em;
-}
-
-p.twigaten-tweettext {
-    display: inline-block;
-    white-space: pre-line;
-    width: 100%;
-}
-
-a.twigaten-screenname {
-    word-break: break-all;
-}
-
+/* enforce dropdown on any display width */
 .navbar-item.is-active .navbar-dropdown, .navbar-item.is-hoverable:focus .navbar-dropdown, .navbar-item.is-hoverable:focus-within .navbar-dropdown, .navbar-item.is-hoverable:hover .navbar-dropdown {
     display: block;
 }
-
 .navbar-dropdown {
     background-color: #fff;
     border-bottom-left-radius: 6px;
@@ -230,3 +65,163 @@ a.twigaten-screenname {
     top: 100%;
     z-index: 20;
 }
+
+/* tweet navigation */
+.tabs {
+    justify-content: unset;
+    flex-wrap: wrap;
+}
+div.twigaten-navgroup {
+    display: inline-flex;
+    align-items: center;
+}
+.twigaten-navgroup > p {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5em;
+}
+div.twigaten-navgroup-viewmore {
+    margin-bottom: 10px;
+}
+.body-content > nav:first-of-type{
+    margin-top: 10px;
+}
+.tabs.is-toggle li.is-disabled a {
+    text-decoration: line-through;
+}
+    .tabs.is-toggle li.is-disabled a:hover {
+        background-color: unset;
+        border-color: #eee;
+    }
+
+
+/* icon colors */
+svg.twigaten-glyph {
+    width: 16px;
+    height: 14px;
+}
+svg.fill-retweet {
+    fill: #aab8c2;
+}
+    svg.fill-retweet:hover {
+        fill: #19cf86;
+    }
+svg.fill-star {
+    fill: #aab8c2;
+}
+    svg.fill-star:hover {
+        fill: #feac33;
+    }
+
+a.anchor {
+    display: block;
+    position: relative;
+    top: -150px;
+    visibility: hidden;
+}
+
+/* tweet display */
+div.twigaten-tweet-frame {
+    box-sizing: border-box;
+    margin: 20px 0;
+    padding: 4px 4px 0 4px;
+    background-color: #eeeeee;
+}
+div.twigaten-tweet {
+    display: inline-block;
+    vertical-align: top;
+    width: 100%;
+}
+div.twigaten-tweet-main {
+    background: #ffffff;
+}
+div.twigaten-thumb {
+    width: 150px;
+    height: 150px;
+    float: left;
+    margin: 4px;
+}
+div.twigaten-usermargin {
+    margin: 4px;
+}
+@media (min-width:520px) {
+    div.twigaten-tweet {
+        width: 216px;
+        margin: 0 4px;
+    }
+    div.twigaten-thumb {
+        float: none;
+        margin: auto;
+    }
+    div.twigaten-thumbmargin {
+        margin: 4px;
+    }
+    div.twigaten-mediatype {
+        text-align: center;
+    }
+}
+img.twigaten-thumb {
+    max-width: 150px;
+    max-height: 150px;
+}
+div.twigaten-icon {
+    display: inline-block;
+    float: left;
+    width: 48px;
+    height: 48px;
+}
+img.twigaten-icon {
+    max-width: 48px;
+    max-height: 48px;
+}
+@media (min-width:520px) {
+    img.twigaten-icon {
+        float: left;
+    }
+}
+img.twigaten-icon-retweet {
+    float: left;
+}
+img.twigaten-twitterbird {
+    width: 16px;
+    height: 16px;
+    float: right;
+    margin-right: 1em;
+}
+p.twigaten-tweettext {
+    display: inline-block;
+    white-space: pre-line;
+    width: 100%;
+}
+a.twigaten-screenname {
+    word-break: break-all;
+}
+a.button-googlemedia {
+    padding: 1px;
+    height: unset;
+}
+a.button-viewmore, span.no-viewmore {
+    margin: 0 10px;
+    font-size: unset;
+}
+
+
+input.twigaten-input-long {
+    min-width: 80%;
+}
+
+/* special */
+section.hero {
+    margin: 10px 0;
+}
+form.twigaten-search {
+}
+div#twigaten-media-drop {
+    border: dashed;
+}
+    div#twigaten-media-drop.dragging {
+        background-color: #7fffd4;
+    }
+    div#twigaten-media-drop.dropped {
+        background-color: #696969;
+    }

@@ -35,10 +35,10 @@ namespace Twigaten.Web.TagHelpers
             switch (Media.type)
             {
                 case "video":
-                    output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#video""/></svg>");
+                    output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""/img/fontawesome.svg#video""/></svg>");
                     break;
                 case "animated_gif":
-                    output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#film""/></svg>");
+                    output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""/img/fontawesome.svg#film""/></svg>");
                     break;
                 default:
                     output.SuppressOutput();
@@ -71,7 +71,7 @@ namespace Twigaten.Web.TagHelpers
             output.Attributes.SetAttribute("rel", "nofollow noopener noreferrer");
             output.Attributes.SetAttribute("target", "_blank");
             output.Attributes.SetAttribute("class", "button is-light is-small button-googlemedia");
-            output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""../img/fontawesome.svg#search""/></svg>" + Locale.Locale.SimilarMedia_GoogleImage);
+            output.Content.SetHtmlContent(@"<svg class=""twigaten-glyph""><use xlink:href=""/img/fontawesome.svg#search""/></svg>" + Locale.Locale.SimilarMedia_GoogleImage);
         }
     }
 }

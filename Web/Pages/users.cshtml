@@ -21,7 +21,7 @@ else
 {
     ViewData["Title"] = Model.TargetUser == null ? Locale.Title_UserNotFound : Locale.Title_NoTweetToShow;
 }
-<nav class="tabs is-toggle" style="margin-top:10px;">
+<nav class="tabs is-toggle">
     <div class="twigaten-navgroup">
         <ul>
             <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
@@ -82,7 +82,7 @@ else
 @if (Model.TargetUser != null)
 {
     <h2>@string.Format(Locale.Headline_UserTweet, Model.TargetUser.screen_name)</h2>
-    <h3 style="margin:0;">
+    <h3 class="twigaten-headline">
         @if (Model.IsLatest)
         {
             @("(~")<span class="twigaten-unixtime" data-unixtime="@DateTimeOffset.UtcNow.ToUnixTimeSeconds()"></span>@(")")

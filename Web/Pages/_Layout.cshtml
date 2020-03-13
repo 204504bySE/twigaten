@@ -13,22 +13,17 @@
     <meta property="og:title" content="@ViewData["Title"] - TwiGaTen" />
     @RenderSection("TwitterCard", false)
     @RenderSection("MetaTags", false)
-    <link rel="stylesheet" href="/css/bulmaswatch.min.css" />
-    <link rel="stylesheet" href="/css/site.css" />
-    <script defer src="/js/js.cookie-2.2.1.min.js"></script>
-    <script defer src="/js/twigaten-common.js"></script>
-    <environment include="development">
-        <script>
-            const twigatenDevelopment = true;
-        </script>
-    </environment>
+    <link rel="stylesheet" href="~/css/bulmaswatch.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script defer src="~/js/js.cookie.min.js" asp-append-version="true"></script>
+    <script defer src="~/js/twigaten-common.js" asp-append-version="true"></script>
     @RenderSection("scripts", required: false)
 </head>
 <body>
     <nav class="navbar" role="navigation">
         <div class="navbar-brand has-dropdown">
-            <a href="/" class="navbar-item" style="font-size:1rem;">TwiGaTen</a>
-            <div id="menu-user" class="navbar-item has-dropdown" style="display:flex;">
+            <a href="/" class="navbar-item is-size-6">TwiGaTen</a>
+            <div id="menu-user" class="navbar-item has-dropdown is-hidden">
                 <a id="menu-screenname" class="navbar-link"></a>
                 <div id="menu-user-dropdown" class="navbar-dropdown">
                     <a id="menu-mytweet" class="navbar-item twigaten-cookie-click">@Locale.Menu_MyTweet</a>
@@ -37,10 +32,10 @@
                     <a href="/auth/logout" class="navbar-item">@Locale.Menu_Logout</a>
                 </div>
             </div>
-            <div id="menu-login" style="display:flex;">
+            <div id="menu-login" class="is-flex">
                 <a href="/auth/login" rel="nofollow" class="navbar-item">@Locale.Menu_Login</a>
             </div>
-            <a id="menu-burger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" style="float:right;">
+            <a id="menu-burger" role="button" class="navbar-burger is-pulled-right" aria-label="menu" aria-expanded="false">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
@@ -50,7 +45,7 @@
             <a href="/featured" class="navbar-item">@Locale.Menu_Featured</a>
             <a href="/about" class="navbar-item">@Locale.Menu_About</a>
         </div>
-        <div class="field" style="display:inline;">
+        <div class="field is-inline">
             <div class="select">
                 <select class="twigaten-cookie-select" data-key="ASP_Locale">
                     <option disabled selected>Language</option>
@@ -59,7 +54,7 @@
                 </select>
             </div>
         </div>
-        <form class="field has-addons twigaten-search" style="display:inline-block;">
+        <form class="field has-addons is-inline-block twigaten-search">
             <input name="q" placeholder="@('@')name/URL" class="input" />
             <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
         </form>

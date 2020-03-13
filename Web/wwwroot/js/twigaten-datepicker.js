@@ -19,4 +19,9 @@
             }
         });
     });
+    //lazy apply the stylesheet
+    window.addEventListener('load', () => {
+        const stylesheet = document.getElementById('flatpickr-stylesheet');
+        if (stylesheet.getAttribute('media') != 'all') { stylesheet.setAttribute('media', 'all'); }
+    });
 })();

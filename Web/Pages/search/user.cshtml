@@ -19,7 +19,7 @@
 {
     <p class="has-text-danger">@(Model.Limit)人以上見つかったので全ては表示しません(｀・ω・´)</p>
 }
-<nav class="tabs is-toggle" style="margin-top:10px;">
+<nav class="tabs is-toggle">
     <div class="twigaten-navgroup">
         <ul>
             <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.Show ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="Show">@Locale.UserSearch_Show</a></li>
@@ -37,7 +37,7 @@
 </nav>
 
 <form class="field has-addons twigaten-search">
-    <input name="q" placeholder="@('@')name/URL" class="input" style="min-width:80%;" />
+    <input name="q" placeholder="@('@')name/URL" class="input twigaten-input-long" />
     <input name="direct" value="false" type="hidden" />
     <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
 </form>

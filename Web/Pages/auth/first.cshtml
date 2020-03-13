@@ -3,24 +3,7 @@
 @using Twigaten.Web.Locale
 @section Scripts
 {
-    <script>
-        'use strict';
-        (function () {
-            window.addEventListener('load', () => {
-                var frames = document.getElementById('animation-frames').getElementsByTagName('span');
-                var frameIndex = 0;
-                function nextFrame() {
-                    frames[frameIndex].style.display = 'none';
-                    frameIndex++;
-                    if (frames.length <= frameIndex) { frameIndex = 0; }
-                    frames[frameIndex].style.display = '';
-                    setTimeout(nextFrame, 200);
-                };
-                nextFrame();
-                location.href = '/auth/firstprocess';
-            });
-        })();
-    </script>
+    <script async src="~/js/twigaten-auth-first.js" asp-append-version="true"></script>
 }
 @section MetaTags{
     <meta name="robots" content="noindex" />
@@ -31,14 +14,14 @@
 <h2>@ViewData["Title"]</h2>
 <div id="animation-frames">
     <span>(　　　)</span>
-    <span style="display:none;">(`　　 )</span>
-    <span style="display:none;">(･`　　)</span>
-    <span style="display:none;">(ω･`　)</span>
-    <span style="display:none;">(´･ω･`)</span>
-    <span style="display:none;">( ´･ω･)</span>
-    <span style="display:none;">(　´･ω)</span>
-    <span style="display:none;">( 　 ´･)</span>
-    <span style="display:none;">( 　　´)</span>
+    <span class="is-hidden">(`　　 )</span>
+    <span class="is-hidden">(･`　　)</span>
+    <span class="is-hidden">(ω･`　)</span>
+    <span class="is-hidden">(´･ω･`)</span>
+    <span class="is-hidden">( ´･ω･)</span>
+    <span class="is-hidden">(　´･ω)</span>
+    <span class="is-hidden">( 　 ´･)</span>
+    <span class="is-hidden">( 　　´)</span>
 </div>
 <p>
     <br />

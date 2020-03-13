@@ -3,8 +3,7 @@
 // 検索設定のCookieを復元するやつ(複数タブで設定を不揃いにしても大丈夫)
 var twigatenCookies = twigatenCookies || {};
 (function () {
-    const cookieSecure = (typeof twigatenDevelopment === 'undefined' || !twigatenDevelopment);
-    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'lax', secure: cookieSecure };
+    const cookieOption = twigatenCookies.cookieOption = { expires: 365, sameSite: 'lax', secure: true };
     const UserSearch_LikeMode = Cookies.get('UserSearch_LikeMode');
     const Featured_Order = Cookies.get('Featured_Order');
     const TLUser_Count = Cookies.get('TLUser_Count');
@@ -28,13 +27,18 @@ var twigatenCookies = twigatenCookies || {};
     }
     const userId = Cookies.get('ID');
     if (userId) {
-        document.getElementById('menu-login').style.display = 'none';
+        const menuLogin = document.getElementById('menu-login');
+        menuLogin.classList.add('is-hidden');
+        menuLogin.classList.remove('is-flex');
         //「自分のツイート」
         const menuMyTweet = document.getElementById('menu-mytweet');
         menuMyTweet.setAttribute('href', '/users/' + userId);
 
         //ドロップダウン
         const menuUser = document.getElementById('menu-user');
+        menuUser.classList.add('is-flex');
+        menuUser.classList.remove('is-hidden');
+
         const menuDropDown = document.getElementById('menu-user-dropdown');
         menuUser.addEventListener('touchstart', () => { menuDropDown.classList.add('is-block'); });
         menuUser.addEventListener('click', () => { menuDropDown.classList.add('is-block'); });
@@ -43,12 +47,11 @@ var twigatenCookies = twigatenCookies || {};
     }
     else {
         Cookies.remove('ScreenName');
-        document.getElementById('menu-user').style.display = 'none';
     }
 
 
     //検索ボックス
-    Array.prototype.forEach.call(document.getElementsByClassName("twigaten-search"), (x) => {
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-search'), (x) => {
         x.addEventListener('submit', (event) => {
             event.preventDefault();
             twigatenCookies.set();

@@ -71,10 +71,12 @@ namespace Twigaten.Web
             }
             app.UseResponseCompression();
 
+            //nginxからの X-Forwarded-For/Proto を受け取る
             app.UseForwardedHeaders(new ForwardedHeadersOptions
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
+
             app.UseDefaultFiles();
             //↓残念ながらCompressedStaticFiles(NuGetパッケージ)は ASP.NET Core 3.1では動いてくれなかった
             //更新を待とう(´・ω・`)
