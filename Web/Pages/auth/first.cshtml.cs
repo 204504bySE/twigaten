@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Twigaten.Web
 {
-    public class firstModel : PageModel
+    public class AuthFirstModel : PageModel
     {
         public async Task<ActionResult> OnGetAsync()
         {
