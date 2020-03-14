@@ -142,7 +142,7 @@ div.twigaten-thumb {
     margin: 4px;
 }
 div.twigaten-usermargin {
-    margin: 4px;
+    margin: 4px 0 4px 4px;
 }
 @media (min-width:520px) {
     div.twigaten-tweet {

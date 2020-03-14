@@ -55,13 +55,15 @@ namespace Twigaten.Web.TagHelpers
     public class TweetDateLinkTagHelper : TagHelper
     {
         public TweetData._tweet Tweet { get; set; }
+        public TweetData._tweet MainTweet { get; set; }
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
             output.TagName = "a";
             output.TagMode = TagMode.StartTagAndEndTag;
-            output.Attributes.Add("href", @"/tweet/" + Tweet.tweet_id.ToString());
-            output.Attributes.SetAttribute("class", "twigaten-unixtime twigaten-cookie-click");
-            output.Attributes.Add("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
+            output.Attributes.SetAttribute("href", @"/tweet/" + Tweet.tweet_id.ToString());
+            output.Attributes.SetAttribute("class", "twigaten-unixtime twigaten-cookie-click"
+                + (Tweet.created_at < MainTweet?.created_at ? " has-text-weight-bold" : ""));
+            output.Attributes.SetAttribute("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
         }
     }
 
