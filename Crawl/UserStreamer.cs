@@ -492,7 +492,7 @@ namespace Twigaten.Crawl
                     }
                 }
             }
-            catch (Exception e) { }
+            catch (Exception e) { Console.WriteLine(e); }
         }
 
         /// <summary>

@@ -27,6 +27,7 @@ namespace Twigaten.Crawl
         static UserStreamerStatic()
         {
             DeleteTweetBatch.LinkTo(DeleteTweetBlock, new DataflowLinkOptions { PropagateCompletion = true });
+            RetryDownloadStoreBlock.LinkTo(RetryDownloadStoreBlock);
             //Udp.Client.SendTimeout = 1000;
             //Udp.Client.ReceiveTimeout = 1000;
         }
@@ -210,7 +211,14 @@ namespace Twigaten.Crawl
             return DownloadOK;
         }
 
-        ///<summary>RTはこれに入れないでね</summary>
+        /// <summary>
+        /// 画像の取得の再試行を後からやらせるだけ
+        /// </summary>
+        static readonly BufferBlock<(Status, Tokens)> RetryDownloadStoreBlock = new BufferBlock<(Status, Tokens)>();
+        ///<summary>
+        ///画像を取得するやつ
+        ///RTはこれに入れないでね
+        ///</summary>
         static readonly ActionBlock<(Status, Tokens)> DownloadStoreMediaBlock = new ActionBlock<(Status x, Tokens t)>(async a =>
         {
             try
@@ -245,40 +253,39 @@ namespace Twigaten.Crawl
                     string LocalPaththumb = Path.Combine(config.crawl.PictPaththumb, MediaFolderPath.ThumbPath(m.Id, MediaUrl));
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
                     Counter.MediaToStore.Increment();
-                    for (int RetryCount = 0; RetryCount < 3; RetryCount++)
+                    try
                     {
-                        try
+                        using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
                         {
-                            using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
+                            req.Headers.Referrer = new Uri(StatusUrl(a.x));
+                            using (var res = await Http.SendAsync(req).ConfigureAwait(false))
                             {
-                                req.Headers.Referrer = new Uri(StatusUrl(a.x));
-                                using (var res = await Http.SendAsync(req).ConfigureAwait(false))
+                                if (res.IsSuccessStatusCode)
                                 {
-                                    if (res.IsSuccessStatusCode)
+                                    byte[] mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                                    long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
+                                    //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
+                                    //つまりdownloaded_atは画像の保存に失敗しても値が入る
+                                    if (dcthash != null && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
                                     {
-                                        byte[] mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                                        long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
-                                        //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
-                                        //つまりdownloaded_atは画像の保存に失敗しても値が入る
-                                        if (dcthash != null && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
+                                        using (var file = File.Create(LocalPaththumb))
                                         {
-                                            using (var file = File.Create(LocalPaththumb))
-                                            {
-                                                await file.WriteAsync(mem, 0, mem.Length).ConfigureAwait(false);
-                                                await file.FlushAsync().ConfigureAwait(false);
-                                            }
-                                            Counter.MediaSuccess.Increment();
+                                            await file.WriteAsync(mem, 0, mem.Length).ConfigureAwait(false);
+                                            await file.FlushAsync().ConfigureAwait(false);
                                         }
-                                        break;
+                                        Counter.MediaSuccess.Increment();
                                     }
-                                    else if (res.StatusCode == HttpStatusCode.NotFound
-                                        || res.StatusCode == HttpStatusCode.Forbidden)
-                                    { break; }
+                                    break;
                                 }
+                                else if (res.StatusCode == HttpStatusCode.NotFound
+                                    || res.StatusCode == HttpStatusCode.Gone
+                                    || res.StatusCode == HttpStatusCode.Forbidden)
+                                { break; }
                             }
                         }
-                        catch { continue; }
                     }
+                    //画像の取得に失敗したら多分後でやり直す
+                    catch { RetryDownloadStoreBlock.Post(a); }
                     //URL転載元もペアを記録する
                     if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }
                 }
@@ -296,6 +303,8 @@ namespace Twigaten.Crawl
             await TweetDistinctBlock.Completion.ConfigureAwait(false);
             HandleTweetBlock.Complete();
             await HandleTweetBlock.Completion.ConfigureAwait(false);
+            RetryDownloadStoreBlock.Complete();
+            await RetryDownloadStoreBlock.Completion.ConfigureAwait(false);
             DownloadStoreMediaBlock.Complete();
             await DownloadStoreMediaBlock.Completion.ConfigureAwait(false);
         }
