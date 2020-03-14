@@ -21,6 +21,7 @@ namespace Twigaten.Web.Pages.Tweet
         public long UserId { get; set; }
         /// <summary>
         /// これより古いツイを検索する(SnowFlake)
+        /// DateがセットされたらSnowFlakeに変換されてこれに突っ込む
         /// </summary>
         [BindProperty(SupportsGet = true)]
         public long? Before { get; set; }
@@ -37,8 +38,31 @@ namespace Twigaten.Web.Pages.Tweet
         public long? Date { get; set; }
 
         public bool IsLatest => !Date.HasValue && !Before.HasValue && !After.HasValue;
-        public long? NextOld => (Tweets.Length > 0) ? Tweets.Last().tweet.tweet_id : null as long?;
-        public long? NextNew => (!IsLatest && Tweets.Length > 0) ? Tweets.First().tweet.tweet_id : null as long?;
+        /// <summary>
+        /// 「古い」ボタンにセットするSnowFlake(before=)
+        /// </summary>
+        public long? NextOld 
+        {
+            get 
+            {
+                if (Tweets.Length > 0) { return Tweets.Last().tweet.tweet_id; }
+                else if (After.HasValue) { return After; }
+                else { return null; }
+            }
+        }
+        /// <summary>
+        /// 「新しい」ボタンにセットするSnowFlake(after=)
+        /// </summary>
+        public long? NextNew
+        {
+            get
+            {
+                if (IsLatest) { return null; }
+                else if (Tweets.Length > 0) { return Tweets.First().tweet.tweet_id; }
+                else if (!Date.HasValue && Before.HasValue) { return Before; }
+                else { return null; }
+            }
+        }            
 
         public SimilarMediaTweet[] Tweets { get; private set; }
         public TweetData._user TargetUser { get; private set; }

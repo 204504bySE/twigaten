@@ -25,7 +25,7 @@ else
     <div class="twigaten-navgroup">
         <ul>
             <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/users/@Model.UserId" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
-            @if (Model.IsLatest || !Model.NextNew.HasValue)
+            @if (Model.IsLatest)
             {
                 <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
             }
