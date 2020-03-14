@@ -130,15 +130,15 @@ else
     }
     else
     {
-        <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
         <h2>@Locale.Headline_NoTweetToShow</h2>
+        <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
         <partial name="NoTweetToShow" />
     }
 }
 else
 {
-    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
     <h2>@Locale.Headline_UserNotFound</h2>
+    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
     <partial name="NoTweetToShow" />
 }
 

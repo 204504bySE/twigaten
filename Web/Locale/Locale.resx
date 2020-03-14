@@ -201,7 +201,7 @@
   <data name="Title_UserTweet" xml:space="preserve">
     <value>@{0} のツイートと類似画像</value>
   </data>
-  <data name="Auth_BackTop" xml:space="preserve">
+  <data name="Error_BackTop" xml:space="preserve">
     <value>« トップページに戻る</value>
   </data>
   <data name="SimilarMedia_GoogleImage" xml:space="preserve">

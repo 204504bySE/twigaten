@@ -1,16 +1,16 @@
 ﻿@page
-@model Twigaten.Web.UserModel
+@model Twigaten.Web.SearchUserModel
 @using Twigaten.Web.Locale;
 @using static Twigaten.Web.DBHandler.DBView;
 
 @{
     if (Model.Users.Length >= Model.Limit)
     {
-        ViewData["Title"] = string.Format(Locale.Headline_UserSearch, Model.ScreenName) + "(≧" + Model.Limit.ToString() + ")";
+        ViewData["Title"] = string.Format(Locale.Headline_UserSearch, Model.SearchScreenName) + "(≧" + Model.Limit.ToString() + ")";
     }
     else
     {
-        ViewData["Title"] = string.Format(Locale.Headline_UserSearch, Model.ScreenName) + "(" + Model.Limit.ToString() + ")";
+        ViewData["Title"] = string.Format(Locale.Headline_UserSearch, Model.SearchScreenName) + "(" + Model.Users.Length.ToString() + ")";
     }
 }
 <h2>@ViewData["Title"]</h2>
@@ -25,7 +25,7 @@
             <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.Show ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="Show">@Locale.UserSearch_Show</a></li>
             @if (Model.Params.ID.HasValue)
             {
-                <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.Following ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="Following">@Locale.UserSearch_Following</a>)</li>
+                <li @(Model.Params.UserSearch_LikeMode == SelectUserLikeMode.Following ? "class=is-active" : "")><a class="twigaten-cookie-click" data-key="UserSearch_LikeMode" data-value="Following">@Locale.UserSearch_Following</a></li>
             }
             else
             {
@@ -37,7 +37,7 @@
 </nav>
 
 <form class="field has-addons twigaten-search">
-    <input name="q" placeholder="@('@')name/URL" class="input twigaten-input-long" />
+    <input name="q" placeholder="@('@')name/URL" class="input twigaten-input-long" value="@Model.SearchScreenName" />
     <input name="direct" value="false" type="hidden" />
     <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
 </form>

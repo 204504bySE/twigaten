@@ -11,7 +11,7 @@ using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web
 {
-    public class UserModel : PageModel
+    public class SearchUserModel : PageModel
     {
         static readonly Regex ScreenNameRegex = new Regex(@"(?<=twitter\.com\/|@|^)[_\w]+(?=[\/_\w]*$)", RegexOptions.Compiled);
 
@@ -28,16 +28,16 @@ namespace Twigaten.Web
         public UserSearchParameters Params { get; private set; }
 
         public TweetData._user[] Users { get; private set; }
-        public string ScreenName { get; private set; }
+        public string SearchScreenName { get; private set; }
         public int Limit { get; private set; }
         public long QueryElapsedMilliseconds { get; private set; }
 
         public async Task<IActionResult> OnGetAsync()
         {
             if (string.IsNullOrWhiteSpace(Q)) { return LocalRedirect("/search/"); }
-            ScreenName = ScreenNameRegex.Match(Q.Trim()).Value;
-            if (string.IsNullOrWhiteSpace(ScreenName)) { return LocalRedirect("/search/"); }
-            long? TargetUserID = await DBView.SelectID_Unique_screen_name(ScreenName).ConfigureAwait(false);
+            SearchScreenName = ScreenNameRegex.Match(Q.Trim()).Value;
+            if (string.IsNullOrWhiteSpace(SearchScreenName)) { return LocalRedirect("/search/"); }
+            long? TargetUserID = await DBView.SelectID_Unique_screen_name(SearchScreenName).ConfigureAwait(false);
             if (Direct != false && TargetUserID.HasValue) { return LocalRedirect("/users/" + TargetUserID.Value.ToString()); }
 
             var sw = Stopwatch.StartNew();
@@ -45,7 +45,7 @@ namespace Twigaten.Web
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
             Limit = 100;
             //screen_nameを前方一致検索する
-            Users = await DBView.SelectUserLike(ScreenName.Replace(' ', '%').Replace("_", @"\_") + "%", Params.ID, Params.UserSearch_LikeMode.Value, Limit).ConfigureAwait(false);
+            Users = await DBView.SelectUserLike(SearchScreenName.Replace(' ', '%').Replace("_", @"\_") + "%", Params.ID, Params.UserSearch_LikeMode.Value, Limit).ConfigureAwait(false);
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
 
             return Page(); 

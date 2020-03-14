@@ -11,8 +11,10 @@ using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Parameters
 {
-    ///<summary>URLやCookieから引数を受け取ったりする
-    ///Controllerごとに引数を足したりした派生クラスは各Controllerのファイルでおｋ</summary>
+    ///<summary>
+    ///ログイン用Cookieを読み込んで認証したり書き込んだりする
+    ///他に読み書きしたいCookieがあったら派生クラスを作る
+    ///</summary>
     public class LoginParameters
     {
         /// <summary>これを与えないとCookieなどは読めない#ウンコード</summary>

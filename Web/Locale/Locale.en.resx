@@ -201,7 +201,7 @@
   <data name="Title_UserTweet" xml:space="preserve">
     <value>Tweets of @{0} Having Similar Images</value>
   </data>
-  <data name="Auth_BackTop" xml:space="preserve">
+  <data name="Error_BackTop" xml:space="preserve">
     <value>« Back to top page</value>
   </data>
   <data name="SimilarMedia_GoogleImage" xml:space="preserve">

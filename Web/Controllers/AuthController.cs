@@ -48,13 +48,17 @@ namespace Twigaten.Web.Controllers
             public string oauth_token { get; set; }
             [FromQuery]
             public string oauth_verifier { get; set; }
+
             /// <summary>
             /// セッションから都度読み込む
             /// 書き込み時はセッションに直接書き込む(JsonSerializer.SerializeToUtf8Bytesを使う)
             /// </summary>
-
             public OAuth.OAuthSession OAuthSession()
-                => JsonSerializer.Deserialize<OAuth.OAuthSession>(Context.Session.Get(nameof(OAuthSession)));
+            {
+                var SessionUtf8 = Context.Session.Get(nameof(OAuthSession));
+                if(SessionUtf8 == null) { return null; }
+                return JsonSerializer.Deserialize<OAuth.OAuthSession>(SessionUtf8);
+            }
 
             //(新規)ログインの処理
             public async Task<DBToken.VerifytokenResult> StoreNewLogin(Tokens Token)
@@ -95,10 +99,14 @@ namespace Twigaten.Web.Controllers
         [HttpGet("callback")]
         public async Task<ActionResult> TwitterCallback(TwitterCallbackParameters p)
         {
+            //直リンやTwitterの認証拒否はトップページに飛ばす
+            if (p.oauth_token == null || p.oauth_verifier == null) { return LocalRedirect("/"); }
             await p.InitValidate(HttpContext).ConfigureAwait(false);
+            OAuth.OAuthSession Session;
+            if ((Session = p.OAuthSession()) == null) { return LocalRedirect("/"); } 
 
             // tokenをDBに保存
-            Tokens token = p.OAuthSession().GetTokens(p.oauth_verifier);
+            Tokens token = Session.GetTokens(p.oauth_verifier);
             var VeryfyTokenResult = await p.StoreNewLogin(token).ConfigureAwait(false);
 
             //すでにサインインしてたユーザーならそいつのページに飛ばす

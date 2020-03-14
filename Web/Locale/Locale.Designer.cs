@@ -63,9 +63,9 @@ namespace Twigaten.Web.Locale {
         /// <summary>
         ///   « トップページに戻る に類似しているローカライズされた文字列を検索します。
         /// </summary>
-        public static string Auth_BackTop {
+        public static string Error_BackTop {
             get {
-                return ResourceManager.GetString("Auth_BackTop", resourceCulture);
+                return ResourceManager.GetString("Error_BackTop", resourceCulture);
             }
         }
         

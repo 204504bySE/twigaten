@@ -108,6 +108,7 @@ namespace Twigaten.Web
             {
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
+                endpoints.MapFallbackToPage("/error");
             });
         }
     }

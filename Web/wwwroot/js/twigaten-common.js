@@ -67,9 +67,10 @@ var twigatenCookies = twigatenCookies || {};
                 // (?<=twitter\.com\/|@|^)[_\w]+(?=[\/_\w]*$)
                 const screenNameMatch = new RegExp('(?:twitter\\.com\\/|@|^)([_\\w]+)(?=[\\/_\\w]*$)').exec(queryText);
                 if (screenNameMatch && 2 <= screenNameMatch.length) {
-                    location.href = '/search/user?q=' + screenNameMatch[1];
+                    event.currentTarget.setAttribute('action', '/search/user');
                 }
-                else { location.href = '/search/?q=' + queryText; }
+                else { event.currentTarget.setAttribute('action', '/search/'); }
+                event.currentTarget.submit();
             }
         });
     });

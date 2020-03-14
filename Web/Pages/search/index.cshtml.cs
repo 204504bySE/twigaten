@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Twigaten.Web
 {
-    public class indexModel : PageModel
+    public class SearchIndexModel : PageModel
     {
         /// <summary>
         /// 検索文字列(入力欄に表示するだけ)

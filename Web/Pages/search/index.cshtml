@@ -1,5 +1,5 @@
 ﻿@page
-@model Twigaten.Web.indexModel
+@model Twigaten.Web.SearchIndexModel
 @{
     ViewData["Title"] = "検索";
 }
@@ -13,7 +13,7 @@
 <h2>検索</h2>
 <p>ユーザーのアカウント名、またはツイートのURL(twitter.com/***/status/***)で検索できます。</p>
 <form class="field has-addons twigaten-search">
-    <input name="q" placeholder="@('@')name/URL" class="input twigaten-input-long" value="@Model.Q" />
+    <input name="q" placeholder="@('@')name/URL" class="input twigaten-input-long" />
     <input name="direct" value="false" type="hidden" />
     <button type="submit" class="button"><svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#search" /></svg></button>
 </form>

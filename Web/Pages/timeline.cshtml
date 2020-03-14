@@ -27,19 +27,19 @@ else
             <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/timeline" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
             @if (Model.IsLatest || !Model.NextNew.HasValue)
             {
-                <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
+            <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
             }
             else
             {
-                <li><a href="/timeline?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
+            <li><a href="/timeline?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
             }
             @if (!Model.NextOld.HasValue)
             {
-                <li class="is-disabled"><a>@Locale.Pager_Older</a></li>
+            <li class="is-disabled"><a>@Locale.Pager_Older</a></li>
             }
             else
             {
-                <li><a href="/timeline?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
+            <li><a href="/timeline?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
             }
         </ul>
     </div>
@@ -80,64 +80,64 @@ else
 </nav>
 @if (Model.TargetUser != null)
 {
-    <h2>@string.Format(Locale.Headline_Timeline, Model.TargetUser.screen_name)</h2>
-    <h3 class="twigaten-headline">
-        @if (Model.IsLatest)
+<h2>@string.Format(Locale.Headline_Timeline, Model.TargetUser.screen_name)</h2>
+<h3 class="twigaten-headline">
+    @if (Model.IsLatest)
         {
-            @("(~")<span class="twigaten-unixtime" data-unixtime="@DateTimeOffset.UtcNow.ToUnixTimeSeconds()"></span>@(")")
+    @("(~")<span class="twigaten-unixtime" data-unixtime="@DateTimeOffset.UtcNow.ToUnixTimeSeconds()"></span>@(")")
         }
         else if (Model.Before.HasValue)
         {
-            @("(~")<span class="twigaten-unixtime" data-unixtime="@(SnowFlake.DatefromSnowFlake(Model.Before.Value).ToUnixTimeSeconds() - (Model.Date.HasValue ? 0 : 1))"></span>@(")")
+    @("(~")<span class="twigaten-unixtime" data-unixtime="@(SnowFlake.DatefromSnowFlake(Model.Before.Value).ToUnixTimeSeconds() - (Model.Date.HasValue ? 0 : 1))"></span>@(")")
         }
         else if (Model.After.HasValue)
         {
-            @("(")<span class="twigaten-unixtime" data-unixtime="@(SnowFlake.DatefromSnowFlake(Model.After.Value).ToUnixTimeSeconds() + 1)"></span>@("~)")
+    @("(")<span class="twigaten-unixtime" data-unixtime="@(SnowFlake.DatefromSnowFlake(Model.After.Value).ToUnixTimeSeconds() + 1)"></span>@("~)")
         }
-    </h3>
-    @if (Model.Tweets.Length > 0)
+</h3>
+@if (Model.Tweets.Length > 0)
     {
-        <p><tweet-intent /></p>
-        <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+<p><tweet-intent /></p>
+<p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
         foreach (var Tweet in Model.Tweets)
         {
-            <partial name="OneTweet" model="Tweet" />
+<partial name="OneTweet" model="Tweet" />
         }
-        <nav class="tabs is-toggle">
-            <div class="twigaten-navgroup">
-                <ul>
-                    <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/timeline" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
-                    @if (Model.IsLatest || Model.NextNew == null)
+<nav class="tabs is-toggle">
+    <div class="twigaten-navgroup">
+        <ul>
+            <li @Html.Raw(Model.IsLatest ? @"class=""is-active""" : "")><a href="/timeline" class="twigaten-cookie-click">@Locale.Pager_Latest</a></li>
+            @if (Model.IsLatest || Model.NextNew == null)
                     {
-                        <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
+            <li class="is-disabled"><a>@Locale.Pager_Newer</a></li>
                     }
                     else
                     {
-                        <li><a href="/timeline?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
+            <li><a href="/timeline?after=@Model.NextNew" class="twigaten-cookie-click">@Locale.Pager_Newer</a></li>
                     }
-                    @if (Model.NextOld == null)
+            @if (Model.NextOld == null)
                     {
-                        <li class="is-disabled"><a>@Locale.Pager_Older</a></li>
+            <li class="is-disabled"><a>@Locale.Pager_Older</a></li>
                     }
                     else
                     {
-                        <li><a href="/timeline?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
+            <li><a href="/timeline?before=@Model.NextOld" class="twigaten-cookie-click">@Locale.Pager_Older</a></li>
                     }
-                </ul>
-            </div>
-        </nav>
+        </ul>
+    </div>
+</nav>
     }
     else
     {
-        <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
-        <h2>@Locale.Headline_NoTweetToShow</h2>
-        <partial name="NoTweetToShow" />
+<h2>@Locale.Headline_NoTweetToShow</h2>
+<p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+<partial name="NoTweetToShow" />
     }
 
 }
 else
 {
-    <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
-    <h2>@Locale.Headline_UserNotFound</h2>
-    <partial name="NoTweetToShow" />
+<h2>@Locale.Headline_UserNotFound</h2>
+<p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
+<partial name="NoTweetToShow" />
 }

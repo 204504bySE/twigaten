@@ -12,7 +12,7 @@ namespace Twigaten.Web.DBHandler
     /// </summary>
     public class DBCrawl : Lib.DBHandler
     {
-        public DBCrawl() : base("crawl", "", config.database.Address, config.database.Protocol, 20, 1) { }
+        public DBCrawl() : base("crawl", "", config.database.Address, config.database.Protocol, 20, 4) { }
         /// <summary>
         /// 指定されたツイをDBから消すだけ
         /// </summary>

@@ -72,8 +72,7 @@ namespace Twigaten.Web.DBHandler
             switch (Mode)
             {
                 case SelectUserLikeMode.Show:
-                    if (login_user_id == null) { cmdBuilder.Append(@"AND isprotected = 0"); }
-                    else { cmdBuilder.Append(@"AND (isprotected = 0 OR EXISTS (SELECT * FROM friend WHERE user_id = @login_user_id AND friend_id = u.user_id))"); }
+                    cmdBuilder.Append(@"AND (isprotected = 0 OR EXISTS (SELECT * FROM friend WHERE user_id = @login_user_id AND friend_id = user_id))");
                     break;
                 case SelectUserLikeMode.Following:
                     cmdBuilder.Append("AND EXISTS (SELECT * FROM friend WHERE user_id = @login_user_id AND friend_id = u.user_id)");
