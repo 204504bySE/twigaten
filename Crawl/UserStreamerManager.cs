@@ -227,7 +227,7 @@ namespace Twigaten.Crawl
 
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
-
+            if (UserStreamerStatic.RetryingCount > 0) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
             Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ConnectBlock.ActiveStreamers, ConnectBlock.RestedStreamers, Streamers.Count);
         }
 

@@ -27,7 +27,6 @@ namespace Twigaten.Crawl
         static UserStreamerStatic()
         {
             DeleteTweetBatch.LinkTo(DeleteTweetBlock, new DataflowLinkOptions { PropagateCompletion = true });
-            RetryDownloadStoreBlock.LinkTo(RetryDownloadStoreBlock);
             //Udp.Client.SendTimeout = 1000;
             //Udp.Client.ReceiveTimeout = 1000;
         }
@@ -67,7 +66,7 @@ namespace Twigaten.Crawl
             DeleteTweetBatch.Post(x.Id);
         }
 
-        
+
         static readonly RemoveOldSet<long> TweetLock = new RemoveOldSet<long>(config.crawl.TweetLockSize);
         static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
         {
@@ -78,7 +77,7 @@ namespace Twigaten.Crawl
         {
             DefaultRequestVersion = HttpVersion.Version20
         };
-        
+
         /*
         static readonly UdpClient Udp = new UdpClient(new IPEndPoint(IPAddress.IPv6Loopback, (config.crawl.LockerUdpPort ^ (Process.GetCurrentProcess().Id & 0x3FFF))));
         static readonly IPEndPoint LockerEndPoint = new IPEndPoint(IPAddress.IPv6Loopback, config.crawl.LockerUdpPort);
@@ -123,7 +122,7 @@ namespace Twigaten.Crawl
             = new ActionBlock<(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)>(async m =>
         {
             //画像なしツイートは先に捨ててるのでここでは確認しない
-             await HandleTweet(m.x, m.t, m.stream, m.rtlocked, m.storeuser, m.storertuser).ConfigureAwait(false); 
+            await HandleTweet(m.x, m.t, m.stream, m.rtlocked, m.storeuser, m.storertuser).ConfigureAwait(false);
         }, new ExecutionDataflowBlockOptions()
         {
             MaxDegreeOfParallelism = Math.Max(Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections), config.crawl.MediaDownloadThreads), //一応これで
@@ -136,7 +135,7 @@ namespace Twigaten.Crawl
             //RTを先にやる(キー制約)
             if (x.RetweetedStatus != null)
             {
-                await HandleTweet(x.RetweetedStatus, t, stream && rtlocked, false, storertuser, false).ConfigureAwait(false); 
+                await HandleTweet(x.RetweetedStatus, t, stream && rtlocked, false, storertuser, false).ConfigureAwait(false);
             }
             if (storeuser) { await db.StoreUser(x, await DownloadStoreProfileImage(x).ConfigureAwait(false), storeuser).ConfigureAwait(false); }
             if (stream) { Counter.TweetToStoreStream.Increment(); } else { Counter.TweetToStoreRest.Increment(); }
@@ -169,7 +168,7 @@ namespace Twigaten.Crawl
             //新しいアイコンの保存先
             string LocalPath = MediaFolderPath.ProfileImagePath(x.User.Id.Value, x.User.IsDefaultProfileImage, ProfileImageUrl);
 
-            bool DownloadOK = false; 
+            bool DownloadOK = false;
             if (!x.User.IsDefaultProfileImage || !File.Exists(LocalPath))
             {
                 for (int RetryCount = 0; RetryCount < 2; RetryCount++)
@@ -214,7 +213,13 @@ namespace Twigaten.Crawl
         /// <summary>
         /// 画像の取得の再試行を後からやらせるだけ
         /// </summary>
-        static readonly BufferBlock<(Status, Tokens)> RetryDownloadStoreBlock = new BufferBlock<(Status, Tokens)>();
+        static readonly ActionBlock<(Status, Tokens)> RetryDownloadStoreBlock = new ActionBlock<(Status, Tokens)>(async (a) =>
+        {
+            do { await Task.Delay(100); } while (0 < DownloadStoreMediaBlock.InputCount);
+            DownloadStoreMediaBlock.Post(a);
+        });
+        public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
+
         ///<summary>
         ///画像を取得するやつ
         ///RTはこれに入れないでね
@@ -253,11 +258,11 @@ namespace Twigaten.Crawl
                     string LocalPaththumb = Path.Combine(config.crawl.PictPaththumb, MediaFolderPath.ThumbPath(m.Id, MediaUrl));
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
                     Counter.MediaToStore.Increment();
-                    try
+                    using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
                     {
-                        using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
+                        req.Headers.Referrer = new Uri(StatusUrl(a.x));
+                        try
                         {
-                            req.Headers.Referrer = new Uri(StatusUrl(a.x));
                             using (var res = await Http.SendAsync(req).ConfigureAwait(false))
                             {
                                 if (res.IsSuccessStatusCode)
@@ -283,9 +288,9 @@ namespace Twigaten.Crawl
                                 { break; }
                             }
                         }
+                        //画像の取得に失敗したら多分後でやり直す
+                        catch { RetryDownloadStoreBlock.Post(a); }
                     }
-                    //画像の取得に失敗したら多分後でやり直す
-                    catch { RetryDownloadStoreBlock.Post(a); }
                     //URL転載元もペアを記録する
                     if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }
                 }
@@ -303,8 +308,7 @@ namespace Twigaten.Crawl
             await TweetDistinctBlock.Completion.ConfigureAwait(false);
             HandleTweetBlock.Complete();
             await HandleTweetBlock.Completion.ConfigureAwait(false);
-            RetryDownloadStoreBlock.Complete();
-            await RetryDownloadStoreBlock.Completion.ConfigureAwait(false);
+            RetryDownloadStoreBlock.Complete(); //これはCompletionを待たない
             DownloadStoreMediaBlock.Complete();
             await DownloadStoreMediaBlock.Completion.ConfigureAwait(false);
         }

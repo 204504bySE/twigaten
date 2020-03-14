@@ -13,7 +13,7 @@ namespace Twigaten.Web.Pages
         public void OnGet()
         {
             //FallbackToPageで飛んできたらちゃんと404にする
-            if(HttpContext.Response.StatusCode == StatusCodes.Status200OK) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
+            if(HttpContext?.Response?.StatusCode == StatusCodes.Status200OK) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
         }
     }
 }
