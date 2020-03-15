@@ -41,8 +41,14 @@ namespace Twigaten.Web.TagHelpers
         [ViewContext]
         public ViewContext ViewContext { get; set; }
 
-        /// <summary>画像の絶対パス</summary> 
-        public string Path { get; set; }
+        /// <summary>
+        /// 額縁に入ったアイコンにする
+        /// </summary>
+        public TweetData._user User { get; set; }
+        /// <summary>
+        /// ツイートの画像にする
+        /// </summary>
+        public TweetData._media Media { get; set; }
 
         public override void Process(TagHelperContext context, TagHelperOutput output)
         {
@@ -56,7 +62,9 @@ namespace Twigaten.Web.TagHelpers
             Uri.Scheme = Request.IsHttps ? "https" : "http";
             Uri.Host = Request.Host.Host;
             Uri.Port = Request.Host.Port ?? -1;
-            Uri.Path = Path ?? "/img/ten120.png";
+            if (User != null) { Uri.Path = User.local_profile_image_url + "/card.png"; }
+            else if (Media != null) { Uri.Path = Media.local_media_url; }
+            else { Uri.Path = "/img/ten120.png"; }
             output.Attributes.SetAttribute("content", Uri.ToString());
         }
     }

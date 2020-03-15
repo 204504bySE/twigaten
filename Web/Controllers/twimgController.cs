@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Twigaten.Lib;
@@ -14,8 +17,19 @@ using static Twigaten.Web.twimgStatic;
 namespace Twigaten.Web.Controllers
 {
     [Route("twimg")]
-    public class twimgController : Controller
+    public class TwimgController : ControllerBase
     {
+        readonly IWebHostEnvironment _WebHostEnvironment;
+        /// <summary>
+        /// DIでIWebHostEnvironmentを受け取る(wwwrootなどが取れる)
+        /// </summary>
+        /// <param name="environment"></param>
+        public TwimgController(IWebHostEnvironment environment)
+        {
+            _WebHostEnvironment = environment;
+        }
+
+
         /// <summary>ツイ画像(:thumbサイズ)を鯖内 > 横流し で探して返す</summary>
         [HttpGet("thumb/{FileName}")]
         public async Task<IActionResult> thumb(string FileName)
@@ -43,36 +57,100 @@ namespace Twigaten.Web.Controllers
             else { return StatusCode((int)ret.StatusCode); }
         }
 
-        /// <summary>ユーザーのアイコンを鯖内 > 横流し で探して返す</summary>
+        /// <summary>ユーザーのアイコンを探して返す</summary>
         [HttpGet("profile_image/{FileName}")]
         public async Task<IActionResult> profile_image(string FileName)
         {
             //変な文字列を突っ込まれてたときの安易な対策
             FileName = Path.GetFileName(FileName);
 
+            var Icon = await FindProfileImage(FileName).ConfigureAwait(false);
+            if (Icon.Data != null) { return File(Icon.Data, GetMime(FileName), true); }
+            else { return StatusCode(Icon.StatusCode); }
+        }
+
+        /// <summary>ユーザーのアイコンを探して返す</summary>
+        [HttpGet("profile_image/{FileName}/card.png")]
+        public async Task<IActionResult> profile_image_card(string FileName)
+        {
+            //変な文字列を突っ込まれてたときの安易な対策
+            FileName = Path.GetFileName(FileName);
+
+            var Icon = await FindProfileImage(FileName).ConfigureAwait(false);
+            if (Icon.Data != null)
+            {
+                //額縁っぽいやつの中心にアイコンを描く
+                using (var Frame = Image.FromFile(Path.Combine(_WebHostEnvironment.WebRootPath, "img/tenframe.png")))
+                using (var mem = new MemoryStream(Icon.Data))
+                using (var IconImage = Image.FromStream(mem))
+                using (var g = Graphics.FromImage(Frame))
+                using (var ret = new MemoryStream())
+                {
+                    g.DrawImage(IconImage,(Frame.Width - IconImage.Width) >> 1, (Frame.Height - IconImage.Height) >> 1);
+                    Frame.Save(ret, ImageFormat.Png);
+                    return File(ret.ToArray(), GetMime("card.png"));
+                }
+            }
+            //アイコンが見つからないときは額縁画像を返す
+            else { return LocalRedirect("/img/tenframe.png"); }
+        }
+
+        /// <summary>
+        /// ユーザーのアイコンを実際に探す
+        /// 鯖内 > 横流し の優先度
+        /// </summary>
+        /// <param name="FileName">アカウントID.拡張子</param>
+        /// <returns></returns>
+        async Task<(int StatusCode, byte[] Data)> FindProfileImage(string FileName)
+        {
+
             //ファイル名の先頭が"_"だったら初期アイコンのURLとみなす
             if (FileName.StartsWith('_'))
             {
                 string trimmedname = MediaFolderPath.DefaultProfileImagePath(FileName.Substring(1));
-                if (System.IO.File.Exists(MediaFolderPath.DefaultProfileImagePath(trimmedname))){ return File(System.IO.File.OpenRead(trimmedname), GetMime(trimmedname), true); }
-                else { return StatusCode(StatusCodes.Status404NotFound); }
+                if (System.IO.File.Exists(MediaFolderPath.DefaultProfileImagePath(trimmedname))) 
+                {
+                    using (var file = System.IO.File.OpenRead(trimmedname))
+                    using (var mem = new MemoryStream())
+                    {
+                        await file.CopyToAsync(mem).ConfigureAwait(false);
+                        return (StatusCodes.Status200OK, mem.ToArray());
+                    }
+                }
+                else { return (StatusCodes.Status404NotFound, null); }
             }
 
             //↑以外はuser_idとみなす
-            if (!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long user_id)) { return StatusCode(StatusCodes.Status400BadRequest); }
-            
+            if (!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long user_id)) { return (StatusCodes.Status400BadRequest, null); }
+
             //まずは鯖内のファイルを探す 拡張子はリクエストURLを信頼して手を抜く
             //初期アイコンではないものとして探す
             string localmedia = MediaFolderPath.ProfileImagePath(user_id, false, FileName);
-            if (System.IO.File.Exists(localmedia)) { return File(System.IO.File.OpenRead(localmedia), GetMime(FileName), true); }
+            if (System.IO.File.Exists(localmedia)) 
+            {
+                using (var file = System.IO.File.OpenRead(localmedia))
+                using (var mem = new MemoryStream())
+                {
+                    await file.CopyToAsync(mem).ConfigureAwait(false);
+                    return (StatusCodes.Status200OK, mem.ToArray());
+                }
+            }
 
             var ProfileImageInfo = await DB.SelectProfileImageUrl(user_id).ConfigureAwait(false);
-            if (ProfileImageInfo == null) { return StatusCode(404); }
+            if (ProfileImageInfo == null) { return (StatusCodes.Status404NotFound, null); }
             //初期アイコンなら改めて鯖内を探す(通常はここには来ない)
             if (ProfileImageInfo.Value.is_default_profile_image)
             {
                 string defaulticon = MediaFolderPath.ProfileImagePath(user_id, true, ProfileImageInfo.Value.profile_image_url);
-                if (System.IO.File.Exists(defaulticon)) { return File(System.IO.File.OpenRead(defaulticon), GetMime(Path.GetFileName(ProfileImageInfo.Value.profile_image_url)), true); }
+                if (System.IO.File.Exists(defaulticon)) 
+                {
+                    using (var file = System.IO.File.OpenRead(defaulticon))
+                    using (var mem = new MemoryStream())
+                    {
+                        await file.CopyToAsync(mem).ConfigureAwait(false);
+                        return (StatusCodes.Status200OK, mem.ToArray());
+                    }
+                }
             }
             //鯖内にファイルがなかったのでtwitterから横流しする
             var ret = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url).ConfigureAwait(false);
@@ -84,9 +162,9 @@ namespace Twigaten.Web.Controllers
                 {
                     StoreProfileImageBlock.Post((ProfileImageInfo.Value, ret.FileBytes));
                 }
-                return File(ret.FileBytes, GetMime(FileName));
+                return (StatusCodes.Status200OK, ret.FileBytes);
             }
-            else { return StatusCode((int)ret.StatusCode); }
+            else { return ((int)ret.StatusCode, null); }
         }
 
         ///<summary>ファイルをダウンロードしてそのまんま返す
@@ -119,12 +197,6 @@ namespace Twigaten.Web.Controllers
             return StatusCode == HttpStatusCode.NotFound
                 || StatusCode == HttpStatusCode.Gone
                 || StatusCode == HttpStatusCode.Forbidden;
-        }
-
-        [HttpGet("index")]
-        public IActionResult Index()
-        {
-            return Content("ぬるぽ", "text/plain");
         }
     }
 }
