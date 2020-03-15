@@ -9,8 +9,7 @@ namespace Twigaten.Web
 {
     static class PictHash
     {
-        readonly static HttpClient Http = new HttpClient(new HttpClientHandler() { UseCookies = false });
-        static readonly Config config = Config.Instance;
+        static readonly HttpClient Http = new HttpClient(new HttpClientHandler() { UseCookies = false });
         ///<summary>クソサーバーからDCTHashをもらってくる</summary>
         public static async Task<long?> DCTHash(byte[] mem, string ServerUrl, string FileName)
         {

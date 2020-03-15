@@ -186,6 +186,7 @@ namespace Twigaten.Lib
             public bool ListenIPv4 { get; }
             public int ListenPort { get; }
             public string ListenUnixSocketPath { get; }
+            public string HashServerCropUrl { get; }
             public _web(IniData data)
             {
                 CallBackUrl = data["web"][nameof(CallBackUrl)] ?? "";
@@ -193,6 +194,7 @@ namespace Twigaten.Lib
                 ListenIPv4 = bool.Parse(data["web"][nameof(ListenIPv4)] ?? "false");
                 ListenPort = int.Parse(data["web"][nameof(ListenPort)] ?? "12309");
                 ListenUnixSocketPath = data["web"][nameof(ListenUnixSocketPath)];
+                HashServerCropUrl = data["web"][nameof(HashServerCropUrl)];
             }
         }
         public _web web;

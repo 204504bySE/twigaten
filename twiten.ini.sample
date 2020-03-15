@@ -18,6 +18,7 @@ TempDir = /tmp/
 
 [web]
 CallBackUrl=https://your.domain/auth/callback
+HashServerCropUrl=http://localhost:12305/hash/dctcrop
 
 [database]
 Address=localhost
