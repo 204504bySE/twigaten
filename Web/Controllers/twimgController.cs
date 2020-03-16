@@ -27,6 +27,9 @@ namespace Twigaten.Web.Controllers
         public TwimgController(IWebHostEnvironment environment)
         {
             _WebHostEnvironment = environment;
+
+            //profile_image_card用の画像をここで読み込んでおく
+            if (FrameImage == null) { FrameImage = Image.FromFile(Path.Combine(_WebHostEnvironment.WebRootPath, "img/tenframe.png")); }
         }
 
 
@@ -69,6 +72,10 @@ namespace Twigaten.Web.Controllers
             else { return StatusCode(Icon.StatusCode); }
         }
 
+        /// <summary>
+        /// ユーザーのアイコンをはめ込む額縁画像(コンストラクタで読み込む)
+        /// </summary>
+        static Image FrameImage;
         /// <summary>ユーザーのアイコンを探して返す</summary>
         [HttpGet("profile_image/{FileName}/card.png")]
         public async Task<IActionResult> profile_image_card(string FileName)
@@ -79,14 +86,15 @@ namespace Twigaten.Web.Controllers
             var Icon = await FindProfileImage(FileName).ConfigureAwait(false);
             if (Icon.Data != null)
             {
-                //額縁っぽいやつの中心にアイコンを描く
-                using (var Frame = Image.FromFile(Path.Combine(_WebHostEnvironment.WebRootPath, "img/tenframe.png")))
+                //額縁画像をコピーして使う
+                using (var Frame = new Bitmap(FrameImage))  //これでコピーされる
                 using (var mem = new MemoryStream(Icon.Data))
                 using (var IconImage = Image.FromStream(mem))
                 using (var g = Graphics.FromImage(Frame))
                 using (var ret = new MemoryStream())
                 {
-                    g.DrawImage(IconImage,(Frame.Width - IconImage.Width) >> 1, (Frame.Height - IconImage.Height) >> 1);
+                    //額縁っぽいやつの中心にアイコンを描く
+                    g.DrawImage(IconImage, (Frame.Width - IconImage.Width) >> 1, (Frame.Height - IconImage.Height) >> 1);
                     Frame.Save(ret, ImageFormat.Png);
                     return File(ret.ToArray(), GetMime("card.png"));
                 }

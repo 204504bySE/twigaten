@@ -673,10 +673,11 @@ m.media_id, mt.media_url, mt.type,
                 rettmp.tweet.user.isprotected =r.GetBoolean(4);
                 rettmp.tweet.tweet_id = r.GetInt64(6);
                 rettmp.tweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
-                rettmp.tweet.text_html = r.IsDBNull(8) ? null : LocalText.TextToLink(r.GetString(8));
+                rettmp.tweet.text = r.IsDBNull(8) ? null :r.GetString(8);
                 rettmp.tweet.favorite_count = r.GetInt32(9);
                 rettmp.tweet.retweet_count = r.GetInt32(10);
 
+                rettmp.tweet.text_html = LocalText.TextToLink(rettmp.tweet.text);
                 //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
                 rettmp.tweet.user.local_profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.user, r.GetBoolean(4));
 
@@ -690,10 +691,11 @@ m.media_id, mt.media_url, mt.type,
                     rettmp.tweet.retweet.user.local_profile_image_url = r.GetString(15);
                     rettmp.tweet.retweet.user.isprotected = r.GetBoolean(17);
                     rettmp.tweet.retweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(18));
-                    rettmp.tweet.retweet.text_html = LocalText.TextToLink(r.GetString(19));
+                    rettmp.tweet.retweet.text = r.GetString(19);
                     rettmp.tweet.retweet.favorite_count = r.GetInt32(20);
                     rettmp.tweet.retweet.retweet_count = r.GetInt32(21);
 
+                    rettmp.tweet.retweet.text_html = LocalText.TextToLink(rettmp.tweet.retweet.text);
                     //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
                     rettmp.tweet.retweet.user.local_profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.retweet.user, r.GetBoolean(16));
                 }

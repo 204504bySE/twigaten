@@ -7,7 +7,7 @@
 @section TwitterCard{
     @if (Model.Tweets.Length > 0)
     {
-        <twitter-card-description content="@Model.Tweets[0].tweet.text_html" />
+        <twitter-card-description content="@Model.Tweets[0].tweet.text.Replace("\n", "")" />
         <twitter-card-image media="Model.Tweets[0].media" />
     }
     else

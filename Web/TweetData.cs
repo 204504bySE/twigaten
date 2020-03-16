@@ -38,6 +38,7 @@ namespace Twigaten.Web
             public _user user { get; } = new _user();
             public long tweet_id { get; set; }
             public DateTimeOffset created_at { get; set; }
+            public string text { get; set; }
             public string text_html { get; set; }    //リンクや改行などをhtmlにして突っ込む
             public _tweet retweet { get; set; }
             public int retweet_count { get; set; }
