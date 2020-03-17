@@ -670,7 +670,8 @@ m.media_id, mt.media_url, mt.type,
                 rettmp.tweet.user.name = r.GetString(1);
                 rettmp.tweet.user.screen_name = r.GetString(2);
                 rettmp.tweet.user.local_profile_image_url = r.GetString(3);
-                rettmp.tweet.user.isprotected =r.GetBoolean(4);
+                rettmp.tweet.user.isprotected = r.GetBoolean(4);
+                rettmp.tweet.user.isprotected = r.GetBoolean(5);
                 rettmp.tweet.tweet_id = r.GetInt64(6);
                 rettmp.tweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
                 rettmp.tweet.text = r.IsDBNull(8) ? null :r.GetString(8);
@@ -689,6 +690,7 @@ m.media_id, mt.media_url, mt.type,
                     rettmp.tweet.retweet.user.name = r.GetString(13);
                     rettmp.tweet.retweet.user.screen_name = r.GetString(14);
                     rettmp.tweet.retweet.user.local_profile_image_url = r.GetString(15);
+                    rettmp.tweet.retweet.user.is_default_profile_image = r.GetBoolean(16);
                     rettmp.tweet.retweet.user.isprotected = r.GetBoolean(17);
                     rettmp.tweet.retweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(18));
                     rettmp.tweet.retweet.text = r.GetString(19);

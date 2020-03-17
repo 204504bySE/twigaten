@@ -13,7 +13,7 @@ namespace Twigaten.Web
 {
     public class SearchUserModel : PageModel
     {
-        static readonly Regex ScreenNameRegex = new Regex(@"(?<=twitter\.com\/|@|^)[_\w]+(?=[\/_\w]*$)", RegexOptions.Compiled);
+        static readonly Regex ScreenNameRegex = new Regex(@"(?<=twitter\.com\/|@|^)[_\w]+", RegexOptions.Compiled);
 
         /// <summary>
         /// 検索文字列

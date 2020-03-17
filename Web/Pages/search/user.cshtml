@@ -2,7 +2,9 @@
 @model Twigaten.Web.SearchUserModel
 @using Twigaten.Web.Locale;
 @using static Twigaten.Web.DBHandler.DBView;
-
+@section Scripts{
+    <partial name="TweetScript" />
+}
 @{
     if (Model.Users.Length >= Model.Limit)
     {
@@ -54,6 +56,7 @@
                     <svg class="twigaten-glyph"><use xlink:href="/img/fontawesome.svg#lock" /></svg>
                 }
                 <user-screenname-link user="user" />
+                @user.name
             </p>
             <p>@Html.Raw(user.description_html)</p>
         </div>
