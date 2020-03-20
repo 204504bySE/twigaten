@@ -114,36 +114,27 @@ namespace Twigaten.Web.Controllers
             else 
             {
                 //新規ユーザーはツイート等を取得させる
-                //セッションに認証用の項目を用意して1回しか実行させないようにする
-                HttpContext.Session.Set(nameof(FirstProcess), new byte[] { 0 });
+                CrawlManager.Run(token.UserId);
                 return LocalRedirect("/auth/first"); 
             }
         }
 
         /// <summary>
-        /// 新規ユーザーのツイート等を取得する
-        /// 完了後はそいつのページに飛ばす
+        /// 新規ユーザーのツイート等の取得を待ってからそいつのページに飛ばす
         /// </summary>
         /// <returns></returns>
-        [HttpGet("firstprocess")]
-        public async Task<ActionResult> FirstProcess()
+        [HttpGet("wait")]
+        public async Task<ActionResult> Wait()
         {
             var Params = new LoginParameters();
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
-            if (!Params.ID.HasValue) { return LocalRedirect("/"); }
-
-            //セッション内の認証用の項目を確認する
-            // auth/first.cshtml でもやってる
-            if (HttpContext.Session.TryGetValue(nameof(FirstProcess), out var Bytes)
-                && 1 <= Bytes.Length && Bytes[0] == 0)
+            if (Params.ID.HasValue) 
             {
-                //なんでもいいので0以外の値を入れる
-                HttpContext.Session.Set(nameof(FirstProcess), new byte[] { 255 });
-
-                await CrawlManager.Run(Params.ID.Value).ConfigureAwait(false);
+                await CrawlManager.WhenCrawled(Params.ID.Value).ConfigureAwait(false);
                 return LocalRedirect("/users/" + Params.ID.ToString());
             }
             else { return LocalRedirect("/"); }
+
         }
     }
 }

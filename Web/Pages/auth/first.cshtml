@@ -4,6 +4,9 @@
 @section Scripts
 {
     <script async src="~/js/twigaten-auth-first.js" asp-append-version="true"></script>
+    @*↓ページ移動後の動作を速くするためにここで読ませておく*@
+    <partial name="TweetScript" />
+    <partial name="DatePickerScript" />
 }
 @section MetaTags{
     <meta name="robots" content="noindex" />

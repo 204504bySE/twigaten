@@ -11,8 +11,8 @@
             setTimeout(nextFrame, 200);
         };
         nextFrame();
-        location.href = '/auth/firstprocess';
+        location.href = '/auth/wait';
     };
-    if (document.readyState == 'loading') { window.addEventListener('load', animation); }
+    if (document.readyState == 'loading' || document.readyState == 'interactive') { window.addEventListener('load', animation); }
     else { animation(); }
 })();

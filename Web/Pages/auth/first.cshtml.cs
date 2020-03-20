@@ -9,20 +9,9 @@ namespace Twigaten.Web
 {
     public class AuthFirstModel : PageModel
     {
-        public async Task<ActionResult> OnGetAsync()
+        public async Task OnGetAsync()
         {
-            var ParamTask = new Parameters.LoginParameters().InitValidate(HttpContext);
-            if (HttpContext.Session.TryGetValue(nameof(Controllers.AuthController.FirstProcess), out var Bytes)
-                && 1 <= Bytes.Length && Bytes[0] == 0)
-            {
-                await ParamTask.ConfigureAwait(false);
-                return Page();
-            }
-            else 
-            {
-                await ParamTask.ConfigureAwait(false);
-                return LocalRedirect("/"); 
-            }
+            await new Parameters.LoginParameters().InitValidate(HttpContext).ConfigureAwait(false);
         }
     }
 }
