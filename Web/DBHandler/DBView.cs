@@ -411,7 +411,7 @@ ORDER BY o.tweet_id " + (Before ? "DESC" : "ASC") + " LIMIT @limitplus;";
             int RecievedCount = 0;
             do
             {
-                var Tweets = GetTimelineBlock.Receive();
+                var Tweets = await GetTimelineBlock.ReceiveAsync().ConfigureAwait(false);
                 RecievedCount++;
 
                 //ツイートがない期間が続いたら打ち切る

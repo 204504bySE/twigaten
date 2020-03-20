@@ -88,8 +88,7 @@ namespace Twigaten.Web.Controllers
             {
                 //額縁画像をコピーして使う
                 using (var Frame = new Bitmap(FrameImage))  //これでコピーされる
-                using (var mem = new MemoryStream(Icon.Data))
-                using (var IconImage = Image.FromStream(mem))
+                using (var IconImage = Image.FromStream(Icon.Data))
                 using (var g = Graphics.FromImage(Frame))
                 using (var ret = new MemoryStream())
                 {
@@ -109,7 +108,7 @@ namespace Twigaten.Web.Controllers
         /// </summary>
         /// <param name="FileName">アカウントID.拡張子</param>
         /// <returns></returns>
-        async Task<(int StatusCode, byte[] Data)> FindProfileImage(string FileName)
+        async Task<(int StatusCode, Stream Data)> FindProfileImage(string FileName)
         {
 
             //ファイル名の先頭が"_"だったら初期アイコンのURLとみなす
@@ -118,12 +117,7 @@ namespace Twigaten.Web.Controllers
                 string trimmedname = MediaFolderPath.DefaultProfileImagePath(FileName.Substring(1));
                 if (System.IO.File.Exists(MediaFolderPath.DefaultProfileImagePath(trimmedname))) 
                 {
-                    using (var file = System.IO.File.OpenRead(trimmedname))
-                    using (var mem = new MemoryStream())
-                    {
-                        await file.CopyToAsync(mem).ConfigureAwait(false);
-                        return (StatusCodes.Status200OK, mem.ToArray());
-                    }
+                    return (StatusCodes.Status200OK, System.IO.File.OpenRead(trimmedname));
                 }
                 else { return (StatusCodes.Status404NotFound, null); }
             }
@@ -134,15 +128,7 @@ namespace Twigaten.Web.Controllers
             //まずは鯖内のファイルを探す 拡張子はリクエストURLを信頼して手を抜く
             //初期アイコンではないものとして探す
             string localmedia = MediaFolderPath.ProfileImagePath(user_id, false, FileName);
-            if (System.IO.File.Exists(localmedia)) 
-            {
-                using (var file = System.IO.File.OpenRead(localmedia))
-                using (var mem = new MemoryStream())
-                {
-                    await file.CopyToAsync(mem).ConfigureAwait(false);
-                    return (StatusCodes.Status200OK, mem.ToArray());
-                }
-            }
+            if (System.IO.File.Exists(localmedia)) { return (StatusCodes.Status200OK, System.IO.File.OpenRead(localmedia)); }
 
             var ProfileImageInfo = await DB.SelectProfileImageUrl(user_id).ConfigureAwait(false);
             if (ProfileImageInfo == null) { return (StatusCodes.Status404NotFound, null); }
@@ -150,29 +136,19 @@ namespace Twigaten.Web.Controllers
             if (ProfileImageInfo.Value.is_default_profile_image)
             {
                 string defaulticon = MediaFolderPath.ProfileImagePath(user_id, true, ProfileImageInfo.Value.profile_image_url);
-                if (System.IO.File.Exists(defaulticon)) 
-                {
-                    using (var file = System.IO.File.OpenRead(defaulticon))
-                    using (var mem = new MemoryStream())
-                    {
-                        await file.CopyToAsync(mem).ConfigureAwait(false);
-                        return (StatusCodes.Status200OK, mem.ToArray());
-                    }
-                }
+                if (System.IO.File.Exists(defaulticon)) { return (StatusCodes.Status200OK, System.IO.File.OpenRead(defaulticon)); }
             }
             //鯖内にファイルがなかったのでtwitterから横流しする
-            var ret = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url).ConfigureAwait(false);
-            if (ret.FileBytes != null)
+            var downloaded = await Download(ProfileImageInfo.Value.profile_image_url, ProfileImageInfo.Value.tweet_url).ConfigureAwait(false);
+            if (downloaded.FileBytes != null)
             {
                 //画像の取得に成功したわけだし保存しておきたい
                 //初期アイコンはいろいろ面倒なのでここではやらない
-                if (!ProfileImageInfo.Value.is_default_profile_image)
-                {
-                    StoreProfileImageBlock.Post((ProfileImageInfo.Value, ret.FileBytes));
-                }
-                return (StatusCodes.Status200OK, ret.FileBytes);
+                if (!ProfileImageInfo.Value.is_default_profile_image) { StoreProfileImageBlock.Post((ProfileImageInfo.Value, downloaded.FileBytes)); }
+                
+                return (StatusCodes.Status200OK, new MemoryStream(downloaded.FileBytes, false));
             }
-            else { return ((int)ret.StatusCode, null); }
+            else { return ((int)downloaded.StatusCode, null); }
         }
 
         ///<summary>ファイルをダウンロードしてそのまんま返す
