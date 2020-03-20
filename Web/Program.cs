@@ -28,14 +28,23 @@ namespace Twigaten.Web
                 {
 
                     //LinuxではIPv6だけListenすればIPv4もListenされる
-                    if (config.ListenIPv6) { options.Listen(IPAddress.IPv6Loopback, config.ListenPort); }
-                    if (config.ListenIPv4) { options.Listen(IPAddress.Loopback, config.ListenPort); }
+                    if (config.ListenIPv6) 
+                    {
+                        options.Listen(IPAddress.IPv6Loopback, config.ListenPort);
+                        Console.WriteLine("Listening [{0}]:{1}", IPAddress.IPv6Loopback, config.ListenPort);
+                    }
+                    if (config.ListenIPv4) 
+                    {
+                        options.Listen(IPAddress.Loopback, config.ListenPort);
+                        Console.WriteLine("Listening {0}:{1}", IPAddress.Loopback, config.ListenPort);
+                    }
 
                     //UNIXソケットを作る際は事前に消す(再起動時に残ってる)
                     if (!string.IsNullOrWhiteSpace(config.ListenUnixSocketPath))
                     {
                         File.Delete(config.ListenUnixSocketPath);
                         options.ListenUnixSocket(config.ListenUnixSocketPath);
+                        Console.WriteLine("Listening unix:{0}", config.ListenUnixSocketPath);
                     }
                 })
                 .UseStartup<Startup>()
@@ -49,11 +58,10 @@ namespace Twigaten.Web
                 .Build();
 
             await host.StartAsync().ConfigureAwait(false);
-
             //UNIXソケットを作ってから後でパーミッションを変更する
             if (!string.IsNullOrWhiteSpace(config.ListenUnixSocketPath))
             { new UnixFileInfo(config.ListenUnixSocketPath).FileAccessPermissions = FileAccessPermissions.DefaultPermissions; }
-
+            Console.WriteLine("Ready for requests.");
             await host.WaitForShutdownAsync().ConfigureAwait(false);
 
         }

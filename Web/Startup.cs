@@ -17,6 +17,7 @@ using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.HttpOverrides;
+using CompressedStaticFiles;
 
 namespace Twigaten.Web
 {
@@ -66,8 +67,8 @@ namespace Twigaten.Web
             else
             {
                 app.UseExceptionHandler("/error");
-                //↓CompressedStaticFilesがないので今のところ用なし
-                //PreCompress.Proceed(env.WebRootPath);
+                //ここで圧縮ファイルを作る
+                PreCompress.Proceed(env.WebRootPath).Wait();
             }
             app.UseResponseCompression();
 
@@ -80,8 +81,8 @@ namespace Twigaten.Web
             app.UseDefaultFiles();
             //↓残念ながらCompressedStaticFiles(NuGetパッケージ)は ASP.NET Core 3.1では動いてくれなかった
             //更新を待とう(´・ω・`)
-            //app.UseCompressedStaticFiles();
-            app.UseStaticFiles();
+            app.UseCompressedStaticFiles();
+            //app.UseStaticFiles();
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 

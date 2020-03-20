@@ -5,9 +5,9 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.AspNetCore.StaticFiles;
 
-namespace Twigaten.Web
-{
+namespace Twigaten.Web { 
     /// <summary>
     /// 起動時にwwwroot内のファイルを圧縮する
     /// </summary>
@@ -22,28 +22,23 @@ namespace Twigaten.Web
         /// <returns></returns>
         public static Task Proceed(string wwwroot)
         {
-            var GzipBlock = new ActionBlock<FileInfo>(async (Info) => 
+            Console.WriteLine("Precompressing static files...");
+
+            var CompressBlock = new ActionBlock<FileInfo>(async (Info) =>
             {
-                using (var ReadFile = File.OpenRead(Info.FullName))
-                using (var WriteFile = File.OpenWrite(Info.FullName + ".gz"))
-                using (var Zip = new GZipStream(WriteFile, CompressionLevel.Optimal))
-                {
-                    await ReadFile.CopyToAsync(Zip);
-                }
-            }, new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
-            var BrotliBlock = new ActionBlock<FileInfo>(async (Info) => 
-            {
-                using (var ReadFile = File.OpenRead(Info.FullName))
-                using (var WriteFile = File.OpenWrite(Info.FullName + ".br"))
-                using (var Zip = new BrotliStream(WriteFile, CompressionLevel.Optimal))
-                {
-                    await ReadFile.CopyToAsync(Zip);
-                }
-            }, new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
+                using var ReadFile = File.OpenRead(Info.FullName);
+                using var WriteZip = File.OpenWrite(Info.FullName + ".gz");
+                using var Zip = new GZipStream(WriteZip, CompressionLevel.Optimal);
+                using var WriteBrotli = File.OpenWrite(Info.FullName + ".br");
+                using var Brotli = new BrotliStream(WriteBrotli, CompressionLevel.Optimal);
+                await ReadFile.CopyToAsync(Zip);
+                ReadFile.Seek(0, SeekOrigin.Begin);
+                await ReadFile.CopyToAsync(Brotli);
+            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
             //ディレクトリを再帰的に辿るやつ
             void TraverseDirectory(DirectoryInfo Dir)
-            {                
+            {
                 foreach (var Info in Dir.EnumerateFiles())
                 {
                     switch (Info.Extension)
@@ -57,9 +52,9 @@ namespace Twigaten.Web
                         //非圧縮ファイルがなかったり古かったりしたら圧縮する
                         default:
                             var GzipInfo = new FileInfo(Info.FullName + ".gz");
-                            if(!GzipInfo.Exists || GzipInfo.LastWriteTimeUtc < Info.LastWriteTimeUtc) { GzipBlock.Post(Info); }
                             var BrotliInfo = new FileInfo(Info.FullName + ".br");
-                            if (!BrotliInfo.Exists || BrotliInfo.LastWriteTimeUtc < Info.LastWriteTimeUtc) { BrotliBlock.Post(Info); }
+                            if (!GzipInfo.Exists || GzipInfo.LastWriteTimeUtc < Info.LastWriteTimeUtc
+                                || !BrotliInfo.Exists || BrotliInfo.LastWriteTimeUtc < Info.LastWriteTimeUtc) { CompressBlock.Post(Info); }
                             break;
                     }
                 }
@@ -70,11 +65,8 @@ namespace Twigaten.Web
             }
 
             TraverseDirectory(new DirectoryInfo(wwwroot));
-            GzipBlock.Complete();
-            BrotliBlock.Complete();
-            return Task.WhenAll(GzipBlock.Completion, BrotliBlock.Completion)
-                .ContinueWith((_) => { Console.WriteLine("Compression completed."); });
+            CompressBlock.Complete();
+            return CompressBlock.Completion.ContinueWith((_) => { Console.WriteLine("Precompression completed."); });
         }
     }
 }
-
