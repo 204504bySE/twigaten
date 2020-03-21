@@ -65,7 +65,7 @@ var twigatenCookies = twigatenCookies || {};
             }
             else {
                 // (?<=twitter\.com\/|@|^)[_\w]+
-                const screenNameMatch = new RegExp('(?:twitter\\.com\\/|@|^)([_\\w]+)').exec(queryText);
+                const screenNameMatch = new RegExp('(?:twitter\\.com\\/|@|^)([_\\w]+)(?=$|\/)').exec(queryText);
                 if (screenNameMatch && 2 <= screenNameMatch.length) {
                     event.currentTarget.setAttribute('action', '/search/user');
                 }

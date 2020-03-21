@@ -13,6 +13,6 @@
         nextFrame();
         location.href = '/auth/wait';
     };
-    if (document.readyState == 'loading' || document.readyState == 'interactive') { window.addEventListener('load', animation); }
+    if (document.readyState != 'complete') { window.addEventListener('load', animation); }
     else { animation(); }
 })();
