@@ -79,10 +79,7 @@ namespace Twigaten.Web
             });
 
             app.UseDefaultFiles();
-            //↓残念ながらCompressedStaticFiles(NuGetパッケージ)は ASP.NET Core 3.1では動いてくれなかった
-            //更新を待とう(´・ω・`)
             app.UseCompressedStaticFiles();
-            //app.UseStaticFiles();
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 

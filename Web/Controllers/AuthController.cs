@@ -131,7 +131,7 @@ namespace Twigaten.Web.Controllers
             if (Params.ID.HasValue) 
             {
                 await CrawlManager.WhenCrawled(Params.ID.Value).ConfigureAwait(false);
-                return LocalRedirect("/users/" + Params.ID.ToString());
+                return LocalRedirect("/users/" + Params.ID.Value.ToString());
             }
             else { return LocalRedirect("/"); }
 
