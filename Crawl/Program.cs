@@ -16,7 +16,7 @@ namespace Twigaten.Crawl
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             ServicePointManager.EnableDnsRoundRobin = true;
 
-            Lib.Config config = Twigaten.Lib.Config.Instance;
+            Lib.Config config = Lib.Config.Instance;
             //結局Minを超えると死ぬのでMinを大きくしておくしかない
             //User streamを使うときだけ対応する
             if(config.crawl.StreamSpeedSeconds > 0)
@@ -48,17 +48,25 @@ namespace Twigaten.Crawl
             while (true)
             {
                 await manager.ConnectStreamers().ConfigureAwait(false);
-                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要らしい
-                GC.Collect();
-                sw.Stop();
                 //早く終わったときだけ休む(home_timelineの15/15min取得制限に準ずる)
                 long Elapsed = sw.ElapsedMilliseconds;
                 if (Elapsed < 60000)
                 {
-                    await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false);
+                    await Task.Delay(Math.Min(10000, 60000 - (int)Elapsed >> 1)).ConfigureAwait(false);
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要                    GC.wait
+                    GC.Collect();
+                    //まだ時間が残ってたら休む
+                    Elapsed = sw.ElapsedMilliseconds;
+                    if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
                     sw.Restart();
                 }
-                else { sw.Restart(); }
+                else 
+                {
+                    GC.Collect();
+                    sw.Restart(); 
+                }
                 //最後に取得したツイート等をDBに保存する
                 await manager.StoreCrawlStatus().ConfigureAwait(false);
                 //↓再読み込みしても一部しか反映されないけどね

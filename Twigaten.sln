@@ -21,7 +21,14 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Lib", "Lib\Lib.shproj", "{1
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Lib\Lib.projitems*{0d3f41e7-a0ae-4c08-b084-d938090d9ea7}*SharedItemsImports = 5
 		Lib\Lib.projitems*{1996d371-ad00-4d45-a03a-511e942b8dd5}*SharedItemsImports = 13
+		Lib\Lib.projitems*{2798fda6-5fd1-4c41-b4bc-8d8aeb6bdea7}*SharedItemsImports = 5
+		Lib\Lib.projitems*{5d4c4fe7-67b2-476a-988b-4c4500257d1b}*SharedItemsImports = 5
+		Lib\Lib.projitems*{be6bde09-f094-4088-a078-10df8ae5ae20}*SharedItemsImports = 5
+		Lib\Lib.projitems*{d50d52eb-e166-4c46-8217-7baf43946f2c}*SharedItemsImports = 5
+		Lib\Lib.projitems*{d5bc6216-3a12-4be3-afcd-c5220197b029}*SharedItemsImports = 5
+		Lib\Lib.projitems*{ea9f3e22-0ac2-4305-a7f1-91822c03a51f}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

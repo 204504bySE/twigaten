@@ -33,7 +33,7 @@ namespace Twigaten.Crawl
                 var s = new UserStreamer(new UserStreamer.UserStreamerSetting() { Token = t });
                 await s.RestFriend().ConfigureAwait(false);
                 await s.RestBlock().ConfigureAwait(false);
-                await s.RestMyTweet().ConfigureAwait(false);
+                //await s.RestMyTweet().ConfigureAwait(false);
                 await s.VerifyCredentials().ConfigureAwait(false);
             }, new ExecutionDataflowBlockOptions()
             {

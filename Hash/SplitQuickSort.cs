@@ -161,7 +161,12 @@ namespace Twigaten.Hash
                         //処理中の物は1個減る
                         return -1;
                     }
-                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, SingleProducerConstrained = true });
+                }, new ExecutionDataflowBlockOptions 
+                {
+                    MaxDegreeOfParallelism = Environment.ProcessorCount,
+                    SingleProducerConstrained = true,
+                    EnsureOrdered = false
+                });
 
             BufBlock.LinkTo(QuickSortBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             
