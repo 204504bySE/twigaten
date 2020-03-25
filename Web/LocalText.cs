@@ -66,7 +66,7 @@ namespace Twigaten.Web
         public static string ProfileImageUrl(TweetData._user User, bool IsDefaultProfileImage)
         {
             if (User.local_profile_image_url == null) { return null; }
-            if (IsDefaultProfileImage) { return config.crawl.PictPathProfileImage + '_' + Path.GetFileName(User.local_profile_image_url); }
+            if (IsDefaultProfileImage) { return "/twimg/profile_image/" + '_' + Path.GetFileName(User.local_profile_image_url); }
             else { return "/twimg/profile_image/" + User.user_id.ToString() + Path.GetExtension(User.local_profile_image_url); }
         }
     }
