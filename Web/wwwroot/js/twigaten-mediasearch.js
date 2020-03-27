@@ -4,23 +4,23 @@
     const mediaInput = document.getElementById('twigaten-media-input');
     const mediaForm = document.getElementById('twigaten-media-form');
 
-    mediaDrop.addEventListener('dragover', (event) => {
+    mediaDrop.addEventListener('dragover', function (event) {
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.classList.toggle('dragging', true);
     });
-    mediaDrop.addEventListener('dragenter', (event) => {
+    mediaDrop.addEventListener('dragenter', function (event) {
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.classList.toggle('dragging', true);
     });
-    mediaDrop.addEventListener('dragleave', (event) => {
+    mediaDrop.addEventListener('dragleave', function (event) {
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.classList.remove('dragging');
     });
     //ドロップしたらformを操作してPOST(雑)
-    mediaDrop.addEventListener('drop', (event) => {
+    mediaDrop.addEventListener('drop', function (event) {
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.classList.remove('dragging');
@@ -34,7 +34,7 @@
         }
     });
     //ファイルを選択したときもPOST
-    mediaInput.addEventListener('change', () => {
+    mediaInput.addEventListener('change', function () {
         mediaDrop.classList.toggle('dropped', true);
         mediaForm.submit();
     });

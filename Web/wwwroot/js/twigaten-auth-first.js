@@ -1,6 +1,6 @@
 ﻿'use strict';
 (function () {
-    const animation = () => {
+    const animation = function () {
         var frames = document.getElementById('animation-frames').getElementsByTagName('span');
         var frameIndex = 0;
         function nextFrame() {

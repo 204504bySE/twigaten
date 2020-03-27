@@ -10,7 +10,7 @@ var twigatenCookies = twigatenCookies || {};
     const TLUser_RT = Cookies.get('TLUser_RT');
     const TLUser_Show0 = Cookies.get('TLUser_Show0');
     //こいつを呼ぶ
-    twigatenCookies.set = () => {
+    twigatenCookies.set = function () {
         if (UserSearch_LikeMode) { Cookies.set('UserSearch_LikeMode', UserSearch_LikeMode, cookieOption); }
         if (Featured_Order) { Cookies.set('Featured_Order', Featured_Order, cookieOption); }
         if (TLUser_Count) { Cookies.set('TLUser_Count', TLUser_Count, cookieOption); }
@@ -40,10 +40,10 @@ var twigatenCookies = twigatenCookies || {};
         menuUser.classList.remove('is-hidden');
 
         const menuDropDown = document.getElementById('menu-user-dropdown');
-        menuUser.addEventListener('touchstart', () => { menuDropDown.classList.add('is-block'); });
-        menuUser.addEventListener('click', () => { menuDropDown.classList.add('is-block'); });
-        menuUser.addEventListener('mouseenter', () => { menuDropDown.classList.add('is-block'); });
-        menuUser.addEventListener('mouseleave', () => { menuDropDown.classList.remove('is-block'); });
+        menuUser.addEventListener('touchstart', function () { menuDropDown.classList.add('is-block'); });
+        menuUser.addEventListener('click', function () { menuDropDown.classList.add('is-block'); });
+        menuUser.addEventListener('mouseenter', function () { menuDropDown.classList.add('is-block'); });
+        menuUser.addEventListener('mouseleave', function () { menuDropDown.classList.remove('is-block'); });
     }
     else {
         Cookies.remove('ScreenName');
@@ -51,8 +51,8 @@ var twigatenCookies = twigatenCookies || {};
 
 
     //検索ボックス
-    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-search'), (x) => {
-        x.addEventListener('submit', (event) => {
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-search'), function (x) {
+        x.addEventListener('submit', function (event) {
             event.preventDefault();
             twigatenCookies.set();
 
@@ -77,14 +77,14 @@ var twigatenCookies = twigatenCookies || {};
 
     //ハンバーガーメニュー
     const menuBurgered = document.getElementById('menu-burgered');
-    document.getElementById('menu-burger').addEventListener('click', () => {
+    document.getElementById('menu-burger').addEventListener('click', function () {
         menuBurgered.classList.toggle('is-active');
     });
 
     // クリックしたらCookieをセットして移動/リロードするやつ
     // <a>は data-keyとdata-valueなCookieをセット → hrefがあれば移動,なければリロード
-    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-click'), (x) => {
-        x.addEventListener('click', (event) => {
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-click'), function (x) {
+        x.addEventListener('click', function (event) {
             event.preventDefault();
             twigatenCookies.set();
             if (event.currentTarget.dataset.key) {
@@ -100,8 +100,8 @@ var twigatenCookies = twigatenCookies || {};
         });
     });
     // <select>は <select data-key="">と<option value="">を参照する
-    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-select'), (x) => {
-        x.addEventListener('change', (event) => {
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-cookie-select'), function (x) {
+        x.addEventListener('change', function (event) {
             event.preventDefault();
             twigatenCookies.set();
             if (event.currentTarget.dataset.key) {

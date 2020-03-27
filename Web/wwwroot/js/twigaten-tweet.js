@@ -6,7 +6,7 @@
         function (event) {
             const lazyLoadInstance = event.detail.instance;
             if (document.readyState === 'loading') {
-                window.addEventListener('DOMContentLoaded', () => {
+                window.addEventListener('DOMContentLoaded', function () {
                     lazyLoadInstance.update();
                 });
             }
@@ -15,7 +15,7 @@
         false
     );
     //convert unixtime
-    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-unixtime'), (x) => {
+    Array.prototype.forEach.call(document.getElementsByClassName('twigaten-unixtime'), function (x) {
         x.textContent = new Date(x.dataset.unixtime * 1000).toLocaleString();
     });
 })();

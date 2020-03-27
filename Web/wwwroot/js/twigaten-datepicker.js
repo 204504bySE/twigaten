@@ -7,8 +7,8 @@
         enableTime: true,
         time_24hr: true
     });    
-    Array.prototype.forEach.call(document.getElementsByClassName("twigaten-datepicker"), (x) => {
-        x.addEventListener('submit', (event) => {
+    Array.prototype.forEach.call(document.getElementsByClassName("twigaten-datepicker"), function (x) {
+        x.addEventListener('submit', function (event) {
             event.preventDefault();
             if (event.currentTarget.elements['date'].value) {
                 twigatenCookies.set();
@@ -20,7 +20,7 @@
         });
     });
     //lazy apply the stylesheet
-    window.addEventListener('load', () => {
+    window.addEventListener('load', function () {
         const stylesheet = document.getElementById('flatpickr-stylesheet');
         if (stylesheet.getAttribute('media') != 'all') { stylesheet.setAttribute('media', 'all'); }
     });
