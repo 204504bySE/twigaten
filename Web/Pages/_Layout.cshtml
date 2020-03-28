@@ -13,10 +13,16 @@
     <meta property="og:title" content="@ViewData["Title"] - TwiGaTen" />
     @RenderSection("TwitterCard", false)
     @RenderSection("MetaTags", false)
-    <link rel="stylesheet" href="~/css/bulmaswatch.min.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <script defer src="~/js/js.cookie.min.js" asp-append-version="true"></script>
-    <script defer src="~/js/twigaten-common.js" asp-append-version="true"></script>
+    <environment include="Development">
+        <link rel="stylesheet" href="~/css/bulmaswatch.min.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+        <script defer src="~/js/js.cookie.min.js" asp-append-version="true"></script>
+        <script defer src="~/js/twigaten-common.js" asp-append-version="true"></script>
+    </environment>
+    <environment exclude="Development">
+        <link rel="stylesheet" href="~/css/site.min.css" asp-append-version="true" />
+        <script defer src="~/js/twigaten-common.min.js" asp-append-version="true"></script>
+    </environment>
     @RenderSection("scripts", required: false)
 </head>
 <body>

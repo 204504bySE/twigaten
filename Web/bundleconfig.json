@@ -1,0 +1,42 @@
+[
+  {
+    "outputFileName": "wwwroot/css/site.min.css",
+    "inputFiles": [
+      "wwwroot/css/bulmaswatch.min.css",
+      "wwwroot/css/site.css"
+    ]
+  },
+  {
+    "outputFileName": "wwwroot/js/twigaten-auth-first.min.js",
+    "inputFiles": [
+      "wwwroot/js/twigaten-auth-first.js"
+    ]
+  },
+  {
+    "outputFileName": "wwwroot/js/twigaten-common.min.js",
+    "inputFiles": [
+      "wwwroot/js/js.cookie.min.js",
+      "wwwroot/js/twigaten-common.js"
+    ]
+  },
+  {
+    "outputFileName": "wwwroot/js/twigaten-datepicker.min.js",
+    "inputFiles": [
+      "wwwroot/js/flatpickr.min.js",
+      "wwwroot/js/twigaten-datepicker.js"
+    ]
+  },
+  {
+    "outputFileName": "wwwroot/js/twigaten-mediasearch.min.js",
+    "inputFiles": [
+      "wwwroot/js/twigaten-mediasearch.js"
+    ]
+  },
+  {
+    "outputFileName": "wwwroot/js/twigaten-tweet.min.js",
+    "inputFiles": [
+      "wwwroot/js/twigaten-tweet.js",
+      "wwwroot/js/lazyload.iife.min.js"
+    ]
+  }
+]

@@ -3,7 +3,12 @@
 @using Twigaten.Web.Locale
 @section Scripts
 {
-    <script async src="~/js/twigaten-auth-first.js" asp-append-version="true"></script>
+    <environment include="Development">
+        <script async src="~/js/twigaten-auth-first.js" asp-append-version="true"></script>
+    </environment>
+    <environment exclude="Development">
+        <script async src="~/js/twigaten-auth-first.min.js" asp-append-version="true"></script>
+    </environment>
     @*↓ページ移動後の動作を速くするためにここで読ませておく*@
     <partial name="TweetScript" />
     <partial name="DatePickerScript" />

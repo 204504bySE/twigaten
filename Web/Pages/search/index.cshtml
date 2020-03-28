@@ -3,8 +3,13 @@
 @{
     ViewData["Title"] = "検索";
 }
-@section Scripts{ 
-    <script defer src="~/js/twigaten-mediasearch.js" asp-append-version="true"></script>
+@section Scripts{
+    <environment include="Development">
+        <script defer src="~/js/twigaten-mediasearch.js" asp-append-version="true"></script>
+    </environment>
+    <environment exclude="Development">
+        <script defer src="~/js/twigaten-mediasearch.min.js" asp-append-version="true"></script>
+    </environment>
 }
 @section TwitterCard{
     <twitter-card-description />
