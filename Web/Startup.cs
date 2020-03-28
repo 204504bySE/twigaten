@@ -18,7 +18,6 @@ using System.Text.Unicode;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.HttpOverrides;
 using CompressedStaticFiles;
-using WebMarkupMin.AspNetCore3;
 
 namespace Twigaten.Web
 {
@@ -47,10 +46,6 @@ namespace Twigaten.Web
             });
             services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
             services.Configure<GzipCompressionProviderOptions>(options => { options.Level = CompressionLevel.Fastest; });
-
-            services.AddWebMarkupMin()
-                .AddHtmlMinification()
-                .AddXmlMinification();
 
             services.Configure<CookiePolicyOptions>(options => { options.CheckConsentNeeded = context => false; });
             services.AddSession();
@@ -85,7 +80,6 @@ namespace Twigaten.Web
             app.UseResponseCompression();
             app.UseDefaultFiles();
             app.UseCompressedStaticFiles();
-            app.UseWebMarkupMin();
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 
