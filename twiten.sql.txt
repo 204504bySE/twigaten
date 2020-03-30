@@ -38,7 +38,7 @@ create table block(
 
 create table user(
 	user_id bigint primary key,
-	name varchar(20) not null,
+	name varchar(191) not null,
 	screen_name varchar(20) character set ascii not null,
 	isprotected bool not null,
 	profile_image_url text character set ascii,
