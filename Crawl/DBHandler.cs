@@ -64,7 +64,7 @@ JOIN crawlprocess USING (user_id)
                          rest_my_tweet = r.GetBoolean(3),
                          last_status_id = r.GetInt64(4)
                      });
-                 }).ConfigureAwait(false)) { return ret.ToArray(); }
+                 }, IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { return ret.ToArray(); }
                 else { return Enumerable.Empty<UserStreamerSetting>(); }//一応全取得に成功しない限り返さない
             }
         }
@@ -426,8 +426,9 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
                 var cmdtmp = new MySqlCommand(BulkInsertCmdFull);
                 for (int j = 0; j < BulkUnit; j++)
                 {
-                    cmdtmp.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = UserID;
-                    cmdtmp.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = x[BulkUnit * i + j];
+                    string numstr = j.ToString();
+                    cmdtmp.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = UserID;
+                    cmdtmp.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = x[BulkUnit * i + j];
                 }
                 cmdList.Add(cmdtmp);
             }
@@ -436,8 +437,9 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
                 var cmdtmp = new MySqlCommand(BulkCmdStr(x.Length % BulkUnit, 2, head));
                 for (int j = 0; j < x.Length % BulkUnit; j++)
                 {
-                    cmdtmp.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = UserID;
-                    cmdtmp.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = x[BulkUnit * i + j];
+                    string numstr = j.ToString();
+                    cmdtmp.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = UserID;
+                    cmdtmp.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = x[BulkUnit * i + j];
                 }
                 cmdList.Add(cmdtmp);
             }

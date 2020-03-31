@@ -38,9 +38,9 @@ namespace Twigaten.Lib
             return new MySqlConnection(ConnectionStr);
         }
 
-        ///<summary>head + "(@a0,@b0),(@a1,@b1),(@a2,@b2)…;" という文字列を生成する
+        ///<summary>head + "(@a0,@b0),(@a1,@b1),(@a2,@b2)… + tail;" という文字列を生成する
         ///"INSERT INTO ... VALUES" など</summary>
-        protected static string BulkCmdStr(int count, int unit, string head)
+        protected static string BulkCmdStr(int count, int unit, string head, string tail = "")
         {
             if(26 < unit) { throw new ArgumentOutOfRangeException("26 < unit"); }
             var BulkCmd = new StringBuilder(head);
@@ -58,6 +58,7 @@ namespace Twigaten.Lib
                 BulkCmd.Append("),");
             }
             BulkCmd.Remove(BulkCmd.Length - 1, 1)
+                .Append(tail)
                 .Append(';');
             return BulkCmd.ToString();
         }

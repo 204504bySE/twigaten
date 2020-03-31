@@ -35,22 +35,41 @@ WHERE pid IS NULL;"))
                 else { return new long[0]; }    //例によって全部取得成功しない限り返さない
             }
         }
+
+        const int BulkUnit = 1000;
+        const string AssignTokensHead = @"INSERT
+INTO crawlprocess (user_id, pid, rest_my_tweet)
+VALUES";
+        const string AssignTokensTail = @"ON DUPLICATE KEY UPDATE pid = VALUES(pid), rest_my_tweet = VALUES(rest_my_tweet);";
+        static readonly string AssignTokensStrFull = BulkCmdStr(BulkUnit, 3, AssignTokensHead, AssignTokensTail);
         
         ///<summary>アカウントをまとめて割り当てる</summary>
-        public async Task<bool> AssignTokens(IEnumerable<(long user_id, int pid)> tokens, bool RestMyTweet)
+        public async Task<bool> AssignTokens(IList<(long user_id, int pid)> tokens, bool RestMyTweet)
         {
             var cmdList = new List<MySqlCommand>();
-
-            //めんどくさいのでBulk Insertまではやらない
-            foreach(var t in tokens)
+            int i;
+            for(i = 0; i < tokens.Count / BulkUnit; i++)
             {
-                var cmd = new MySqlCommand(@"INSERT
-INTO crawlprocess (user_id, pid, rest_my_tweet)
-VALUES (@user_id, @pid, @rest_my_tweet)
-ON DUPLICATE KEY UPDATE pid=@pid;");
-                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = t.user_id;
-                cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = t.pid;
-                cmd.Parameters.Add("@rest_my_tweet", MySqlDbType.Bool).Value = RestMyTweet;
+                var cmd = new MySqlCommand(AssignTokensStrFull);
+                for(int j = 0; j < BulkUnit; j++)
+                {
+                    string numstr = j.ToString();
+                    cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = tokens[BulkUnit * i + j].user_id;
+                    cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int32).Value = tokens[BulkUnit * i + j].pid;
+                    cmd.Parameters.Add("@c" + numstr, MySqlDbType.Bool).Value = RestMyTweet;
+                }
+                cmdList.Add(cmd);
+            }
+            if(tokens.Count % BulkUnit != 0)
+            {
+                var cmd = new MySqlCommand(BulkCmdStr(tokens.Count % BulkUnit, 3, AssignTokensHead, AssignTokensTail));
+                for (int j = 0; j < tokens.Count % BulkUnit; j++)
+                {
+                    string numstr = j.ToString();
+                    cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = tokens[BulkUnit * i + j].user_id;
+                    cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int32).Value = tokens[BulkUnit * i + j].pid;
+                    cmd.Parameters.Add("@c" + numstr, MySqlDbType.Bool).Value = RestMyTweet;
+                }
                 cmdList.Add(cmd);
             }
             return await ExecuteNonQuery(cmdList).ConfigureAwait(false) > 0;

@@ -46,7 +46,7 @@ namespace Twigaten.CrawlParent
 
         ///<summary>一番空いてるっぽいプロセスにアカウントを割り当てる
         ///各プロセスのアカウント数の上限は関知しない</summary>
-        public async Task AssignToken(IEnumerable<long> user_id, bool GetMyTweet)
+        public async Task AssignToken(long[] user_id, bool GetMyTweet)
         {
             //プロセスは事前に起動してくれ
             if(TokenCount.Count == 0) { return; }
@@ -66,7 +66,7 @@ namespace Twigaten.CrawlParent
             if (!await db.AssignTokens(assigns, GetMyTweet).ConfigureAwait(false))
             {
                 //失敗したらTokenCountを元に戻す
-                foreach(var t in TokenCount.Keys)
+                foreach(var t in TokenCount.Keys.ToArray())
                 {
                     TokenCount[t] -= assigns.Where(a => a.pid == t).Count();
                 }
