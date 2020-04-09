@@ -13,6 +13,7 @@ namespace Twigaten.Web.Controllers
 {
     /// <summary>
     /// ここには「画像を検索」しかない
+    /// 他の検索はPagesにある
     /// </summary>
     [Route("/search")]
     [ApiController]

@@ -43,6 +43,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", "https://twitter.com/" + Tweet.user.screen_name + @"/status/" + Tweet.tweet_id.ToString());
             output.Attributes.SetAttribute("rel", "nofollow");
+            output.Attributes.SetAttribute("target", "_blank");
             output.Content.SetHtmlContent(@"<img src=""/img/Twitter_bird_logo_2012.svg"" class=""twigaten-twitterbird"">");
         }
     }
