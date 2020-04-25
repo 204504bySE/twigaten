@@ -196,7 +196,7 @@ namespace Twigaten.Hash
             var MultipleSortSW = Stopwatch.StartNew();
 
             //クイックソートしたファイル群をマージソートしながら読み込む
-            using (var Reader = new MergeSortReader(SortedFileCount, SortMask, NewHash))
+            using (var Reader = new MergeSortReader(SortedFileCount, SortMask))
             {
                 AddOnlyList<long> Sorted;
                 while ((Sorted = Reader.ReadBlocks()) != null)
