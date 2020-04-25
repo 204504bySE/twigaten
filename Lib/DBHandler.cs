@@ -14,7 +14,7 @@ namespace Twigaten.Lib
     {
         protected static readonly Config config = Config.Instance;
         readonly string ConnectionStr;
-        public DBHandler(string user, string pass, string server, MySqlConnectionProtocol protocol, uint timeout = 20, uint poolsize = 40, uint lifetime = 3600)
+        public DBHandler(string server, MySqlConnectionProtocol protocol, uint timeout = 20, uint poolsize = 40, uint lifetime = 3600)
         {
             if(lifetime != 0 && lifetime < timeout) { throw new ArgumentException("lifetime < timeout"); }
             var builder = new MySqlConnectionStringBuilder()
@@ -23,8 +23,8 @@ namespace Twigaten.Lib
                 ConnectionProtocol = protocol,
                 Database = "twiten",
                 SslMode = MySqlSslMode.None,    //にゃーん
-                UserID = user,
-                Password = pass,
+                UserID = "twigaten",
+                Password = "",
                 MinimumPoolSize = 1,
                 MaximumPoolSize = poolsize,    //デフォルトは100
                 ConnectionLifeTime = lifetime,

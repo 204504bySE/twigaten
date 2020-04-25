@@ -40,7 +40,7 @@ namespace Twigaten.Tool
 
     public class DBHandler : Lib.DBHandler
     {
-        public DBHandler() : base("tool", "", config.database.Address, config.database.Protocol) { }
+        public DBHandler() : base(config.database.Address, config.database.Protocol) { }
 
         //ツイートが削除されて参照されなくなった画像を消す
         public async Task RemoveOrphanMedia()

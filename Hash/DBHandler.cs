@@ -14,7 +14,7 @@ namespace Twigaten.Hash
 {
     class DBHandler : Lib.DBHandler
     {
-        public DBHandler() : base("hash", "", config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400) { }
+        public DBHandler() : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400) { }
         
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpairslim VALUES";
         public const int StoreMediaPairsUnit = 1000;

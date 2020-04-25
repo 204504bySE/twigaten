@@ -13,7 +13,7 @@ namespace Twigaten.Web.DBHandler
 {
     public class DBView : Lib.DBHandler
     {
-        public DBView() : base("view", "", config.database.Address, config.database.Protocol, 11, 40, 600) { }
+        public DBView() : base(config.database.Address, config.database.Protocol, 11, 40, 600) { }
         public async Task<TweetData._user> SelectUser(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(GetUsersHead + @"WHERE user_id = @user_id"))

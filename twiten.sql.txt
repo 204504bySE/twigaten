@@ -112,49 +112,5 @@ create table dcthashpairslim(
 	foreign key (hash_large) references media(dcthash) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;
 
-create user token, crawl, hash, tool, view;
-
-grant select, insert, update on twiten.token to token;
-grant select, insert, update on twiten.user to token;
-grant select, insert, update on twiten.viewlogin to token;
-
-grant select, delete on twiten.token to crawl;
-grant select, insert, update, delete on twiten.crawlprocess to crawl;
-grant select, insert, delete on twiten.friend to crawl;
-grant select, insert, delete on twiten.block to crawl;
-grant select, insert, update on twiten.user to crawl;
-grant select, insert, update on twiten.user_updated_at to crawl;
-grant select, insert, update, delete on twiten.tweet to crawl;
-grant select, insert, delete on twiten.tweet_text to crawl;
-grant select, insert, update on twiten.media to crawl;
-grant select, insert on twiten.media_text to crawl;
-grant select, insert, update on twiten.media_downloaded_at to crawl;
-grant select, insert, update on twiten.tweet_media to crawl;
-
-grant select on twiten.user to view;
-grant select on twiten.user_updated_at to view;
-grant select, delete on twiten.viewlogin to view;
-grant select on twiten.friend to view;
-grant select on twiten.block to view;
-grant select on twiten.tweet to view;
-grant select on twiten.tweet_text to view;
-grant select on twiten.media to view;
-grant select on twiten.media_text to view;
-grant select on twiten.media_downloaded_at to view;
-grant select on twiten.tweet_media to view;
-grant select on twiten.dcthashpairslim to view;
-
-grant select on twiten.media to hash;
-grant select on twiten.media_downloaded_at to hash;
-grant insert on twiten.dcthashpairslim to hash;
-
-grant select, delete on tweet to tool;
-grant select, delete on tweet_text to tool;
-grant select, delete on user to tool;
-grant select, delete on user_updated_at to tool;
-grant select, delete on twiten.media_downloaded_at to tool;
-grant select, insert, delete on tweet_media to tool;
-grant select, delete on media to tool;
-grant select, delete on media_text to tool;
-grant select, delete on dcthashpairslim to tool;
-grant select on token to tool;
+create user twigaten;
+grant select, insert, update, delete on twiten.* to twigaten;

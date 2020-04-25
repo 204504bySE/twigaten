@@ -17,7 +17,7 @@ namespace Twigaten.Tool
     class RemovedMedia : Lib.DBHandler
     {
         const int DownloadConcurrency = 256;
-        public RemovedMedia() : base("tool", "", config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2))
+        public RemovedMedia() : base(config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2))
         {
             Counter.AutoRefresh();
         }

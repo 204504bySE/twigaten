@@ -113,7 +113,7 @@ namespace Twigaten.Tool
 
     class DBHandlerCommandLine : Lib.DBHandler
     {
-        public DBHandlerCommandLine() : base("tool", "", config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2)) { }
+        public DBHandlerCommandLine() : base(config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2)) { }
 
         public async Task<long?> LookupAccount(string screen_name)
         {

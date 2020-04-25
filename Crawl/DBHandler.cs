@@ -18,7 +18,7 @@ namespace Twigaten.Crawl
 {
     class DBHandler : Lib.DBHandler
     {
-        private DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol, 10, (uint)Config.Instance.crawl.MaxDBConnections) { }
+        private DBHandler() : base(config.database.Address, config.database.Protocol, 10, (uint)Config.Instance.crawl.MaxDBConnections) { }
         private static readonly DBHandler _db = new DBHandler();
         //singletonはこれでインスタンスを取得して使う
         public static DBHandler Instance

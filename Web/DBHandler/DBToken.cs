@@ -9,7 +9,7 @@ namespace Twigaten.Web.DBHandler
 {
     public class DBToken : Lib.DBHandler
     {
-        public DBToken() : base("token", "", config.database.Address, config.database.Protocol, 20, 4, 60) { }
+        public DBToken() : base(config.database.Address, config.database.Protocol, 20, 4, 60) { }
 
         /// <summary>
         /// TokenをDBに保存するだけの簡単なお仕事

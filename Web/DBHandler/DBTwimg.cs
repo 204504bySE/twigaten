@@ -9,7 +9,7 @@ namespace Twigaten.Web.DBHandler
 {
     public class DBTwimg : Lib.DBHandler
     {
-        public DBTwimg() : base("view", "", config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 60) { }
+        public DBTwimg() : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 60) { }
 
         public struct MediaInfo
         {

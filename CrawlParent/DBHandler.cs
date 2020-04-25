@@ -12,7 +12,7 @@ namespace Twigaten.CrawlParent
 
     class DBHandler : Lib.DBHandler
     {
-        public DBHandler() : base("crawl", "", config.database.Address, config.database.Protocol) { }
+        public DBHandler() : base(config.database.Address, config.database.Protocol) { }
 
         public async Task<long> CountToken()
         {
