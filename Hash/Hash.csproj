@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MySqlConnector" Version="0.63.0" />
+    <PackageReference Include="MySqlConnector" Version="0.64.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" />
     <PackageReference Include="Zstandard.Net" Version="1.1.7" />
   </ItemGroup>
