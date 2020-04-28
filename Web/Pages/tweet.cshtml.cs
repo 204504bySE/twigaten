@@ -32,7 +32,7 @@ namespace Twigaten.Web.Pages.Tweet
 
             //RTなら元ツイートにリダイレクトする
             await RetweetTask.ConfigureAwait(false);
-            if (RetweetTask.Result.HasValue) { return LocalRedirectPermanent("/tweet/" + RetweetTask.Result.Value.ToString()); }
+            if (RetweetTask.Result.HasValue) { return LocalRedirectPermanent("/tweet/" + RetweetTask.Result.Value.ToString() + (More ? "/more" : "")); }
             
             if (More) { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID, 99).ConfigureAwait(false); }
             else { Tweets = await DBView.SimilarMediaTweet(TweetId, Params.ID).ConfigureAwait(false); }

@@ -222,9 +222,6 @@
   <data name="Title_SignIn_Success" xml:space="preserve">
     <value>サインインしました</value>
   </data>
-  <data name="Title_SignIn_Failure" xml:space="preserve">
-    <value>サインインに失敗しました</value>
-  </data>
   <data name="Headline_OneTweet" xml:space="preserve">
     <value>{0} のツイート</value>
   </data>

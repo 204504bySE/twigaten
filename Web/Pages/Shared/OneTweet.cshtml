@@ -84,13 +84,13 @@
                 <p>@string.Format(Locale.SimilarMedia_ResultCount, Model.SimilarMediaCount)</p>
                 @if ((ViewData["IsMore"] as bool?) != true)
                 {
-                    <tweet-more-button tweet="Model.tweet" media="Model.media" is-more="Model.ExistsMoreMedia" />
+                    <tweet-more-button tweet="Model.tweet.retweet ?? Model.tweet" media="Model.media" is-more="Model.ExistsMoreMedia" />
                 }
                 else
                 {
                     <span class="no-viewmore"></span>
                 }
-                <tweet-intent path="@("/tweet/" + Model.tweet.tweet_id.ToString())" fragment="@Model.media.media_id.ToString()" />
+                <tweet-intent-onetweet tweet="Model.tweet.retweet ?? Model.tweet" media="Model.media" more="@((ViewData["IsMore"] as bool?) == true)" />
             </div>
         </nav>
     }

@@ -130,7 +130,7 @@
     <value>Timeline of @{0}</value>
   </data>
   <data name="Headline_TimeToSearch" xml:space="preserve">
-    <value>The time taken to search</value>
+    <value>Search time</value>
   </data>
   <data name="Headline_UserNotFound" xml:space="preserve">
     <value>User Not Found</value>
@@ -151,7 +151,7 @@
     <value>Sign out</value>
   </data>
   <data name="Menu_MyTweet" xml:space="preserve">
-    <value>My Tweets</value>
+    <value>Your Tweets</value>
   </data>
   <data name="Menu_Timeline" xml:space="preserve">
     <value>Timeline</value>
@@ -202,7 +202,7 @@
     <value>Tweets of @{0} Having Similar Images</value>
   </data>
   <data name="Error_BackTop" xml:space="preserve">
-    <value>« Back to top page</value>
+    <value>« Back to the top page</value>
   </data>
   <data name="SimilarMedia_GoogleImage" xml:space="preserve">
     <value>Google this image</value>
@@ -221,9 +221,6 @@
   </data>
   <data name="Title_SignIn_Success" xml:space="preserve">
     <value>Sign in Success</value>
-  </data>
-  <data name="Title_SignIn_Failure" xml:space="preserve">
-    <value>Sign in Failed</value>
   </data>
   <data name="Headline_OneTweet" xml:space="preserve">
     <value>Tweet of {0}</value>
