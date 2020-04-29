@@ -16,6 +16,6 @@
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
 
-# This is not written in JS
-*.json linguist-documentation
-*.js linguist-documentation
+# Ignore .min files
+*.min.js linguist-documentation
+*.min.css linguist-documentation
