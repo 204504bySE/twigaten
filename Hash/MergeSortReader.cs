@@ -32,7 +32,6 @@ namespace Twigaten.Hash
         }
 
         readonly int BlockElementsMin = config.hash.MultipleSortBufferElements;
-        readonly int BlockCombinationMin = config.hash.MultipleSortBufferElements << 1;
         readonly int ReadBlockListSize = (int)Math.Pow(2, Math.Ceiling(Math.Log(config.hash.MultipleSortBufferElements, 2)));
 
         ///<summary>これにソート後の結果を読み込む</summary>
@@ -57,9 +56,6 @@ namespace Twigaten.Hash
             //最初は絶対に一致させないように-1
             long MaskedKey = -1;
 
-            //各ブロック毎の計算量を揃えるために ブロックの要素数^2を足していく
-            int BlockCombinationCount = 0;
-
             int ValueIndex = LastIndex;
             while (0 < SortedMemory.Length)
             {
@@ -79,13 +75,12 @@ namespace Twigaten.Hash
                         //2要素以上あれば確定して次のサイクルに進む
                         if (1 < BlockCount)
                         {
-                            BlockCombinationCount += BlockCount * BlockCount;
                             ReadBlockList.InnerArray[BlockCountIndex] = BlockCount;
                             BlockCountIndex = ReadBlockList.Count;
                             //とりあえず次のサイクルの要素数のダミーを入れる
                             ReadBlockList.Add(0);
                             //十分な要素数が入ってたらここで終了(↑のAdd(0)は終端を示す0になる)
-                            if (BlockCombinationMin < BlockCombinationCount || BlockCombinationCount < 0 /* || BlockElementsMin < ReadBlockList.Count*/)
+                            if (BlockElementsMin < ReadBlockList.Count)
                             {
                                 //SortedValues[ValueIndex]の値を使わなかったので次回に回す
                                 LastIndex = ValueIndex;
