@@ -32,7 +32,7 @@ LEFT JOIN crawlprocess USING (user_id)
 WHERE pid IS NULL;"))
             {
                 if(await ExecuteReader(cmd, (r) => ret.Add(r.GetInt64(0))).ConfigureAwait(false)) { return ret.ToArray(); }
-                else { return new long[0]; }    //例によって全部取得成功しない限り返さない
+                else { return Array.Empty<long>(); }    //例によって全部取得成功しない限り返さない
             }
         }
 

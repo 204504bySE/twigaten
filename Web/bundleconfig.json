@@ -20,10 +20,10 @@
     ]
   },
   {
-    "outputFileName": "wwwroot/js/twigaten-datepicker.min.js",
+    "outputFileName": "wwwroot/js/twigaten-user-tl.min.js",
     "inputFiles": [
       "wwwroot/js/flatpickr.min.js",
-      "wwwroot/js/twigaten-datepicker.js"
+      "wwwroot/js/twigaten-user-tl.js"
     ]
   },
   {

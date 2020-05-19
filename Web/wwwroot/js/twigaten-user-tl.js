@@ -24,4 +24,7 @@
         const stylesheet = document.getElementById('flatpickr-stylesheet');
         if (stylesheet.getAttribute('media') != 'all') { stylesheet.setAttribute('media', 'all'); }
     });
+
+    //表示件数をcookieに合わせて選択する
+    document.getElementById('twigaten-tweet-count').value = Cookies.get('TLUser_Count');
 })();

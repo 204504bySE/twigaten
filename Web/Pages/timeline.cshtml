@@ -4,7 +4,7 @@
 @model Twigaten.Web.Pages.Tweet.TimelineModel
 @section Scripts{
     <partial name="TweetScript" />
-    <partial name="DatePickerScript" />
+    <partial name="UserTLScript" />
 }
 @section MetaTags{
     <meta name="robots" content="noindex" />
@@ -64,7 +64,7 @@ else
 <nav>
     <div class="select twigaten-navgroup">
         <p>@Locale.Pager_ResultsPerPage</p>
-        <select class="twigaten-cookie-select" data-key="TLUser_Count">
+        <select id="twigaten-tweet-count" class="twigaten-cookie-select" data-key="TLUser_Count">
             <option value="10">10</option>
             <option value="20">20</option>
             <option value="50">50</option>
