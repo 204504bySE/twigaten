@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using IniParser;
 using IniParser.Model;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace Twigaten.Lib
 {

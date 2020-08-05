@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 
 using System.Data;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Twigaten.Lib;
 using System.Threading.Tasks;
 

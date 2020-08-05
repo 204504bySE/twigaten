@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Net;
 using System.IO;
 using System.Data;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using System.Threading;
 using System.Threading.Tasks.Dataflow;
 
@@ -191,6 +191,30 @@ ORDER BY updated_at LIMIT @limit;"))
             Console.WriteLine("{0} Icons removed.", RemovedCount);
         }
 
+        public async Task<string[]> GetMediaPath()
+        {
+            try
+            {
+                using (var cmd = new MySqlCommand(@"SELECT
+m.media_id, mt.media_url
+FROM media m
+JOIN media_downloaded_at md ON m.media_id = md.media_id
+JOIN media_text mt ON m.media_id = mt.media_id
+ORDER BY md.downloaded_at DESC
+LIMIT @limit"))
+                {
+                    var ret = new List<string>();
+                    cmd.Parameters.AddWithValue("@limit", 10000);
+                    await ExecuteReader(cmd, (r) => ret.Add(MediaFolderPath.ThumbPath(r.GetInt64(0), r.GetString(1)))).ConfigureAwait(false);
+                    return ret.ToArray();
+                }
+            }
+            catch(Exception e) { Console.WriteLine(e); return Array.Empty<string>(); }
+        }
+
+        /*
+        // innodb→rocksdbに使ったやつ
+
         public async Task InsertAllTweet()
         {
             const int bulkunit = 1000;
@@ -352,7 +376,7 @@ ORDER BY updated_at LIMIT @limit;"))
             Console.WriteLine("{0}\t{1} / {2}\t{3}", DateTime.Now, InsertCount, MediaCount, snowflakecount);
             Console.WriteLine("＼(^o^)／");
         }
-
+        */
         /*
                 //画像が削除されて意味がなくなったツイートを消す
                 //URL転載したやつの転載元ツイートが消された場合

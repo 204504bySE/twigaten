@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using CommandLine;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Twigaten.Lib;
 
 namespace Twigaten.Tool
@@ -16,13 +16,14 @@ namespace Twigaten.Tool
         static readonly DBHandlerCommandLine DB = new DBHandlerCommandLine();
         public static Task Run(string[] args)
         {
-            return Parser.Default.ParseArguments<DeleteOption, LookupOption, CleanupOption>(args)
+            return Parser.Default.ParseArguments<DeleteOption, LookupOption, CleanupOption, CompareHashOption>(args)
                 .MapResult(
                     async (DeleteOption opts) => await DeleteTweetsCommand(opts).ConfigureAwait(false),
                     async (LookupOption opts) => await LookupCommand(opts).ConfigureAwait(false),
                     async (CleanupOption opts) => await CleanupCommand(opts).ConfigureAwait(false),
+                    async (CompareHashOption opts) => await CompareHashCommand(opts).ConfigureAwait(false),
                     errs => { Console.WriteLine("Invalid argument. See  --help"); return Task.Run(() => { }); }
-                );
+                ); ;
         }
 
         [Verb("delete", HelpText = "Delete specified account and its tweets.")]
@@ -107,6 +108,17 @@ namespace Twigaten.Tool
                 Console.WriteLine("＼(^o^)／");
             }
             else { Console.WriteLine("Invalid argument. See  --help"); }
+        }
+
+        [Verb("compare", HelpText = "aaa")]
+        class CompareHashOption 
+        {
+            [Option('d', "dummy", Required = false)]
+            public string dummy { get; set; }
+        }
+        static async Task CompareHashCommand(CompareHashOption opts)
+        {
+            await CompareHash.Proceed().ConfigureAwait(false);
         }
     }
 

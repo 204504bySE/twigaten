@@ -88,7 +88,7 @@ namespace Twigaten.Web
                 new CultureInfo("en")
             };
             //https://stackoverflow.com/questions/43871234/how-to-get-cookiename-used-in-cookierequestcultureprovider
-            //cookieの値は"c=en-UK|uic=en-US"のようにする(cとuic両方書かないと効かなかった)
+            //cookieの値は"c=en-US|uic=en-US"のようにする(cとuic両方書かないと効かなかった)
             var Localize = app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>();
             var cookieProvider = Localize.Value.RequestCultureProviders
                 .OfType<CookieRequestCultureProvider>()
