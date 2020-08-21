@@ -26,5 +26,6 @@
     });
 
     //表示件数をcookieに合わせて選択する
-    document.getElementById('twigaten-tweet-count').value = Cookies.get('TLUser_Count');
+    const tlUserCount = Cookies.get('TLUser_Count')
+    document.getElementById('twigaten-tweet-count').value = tlUserCount ? tlUserCount : 10;
 })();

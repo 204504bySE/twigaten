@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.StaticFiles;
 
-namespace Twigaten.Web { 
+namespace Twigaten.Web {
     /// <summary>
     /// 起動時にwwwroot内のファイルを圧縮する
     /// </summary>
@@ -49,7 +49,7 @@ namespace Twigaten.Web {
                             if (!File.Exists(Path.Combine(Info.DirectoryName, Path.GetFileNameWithoutExtension(Info.Name))))
                             { Info.Delete(); }
                             break;
-                        //非圧縮ファイルがなかったり古かったりしたら圧縮する
+                        //圧縮ファイルがなかったり古かったりしたら圧縮する
                         default:
                             var GzipInfo = new FileInfo(Info.FullName + ".gz");
                             var BrotliInfo = new FileInfo(Info.FullName + ".br");
