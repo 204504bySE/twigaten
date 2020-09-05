@@ -142,7 +142,7 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   取得時刻 に類似しているローカライズされた文字列を検索します。
+        ///   最終更新日時 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Headline_TimelineUpdatedAt {
             get {

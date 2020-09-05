@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 using Twigaten.Web.DBHandler;
+using static Twigaten.Web.Locale.Locale;
 
 namespace Twigaten.Web.TagHelpers
 {
@@ -42,6 +43,20 @@ namespace Twigaten.Web.TagHelpers
             output.Attributes.SetAttribute("href", "/users/" + User.user_id.ToString());
             output.Attributes.SetAttribute("class", "twigaten-screenname twigaten-cookie-click");
             output.Content.SetContent("@" + User.screen_name);
+        }
+    }
+    /// <summary>
+    /// ツイート/タイムラインの取得時刻を表示する(あなたにのみ表示されます)
+    /// </summary>
+    [HtmlTargetElement("timeline-updated-at")]
+    public class TimelineUpdatedAtTagHelper : TagHelper
+    {
+        public long UpdatedAt { get; set; }
+        public override void Process(TagHelperContext context, TagHelperOutput output)
+        {
+            output.TagName = "p";
+            output.TagMode = TagMode.StartTagAndEndTag;
+            output.Content.SetHtmlContent(Headline_TimelineUpdatedAt + @": <span class=""twigaten-unixtime"" data-unixtime=""" + UpdatedAt.ToString() + @"""></span> <span class=""has-text-grey is-size-7"">(" + Headline_ShowOnlyToYou + ")</span>");
         }
     }
 }

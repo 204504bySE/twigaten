@@ -67,6 +67,7 @@ namespace Twigaten.Web.Pages.Tweet
         public SimilarMediaTweet[] Tweets { get; private set; }
         public TweetData._user TargetUser { get; private set; }
         public TLUserParameters Params { get; private set; }
+        public crawlinfo Crawlinfo { get; private set; }
 
 
         public long QueryElapsedMilliseconds { get; private set; }
@@ -77,6 +78,7 @@ namespace Twigaten.Web.Pages.Tweet
             //一瞬でも速くしたいので先にTaskを作って必要なところでawaitする
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
+            var CrawlInfoTask = View.SelectCrawlInfo(Params.ID.Value);
 
             if (Date.HasValue) { Before = SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeSeconds(Date.Value), true); }
             long LastTweet = Before ?? After ?? SnowFlake.Now(true);
@@ -87,9 +89,10 @@ namespace Twigaten.Web.Pages.Tweet
             var TargetUserTask = View.SelectUser(Params.ID.Value);
             var TweetsTask = View.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
-            await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
+            await Task.WhenAll(TargetUserTask, TweetsTask, CrawlInfoTask).ConfigureAwait(false);
             TargetUser = TargetUserTask.Result;
             Tweets = TweetsTask.Result;
+            Crawlinfo = CrawlInfoTask.Result;
             if (Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
             return Page();

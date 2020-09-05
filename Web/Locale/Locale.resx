@@ -250,6 +250,6 @@
     <value>あなたにのみ表示されます</value>
   </data>
   <data name="Headline_TimelineUpdatedAt" xml:space="preserve">
-    <value>取得時刻</value>
+    <value>最終更新日時</value>
   </data>
 </root>

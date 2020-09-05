@@ -101,7 +101,7 @@ else
         <p><tweet-intent /></p>
         @if (Model.Crawlinfo != null && Model.Crawlinfo.timeline_updated_at.HasValue)
         {
-            <p>@(Locale.Headline_TimelineUpdatedAt): <span class="twigaten-unixtime" data-unixtime="@Model.Crawlinfo.timeline_updated_at"></span> <span class="has-text-grey is-size-7">(@(Locale.Headline_ShowOnlyToYou))</span></p>
+            <timeline-updated-at updated-at="@Model.Crawlinfo.timeline_updated_at.Value" />
         }
         <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
         foreach (var Tweet in Model.Tweets)
@@ -137,7 +137,7 @@ else
         <h2>@Locale.Headline_NoTweetToShow</h2>
         @if (Model.Crawlinfo != null && Model.Crawlinfo.timeline_updated_at.HasValue)
         {
-            <p>@(Locale.Headline_TimelineUpdatedAt): <span class="twigaten-unixtime" data-unixtime="@Model.Crawlinfo.timeline_updated_at"></span> <span class="has-text-grey is-size-7">(@(Locale.Headline_ShowOnlyToYou))</span></p>
+            <timeline-updated-at updated-at="@Model.Crawlinfo.timeline_updated_at.Value" />
         }
         <p>@(Locale.Headline_TimeToSearch): @(Model.QueryElapsedMilliseconds)ms</p>
         <partial name="NoTweetToShow" />
