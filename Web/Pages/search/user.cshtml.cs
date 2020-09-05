@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
 using static Twigaten.Web.DBHandler.DB;
 
@@ -37,7 +38,7 @@ namespace Twigaten.Web
             if (string.IsNullOrWhiteSpace(Q)) { return LocalRedirect("/search/"); }
             SearchScreenName = ScreenNameRegex.Match(Q.Trim()).Value;
             if (string.IsNullOrWhiteSpace(SearchScreenName)) { return LocalRedirect("/search/"); }
-            long? TargetUserID = await DBView.SelectID_Unique_screen_name(SearchScreenName).ConfigureAwait(false);
+            long? TargetUserID = await View.SelectID_Unique_screen_name(SearchScreenName).ConfigureAwait(false);
             if (Direct != false && TargetUserID.HasValue) { return LocalRedirect("/users/" + TargetUserID.Value.ToString()); }
 
             var sw = Stopwatch.StartNew();
@@ -45,7 +46,7 @@ namespace Twigaten.Web
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
             Limit = 100;
             //screen_nameを前方一致検索する
-            Users = await DBView.SelectUserLike(SearchScreenName.Replace(' ', '%').Replace("_", @"\_") + "%", Params.ID, Params.UserSearch_LikeMode.Value, Limit).ConfigureAwait(false);
+            Users = await View.SelectUserLike(SearchScreenName.Replace(' ', '%').Replace("_", @"\_") + "%", Params.ID, Params.UserSearch_LikeMode.Value, Limit).ConfigureAwait(false);
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
 
             return Page(); 

@@ -66,19 +66,19 @@ namespace Twigaten.Web.Controllers
                 //先にVerifyCredentialsを呼んでおく
                 var SelfUserInfoTask = Token.Account.VerifyCredentialsAsync();
 
-                DBToken.VerifytokenResult vt = await DB.DBToken.Verifytoken(Token).ConfigureAwait(false);
+                DBToken.VerifytokenResult vt = await DB.Token.Verifytoken(Token).ConfigureAwait(false);
                 if (vt != DBToken.VerifytokenResult.Exist)
                 {
-                    if (await DB.DBToken.InsertNewtoken(Token).ConfigureAwait(false) < 1)
+                    if (await DB.Token.InsertNewtoken(Token).ConfigureAwait(false) < 1)
                     {
                         throw (new Exception("トークンの保存に失敗しました"));
                     }
                 }
                 var NewToken = LoginTokenEncrypt.NewToken();
-                if (await DB.DBToken.StoreUserLoginToken(Token.UserId, NewToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
+                if (await DB.Token.StoreUserLoginToken(Token.UserId, NewToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
 
                 await SelfUserInfoTask.ConfigureAwait(false);
-                var StoreUserProfileTask = DB.DBToken.StoreUserProfile(SelfUserInfoTask.Result);
+                var StoreUserProfileTask = DB.Token.StoreUserProfile(SelfUserInfoTask.Result);
 
                 //ここでCookieにも保存する
                 ID = Token.UserId;

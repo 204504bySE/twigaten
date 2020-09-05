@@ -71,12 +71,12 @@ namespace Twigaten.Web.Parameters
             //ログイン確認
             if (ID != null)
             {
-                if (LoginToken != null && LoginTokenEncrypt.VerifyToken(LoginToken, await DBView.SelectUserLoginToken(ID.Value).ConfigureAwait(false)))
+                if (LoginToken != null && LoginTokenEncrypt.VerifyToken(LoginToken, await View.SelectUserLoginToken(ID.Value).ConfigureAwait(false)))
                 {
                     //Cookieの有効期限を延長する
                     ID = ID;
                     LoginToken = LoginToken;
-                    if (ScreenName == null) { ScreenName = (await DBView.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
+                    if (ScreenName == null) { ScreenName = (await View.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
                 }
                 else
                 {

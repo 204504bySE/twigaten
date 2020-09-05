@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 
-namespace Twigaten.Web
+namespace Twigaten.Web.DBHandler
 {
+    /// <summary>
+    /// 画像とその類似画像1セット
+    /// </summary>
     public class SimilarMediaTweet : TweetData
     {
         public _tweet tweet = new _tweet();
@@ -19,6 +23,9 @@ namespace Twigaten.Web
         public bool ExistsMoreMedia { get; set; }
     }
 
+    /// <summary>
+    /// DBのテーブルにほぼそのまま対応するクラス群
+    /// </summary>
     public class TweetData
     {
         public class _user
@@ -30,7 +37,10 @@ namespace Twigaten.Web
             public string local_profile_image_url { get; set; }
             public bool is_default_profile_image { get; set; }
             public string location { get; set; }
-            public string description_html { get; set; }    //リンクや改行などをhtmlにして突っ込む
+            /// <summary>
+            /// リンクや改行などをhtmlにして突っ込む
+            /// </summary>
+            public string description_html { get; set; }
         }
 
         public class _tweet
@@ -39,7 +49,10 @@ namespace Twigaten.Web
             public long tweet_id { get; set; }
             public DateTimeOffset created_at { get; set; }
             public string text { get; set; }
-            public string text_html { get; set; }    //リンクや改行などをhtmlにして突っ込む
+            /// <summary>
+            /// リンクや改行などをhtmlにして突っ込む
+            /// </summary>
+            public string text_html { get; set; }
             public _tweet retweet { get; set; }
             public int retweet_count { get; set; }
             public int favorite_count { get; set; }
@@ -54,5 +67,11 @@ namespace Twigaten.Web
             public string local_media_url { get; set; }
             //public long dcthash { get; set; }
         }
+    }
+
+    public class crawlinfo
+    {
+        public long? timeline_updated_at { get; set; }
+        public long? profile_updated_at { get; set; }
     }
 }

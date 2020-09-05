@@ -38,7 +38,7 @@ namespace Twigaten.Lib
             return new MySqlConnection(ConnectionStr);
         }
 
-        ///<summary>head + "(@a0,@b0),(@a1,@b1),(@a2,@b2)… + tail;" という文字列を生成する
+        ///<summary>head + "(@a0,@b0),(@a1,@b1),…,(@a{count},@b{count}) + tail;" という文字列を生成する
         ///"INSERT INTO ... VALUES" など</summary>
         protected static string BulkCmdStr(int count, int unit, string head, string tail = "")
         {

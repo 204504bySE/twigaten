@@ -67,7 +67,7 @@ namespace Twigaten.Crawl
                     GC.Collect();
                     sw.Restart(); 
                 }
-                //最後に取得したツイート等をDBに保存する
+                //最後に取得したツイート等をDBに保存する(画像の消化が終わることを期待して待ってからやる)
                 await manager.StoreCrawlStatus().ConfigureAwait(false);
                 //↓再読み込みしても一部しか反映されないけどね
                 config.Reload();

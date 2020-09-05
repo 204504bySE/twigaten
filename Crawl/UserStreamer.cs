@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Net;
 using System.Reactive.Linq;
-using System.Reactive.Concurrency;
 using CoreTweet;
 using CoreTweet.Streaming;
 using Twigaten.Lib;
@@ -24,16 +23,24 @@ namespace Twigaten.Crawl
         ///取得したことがなければ0</summary>
         public long LastReceivedTweetId { get; private set; }
         IDisposable StreamSubscriber;
+        /// <summary>
+        /// 取得したツイートの時刻を一定数保持する(タイムラインの速度を推定するのに使う)
+        /// </summary>
         readonly TweetTimeList TweetTime = new TweetTimeList();
-        ///<summary>最後にstreamingで何かを受信した時刻
-        ///またはRESTで拾ったLastReceivedTweetIdのツイートの時刻</summary>
+        ///<summary>
+        ///最後にstreamingで何かを受信した時刻
+        ///またはRESTでツイートを受信した時の時刻
+        ///何も受信していなければこのUserStreamerを生成したときの時刻
+        ///</summary>
         public DateTimeOffset LastMessageTime { get; private set; } = DateTimeOffset.UtcNow; 
 
         //Singleton members
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
 
-        //UserStreamerStatic.Http(画像取得用HttpClient)とはなんとなく分離しておく
+        /// <summary>
+        /// UserStreamerStatic.Http(画像取得用HttpClient)とはなんとなく分離しておく
+        /// </summary>
         static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
         {
             UseCookies = false,
@@ -51,7 +58,7 @@ namespace Twigaten.Crawl
             UseCompressionOnStreaming = true
         };
 
-        ///<summary>コンストラクタに設定を渡す用</summary>
+        ///<summary>コンストラクタに設定を渡したりDBを更新したりするのに使う</summary>
         public struct UserStreamerSetting
         {
             public Tokens Token { get; set; }
@@ -59,7 +66,6 @@ namespace Twigaten.Crawl
             public long last_status_id { get; set; } 
             public bool rest_my_tweet { get; set; }
         }
-
 
         public UserStreamer(UserStreamerSetting setting)
         {
@@ -371,17 +377,11 @@ namespace Twigaten.Crawl
 
         /// <summary>
         /// RESTでホームタイムラインを取得してDBに突っ込む
+        ///各ツイートの時刻をTweetTimeに格納
         /// </summary>
         /// <returns>tokenの有効性など</returns>
         public async Task<TokenStatus> RestTimeline()
         {
-            //TLが遅い分は省略
-            //とはいえ一定時間取得してなかったら強制的にやる
-            //if(DateTimeOffset.UtcNow - LastMessageTime < TimeSpan.FromSeconds(config.crawl.MaxRestInterval)
-            //    && TweetTime.Count >= 2 
-            //    && TweetTime.Max - TweetTime.Min > DateTimeOffset.Now - TweetTime.Max) { return TokenStatus.Success; }
-            //RESTで取得してツイートをDBに突っ込む
-            //各ツイートの時刻をTweetTimeに格納
             try
             {
                 CoreTweet.Core.ListedResponse<Status> Timeline;
@@ -445,7 +445,7 @@ namespace Twigaten.Crawl
                 }
                 else
                 {
-                    Console.WriteLine("{0}: RecieveRestTimelineAuto {1}", Token.UserId, e.Message);
+                    Console.WriteLine("{0}: RestTimeline {1}", Token.UserId, e.Message);
                     return TokenStatus.Failure;
                 }
             }

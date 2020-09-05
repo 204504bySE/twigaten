@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Twigaten.Lib;
+using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
 using static Twigaten.Web.DBHandler.DB;
 
@@ -63,7 +64,7 @@ namespace Twigaten.Web.Pages.Tweet
             var ThisDate = Date.HasValue ? DateTimeOffset.FromUnixTimeSeconds(Date.Value) : DateTimeOffset.UtcNow;
 
             await ParamsTask.ConfigureAwait(false);
-            Tweets = await DBView.SimilarMediaFeatured(3, SnowFlake.SecondinSnowFlake(ThisDate - TimeSpan.FromHours(1), false), SnowFlake.SecondinSnowFlake(ThisDate, true), Params.Featured_Order.Value).ConfigureAwait(false);
+            Tweets = await View.SimilarMediaFeatured(3, SnowFlake.SecondinSnowFlake(ThisDate - TimeSpan.FromHours(1), false), SnowFlake.SecondinSnowFlake(ThisDate, true), Params.Featured_Order.Value).ConfigureAwait(false);
             if (Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
         }
