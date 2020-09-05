@@ -90,6 +90,23 @@ namespace Twigaten.Web.DBHandler
             }
         }
 
+        public async Task<crawlinfo> SelectCrawlInfo(long user_id)
+        {
+            using (var cmd = new MySqlCommand(@"SELECT timeline_updated_at, profile_updated_at FROM crawlinfo WHERE user_id = @user_id;"))
+            {
+                cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
+                var ret = new crawlinfo();
+                //見つからなかった場合も両方nullになって都合がよい
+                await ExecuteReader(cmd, r =>
+                {
+                    if (!r.IsDBNull(0)) { ret.timeline_updated_at = r.GetInt64(0); }
+                    if (!r.IsDBNull(1)) { ret.profile_updated_at = r.GetInt64(1); }
+
+                }).ConfigureAwait(false);
+                return ret;
+            }
+        }
+
         /// <summary>
         /// GetUsers()で使うSQL文の先頭部分
         /// </summary>
@@ -97,6 +114,7 @@ namespace Twigaten.Web.DBHandler
 user_id, name, screen_name, isprotected, profile_image_url, is_default_profile_image, location, description FROM user ";
         /// <summary>
         /// Userテーブルを取得してオブジェクトに詰めるだけのやっつけメソッド
+        /// cmd次第で何アカウント分でも取得できる
         /// </summary>
         /// <param name="cmd">GetUsersHeadで始まるSQL文を含むMySqlCommand</param>
         /// <returns></returns>

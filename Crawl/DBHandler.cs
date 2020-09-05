@@ -13,18 +13,15 @@ using Twigaten.Lib;
 using System.Diagnostics;
 using System.Threading;
 using static Twigaten.Crawl.UserStreamer;
+using System.Windows.Markup;
 
 namespace Twigaten.Crawl
 {
     class DBHandler : Lib.DBHandler
     {
         private DBHandler() : base(config.database.Address, config.database.Protocol, 10, (uint)Config.Instance.crawl.MaxDBConnections) { }
-        private static readonly DBHandler _db = new DBHandler();
-        //singletonはこれでインスタンスを取得して使う
-        public static DBHandler Instance
-        {
-            get { return _db; }
-        }
+
+        public static DBHandler Instance { get; } = new DBHandler();
 
         readonly int Selfpid = Process.GetCurrentProcess().Id;
 
@@ -139,7 +136,53 @@ WHERE user_id = @user_id;"))
                 ret += await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
             return ret;
-        } 
+        }
+
+        /// <summary>
+        /// crawlinfo.timeline_updated_at を更新する
+        /// Key: user_id, Value; timeline_updated_at
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public async Task<int> StoreCrawlInfo_Timeline(IEnumerable<KeyValuePair<long, long>> values)
+        {
+            const string head = @"INSERT INTO crawlinfo (user_id, timeline_updated_at) VALUES";
+            const string tail = @"ON DUPLICATE KEY UPDATE timeline_updated_at = VALUES(timeline_updated_at)";
+            const int BulkUnit = 1000;
+            var users = values.OrderBy(v => v.Key).ToArray();
+            int ret = 0;
+            string BulkStr = "";
+            int i;
+            for (i = 0; i < users.Length / BulkUnit; i++)
+            {
+                if (i == 0)
+                {
+                    BulkStr = BulkCmdStr(BulkUnit, 2, head, tail);
+                }
+                var cmd = new MySqlCommand(BulkStr);
+                for (int j = 0; j < BulkUnit; j++)
+                {
+                    var u = users[BulkUnit * i + j];
+                    cmd.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
+                    cmd.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
+                }
+                ret += await ExecuteNonQuery(cmd).ConfigureAwait(false);
+            }
+            if (users.Length % BulkUnit != 0)
+            {
+                var cmd = new MySqlCommand(BulkCmdStr(users.Length % BulkUnit, 2, head, tail));
+                for (int j = 0; j < users.Length % BulkUnit; j++)
+                {
+                    var u = users[BulkUnit * i + j];
+                    cmd.Parameters.Add("@a" + j.ToString(), MySqlDbType.Int64).Value = u.Key;
+                    cmd.Parameters.Add("@b" + j.ToString(), MySqlDbType.Int64).Value = u.Value;
+                }
+                ret += await ExecuteNonQuery(cmd).ConfigureAwait(false);
+            }
+            return ret;
+
+
+        }
 
         ///<summary>無効化されたっぽいTokenを消す</summary>
         public async Task<int> DeleteToken(long user_id)

@@ -124,11 +124,29 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
+        ///   あなたにのみ表示されます に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Headline_ShowOnlyToYou {
+            get {
+                return ResourceManager.GetString("Headline_ShowOnlyToYou", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   @{0} のタイムライン に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Headline_Timeline {
             get {
                 return ResourceManager.GetString("Headline_Timeline", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   取得時刻 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Headline_TimelineUpdatedAt {
+            get {
+                return ResourceManager.GetString("Headline_TimelineUpdatedAt", resourceCulture);
             }
         }
         

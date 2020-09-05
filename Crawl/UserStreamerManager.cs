@@ -207,10 +207,13 @@ namespace Twigaten.Crawl
             sw.Start();
             Counter.PrintReset();
 
-            foreach (var s in Streamers.Select(s => s.Value)
+            //TLがある程度進んでいるアカウントと一定時間取得してないアカウントだけ接続する
+            var StreamersSelected = Streamers.Select(s => s.Value)
                 .Where(s => s.EstimatedTweetToReceive >= config.crawl.StreamSpeedTweets
                     || (s.LastMessageTime - DateTimeOffset.UtcNow).TotalSeconds > config.crawl.MaxRestInterval)
-                .OrderByDescending(s => s.EstimatedTweetToReceive))
+                .OrderByDescending(s => s.EstimatedTweetToReceive)
+                .ToArray();
+            foreach (var s in StreamersSelected)
             {
                 if (!await ConnectBlock.SendAsync(s).ConfigureAwait(false)) { break; }    //そんなバナナ
 
@@ -229,6 +232,10 @@ namespace Twigaten.Crawl
             await RemoveRevokedTokens().ConfigureAwait(false);
             if (UserStreamerStatic.RetryingCount > 0) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
             Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ConnectBlock.ActiveStreamers, ConnectBlock.RestedStreamers, Streamers.Count);
+            //ツイートの取得時刻を保存する(たぶん)
+            await db.StoreCrawlInfo_Timeline(StreamersSelected
+                .Where(s => s.LastReceivedTweetId != 0)
+                .Select(s => new KeyValuePair<long, long>(s.Token.UserId, s.LastMessageTime.ToUnixTimeSeconds()))).ConfigureAwait(false);
         }
 
         ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>

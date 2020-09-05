@@ -246,4 +246,10 @@
   <data name="Headline_UserSearch" xml:space="preserve">
     <value>@{0} の検索結果</value>
   </data>
+  <data name="Headline_ShowOnlyToYou" xml:space="preserve">
+    <value>あなたにのみ表示されます</value>
+  </data>
+  <data name="Headline_TimelineUpdatedAt" xml:space="preserve">
+    <value>取得時刻</value>
+  </data>
 </root>

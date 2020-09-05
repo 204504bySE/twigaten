@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Twigaten.Lib;
+using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
 using static Twigaten.Web.DBHandler.DB;
 
@@ -17,7 +18,10 @@ namespace Twigaten.Web.Pages.Tweet
     /// </summary>
     public class UsersModel : PageModel
     {
-        [BindProperty(SupportsGet = true)]
+        /// <summary>
+        /// 表示したいアカウントのID
+        /// </summary>
+        [BindProperty(SupportsGet = true)]        
         public long UserId { get; set; }
         /// <summary>
         /// これより古いツイを検索する(SnowFlake)
@@ -67,6 +71,7 @@ namespace Twigaten.Web.Pages.Tweet
         public SimilarMediaTweet[] Tweets { get; private set; }
         public TweetData._user TargetUser { get; private set; }
         public TLUserParameters Params { get; private set; }
+        public crawlinfo Crawlinfo { get; private set; }
 
 
         public long QueryElapsedMilliseconds { get; private set; }
@@ -75,18 +80,21 @@ namespace Twigaten.Web.Pages.Tweet
             var sw = Stopwatch.StartNew();
 
             //一瞬でも速くしたいので先にTaskを作って必要なところでawaitする
-            var TargetUserTask = DBView.SelectUser(UserId);
+            var TargetUserTask = View.SelectUser(UserId);
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
+            //crawlinfoは「自分のツイート」のときだけ取得する
+            var CrawlInfoTask = Params.ID == UserId ? View.SelectCrawlInfo(UserId) : null;
 
             if (Date.HasValue) { Before = SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeSeconds(Date.Value), true); }
             long LastTweet = Before ?? After ?? SnowFlake.Now(true);
             bool IsBefore = Before.HasValue || !After.HasValue;
 
             await ParamsTask.ConfigureAwait(false);
-            var TweetsTask = DBView.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
+            var TweetsTask = View.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
+            if (CrawlInfoTask != null) { Crawlinfo = await CrawlInfoTask.ConfigureAwait(false); }
             TargetUser = TargetUserTask.Result;
             Tweets = TweetsTask.Result;
             if (Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }

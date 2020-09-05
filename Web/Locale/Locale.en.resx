@@ -246,4 +246,10 @@
   <data name="Headline_UserSearch" xml:space="preserve">
     <value>Search Result of @{0}</value>
   </data>
+  <data name="Headline_ShowOnlyToYou" xml:space="preserve">
+    <value>Shown only to you</value>
+  </data>
+  <data name="Headline_TimelineUpdatedAt" xml:space="preserve">
+    <value>Last updated</value>
+  </data>
 </root>
