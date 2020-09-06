@@ -92,7 +92,7 @@ namespace Twigaten.Web.DBHandler
 
         public async Task<crawlinfo> SelectCrawlInfo(long user_id)
         {
-            using (var cmd = new MySqlCommand(@"SELECT timeline_updated_at, profile_updated_at FROM crawlinfo WHERE user_id = @user_id;"))
+            using (var cmd = new MySqlCommand(@"SELECT timeline_updated_at FROM crawlinfo WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
                 var ret = new crawlinfo();
@@ -100,7 +100,6 @@ namespace Twigaten.Web.DBHandler
                 await ExecuteReader(cmd, r =>
                 {
                     if (!r.IsDBNull(0)) { ret.timeline_updated_at = r.GetInt64(0); }
-                    if (!r.IsDBNull(1)) { ret.profile_updated_at = r.GetInt64(1); }
 
                 }).ConfigureAwait(false);
                 return ret;

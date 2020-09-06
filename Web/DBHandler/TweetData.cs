@@ -72,6 +72,5 @@ namespace Twigaten.Web.DBHandler
     public class crawlinfo
     {
         public long? timeline_updated_at { get; set; }
-        public long? profile_updated_at { get; set; }
     }
 }

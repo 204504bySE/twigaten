@@ -228,14 +228,17 @@ namespace Twigaten.Crawl
             await ConnectBlock.Complete().ConfigureAwait(false);
             await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
 
+            //ツイートの取得時刻を保存する(たぶん)
+            //ここでREST取得したやつとUser streamに接続済みのやつだけ処理する(もうないけど)
+            var StreamersStreaming = await db.StoreCrawlInfo_Timeline(StreamersSelected
+                .Where(s => s.LastReceivedTweetId != 0)
+                .Union(Streamers.Select(s => s.Value).Where(s => s.NeedConnect() == UserStreamer.NeedConnectResult.StreamConnected))
+                .Select(s => new KeyValuePair<long, long>(s.Token.UserId, s.LastMessageTime.ToUnixTimeSeconds()))).ConfigureAwait(false);
+
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
             if (UserStreamerStatic.RetryingCount > 0) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
             Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ConnectBlock.ActiveStreamers, ConnectBlock.RestedStreamers, Streamers.Count);
-            //ツイートの取得時刻を保存する(たぶん)
-            await db.StoreCrawlInfo_Timeline(StreamersSelected
-                .Where(s => s.LastReceivedTweetId != 0)
-                .Select(s => new KeyValuePair<long, long>(s.Token.UserId, s.LastMessageTime.ToUnixTimeSeconds()))).ConfigureAwait(false);
         }
 
         ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>

@@ -90,7 +90,12 @@ namespace Twigaten.Crawl
             //ツイート等の取得を行ったことをDBに保存する
             var savesetting = s.Setting;
             savesetting.rest_my_tweet = false;
-            await Task.WhenAll(db.StoreUserStreamerSetting(new[] { savesetting }), UserStreamerStatic.Complete()).ConfigureAwait(false);
+
+            var settingTask = db.StoreUserStreamerSetting(savesetting);
+            var crawlInfoTask = s.LastReceivedTweetId != 0
+                ? db.StoreCrawlInfo_Timeline(s.Token.UserId, s.LastMessageTime.ToUnixTimeSeconds())
+                : Task.CompletedTask;
+            await Task.WhenAll(settingTask, crawlInfoTask, UserStreamerStatic.Complete()).ConfigureAwait(false);
             Console.WriteLine("{0}: Profile stored\t{1}, {2}", user_id, friend.Result, block.Result);
             Counter.PrintReset();
         }

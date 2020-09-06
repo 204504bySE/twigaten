@@ -94,6 +94,7 @@ WHERE user_id = @user_id;"))
         }
 
 
+        public Task<int> StoreUserStreamerSetting(UserStreamerSetting setting) => StoreUserStreamerSetting(new[] { setting });
         ///<summary>最新の処理済みツイートのIDやら自分のツイートをrest取得するかどうかなどをDBに保存
         ///Tokenはuser_idだけ使用する</summary>
         public async Task<int> StoreUserStreamerSetting(IEnumerable<UserStreamerSetting> settings)
@@ -138,6 +139,7 @@ WHERE user_id = @user_id;"))
             return ret;
         }
 
+        public Task<int> StoreCrawlInfo_Timeline(long user_id, long timeline_updated_at) => StoreCrawlInfo_Timeline(new[] { new KeyValuePair<long, long>(user_id, timeline_updated_at) });
         /// <summary>
         /// crawlinfo.timeline_updated_at を更新する
         /// Key: user_id, Value; timeline_updated_at

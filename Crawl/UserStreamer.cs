@@ -9,10 +9,11 @@ using CoreTweet.Streaming;
 using Twigaten.Lib;
 using System.Threading;
 using System.Net.Http;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Twigaten.Crawl
 {
-    class UserStreamer : IDisposable
+    class UserStreamer : IDisposable, IEquatable<UserStreamer>
     {
         // 各TokenのUserstreamを受信したり仕分けたりする
         
@@ -581,6 +582,16 @@ namespace Twigaten.Crawl
                     if (x.Source.Id == Token.UserId) { await VerifyCredentials().ConfigureAwait(false); }
                     break;
             }
+        }
+
+        public bool Equals([AllowNull] UserStreamer other)
+        {
+            if(other == null) { return false; }
+            return Token.UserId == other.Token.UserId;
+        }
+        public override int GetHashCode()
+        {
+            return Token.UserId.GetHashCode();
         }
     }
 }
