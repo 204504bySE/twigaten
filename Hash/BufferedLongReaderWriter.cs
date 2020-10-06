@@ -83,7 +83,7 @@ namespace Twigaten.Hash
 
         public UnbufferedLongWriter(string FilePath)
         {
-            file = File.OpenWrite(FilePath);
+            file = File.Create(FilePath);
             zip = new ZstandardStream(file, 1, true);
         }
 
@@ -241,7 +241,7 @@ namespace Twigaten.Hash
 
         public BufferedLongWriter(string FilePath)
         {
-            file = File.OpenWrite(FilePath);
+            file = File.Create(FilePath);
             zip = new ZstandardStream(file, 1, true);
         }
 
