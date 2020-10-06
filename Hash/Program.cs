@@ -50,6 +50,13 @@ namespace Twigaten.Hash
             if(!File.Exists(SplitQuickSort.AllHashFilePath))
             {                
                 Console.WriteLine("Loading All hash.");
+
+                //NewHashの中身はAllHashにも含まれることになるので消してしまう
+                foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(SplitQuickSort.NewerHashFilePath("*"))).ToArray())
+                {
+                    File.Delete(filePath);
+                }
+
                 long Count = await db.AllMediaHash().ConfigureAwait(false);
                 if (Count < 0) { Console.WriteLine("Hash load failed."); Environment.Exit(1); }
                 Console.WriteLine("{0} Hash loaded in {1} ms", Count, sw.ElapsedMilliseconds);

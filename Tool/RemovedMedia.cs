@@ -119,11 +119,15 @@ AND u.isprotected IS FALSE);
                     {
                         mediaparam.Value = mid;
                         //全部画像転載の時だけ次の画像に進める
-                        while (true)
+                        int i = 0;
+                        for(; i < 10; i++)
                         {
                             long val = await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
                             if (val == 0) { return; } else if (val > 0) { break; }
+                            await Task.Delay(100).ConfigureAwait(false);
                         }
+                        //リトライに失敗したらあきらめる
+                        if (10 <= i) { return; }
                     }
                 }
                 Counter.TweetCheckHit.Increment();
