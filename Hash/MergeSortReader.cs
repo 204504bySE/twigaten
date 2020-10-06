@@ -12,8 +12,9 @@ using Twigaten.Lib;
 
 namespace Twigaten.Hash
 {
-    ///<summary>分轄してブロックソートされたファイルを必要な単位で読み出すやつ
-    ///Dispose()でファイルを削除する</summary>
+    ///<summary>分割してブロックソートされたファイルを必要な単位で読み出すやつ
+    ///重複排除は行わない
+    ///Dispose()で読み込んだファイルを削除する</summary>
     class MergeSortReader : IDisposable
     {
         static readonly Config config = Config.Instance;
@@ -65,12 +66,14 @@ namespace Twigaten.Hash
                     long Value = SortedValues[ValueIndex];
                     long MaskedValue = Value & SortMask;
                     if (MaskedKey == MaskedValue)
-                    {   //Maskしたやつ同士が一致するなら普通に続きに加える
+                    {
+                        //Maskしたやつ同士が一致するなら普通に続きに加える
                         ReadBlockList.Add(Value);
                         BlockCount++;
                     }
                     else
                     {   //Maskしたやつが一致しない場合はオレオレ配列1サイクル分終了
+                        //LastValueは次回もどうせ一致しないので代入しない
                         MaskedKey = MaskedValue;
                         //2要素以上あれば確定して次のサイクルに進む
                         if (1 < BlockCount)

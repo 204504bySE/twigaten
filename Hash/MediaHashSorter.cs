@@ -56,7 +56,6 @@ namespace Twigaten.Hash
         readonly Config config = Config.Instance;
         readonly HashSet<long> NewHash;
         readonly ulong MaxHammingDistance;
-        readonly long HashCount;
         readonly Combinations Combi;
 
         readonly BatchBlock<HashPair> PairBatchBlock = new BatchBlock<HashPair>(DBHandler.StoreMediaPairsUnit);
@@ -64,11 +63,10 @@ namespace Twigaten.Hash
         int PairCount;
         int DBAddCount;
 
-        public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock, long HashCount)
+        public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock)
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
             this.MaxHammingDistance = (ulong)MaxHammingDistance;
-            this.HashCount = HashCount;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
 
             //このブロックは全MultipleSortUnitで共有する
@@ -109,7 +107,7 @@ namespace Twigaten.Hash
             var QuickSortSW = Stopwatch.StartNew();
 
             //適当なサイズに切ってそれぞれをクイックソート
-            int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask, HashCount).ConfigureAwait(false);
+            int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask).ConfigureAwait(false);
             QuickSortSW.Stop();
             Console.WriteLine("{0}\tFile Sort\t{1}ms ", Index, QuickSortSW.ElapsedMilliseconds);
 
@@ -148,7 +146,9 @@ namespace Twigaten.Hash
                         long maskedhash_i = Sorted_i & SortMask;
                         for (int j = i + 1; j < SortedSpan.Length; j++)
                         {
-                            long Sorted_j = SortedSpan[j];
+                            long Sorted_j = SortedSpan[j];                            
+                            if(Sorted_i == Sorted_j) { continue; }  //MergeSortReaderは重複排除をしないのでここで排除する
+
                             //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
                             //すでにDBに入っているペアは処理しない
                             if ((NeedInsert_i || NewHash.Contains(Sorted_j))    //NewHashがnullなら後者は処理されないからセーフ

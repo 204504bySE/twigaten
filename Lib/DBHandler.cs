@@ -170,7 +170,8 @@ namespace Twigaten.Lib
             return false;
         }
 
-        ///<summary>SELECT COUNT() 用</summary>
+        ///<summary>SELECT COUNT() 用
+        ///nullのときは0が返る</summary>
         protected async Task<long> SelectCount(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
             try

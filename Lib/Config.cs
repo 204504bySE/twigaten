@@ -142,8 +142,6 @@ namespace Twigaten.Lib
             readonly IniData data;
             public int MaxHammingDistance { get; }
             public int ExtraBlocks { get; }
-            public long LastUpdate { get; }
-            public long LastHashCount { get; }
             public string TempDir { get; }
             public int InitialSortFileSize { get; }
             public int InitialSortConcurrency { get; }
@@ -151,13 +149,14 @@ namespace Twigaten.Lib
             public int ZipBufferElements { get; }
             public int MultipleSortBufferElements { get; }
             public int MultipleSortBufferCount { get; }
+            public long LastUpdate { get; }
+            public long LastHashCount { get; }
+
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
                 this.iniPath = iniPath; this.ini = ini; this.data = data;
                 MaxHammingDistance = int.Parse(data["hash"][nameof(MaxHammingDistance)] ?? "3");
                 ExtraBlocks = int.Parse(data["hash"][nameof(ExtraBlocks)] ?? "1");
-                LastUpdate = long.Parse(data["hash"][nameof(LastUpdate)] ?? "0");
-                LastHashCount = long.Parse(data["hash"][nameof(LastHashCount)] ?? "0");
                 TempDir = data["hash"][nameof(TempDir)] ?? "";
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
                 InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
@@ -165,15 +164,17 @@ namespace Twigaten.Lib
                 ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "32768");
                 MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "25000");
                 MultipleSortBufferCount = int.Parse(data["hash"][nameof(MultipleSortBufferCount)] ?? (Environment.ProcessorCount << 4).ToString());
+                LastUpdate = long.Parse(data["hash_info"][nameof(LastUpdate)] ?? "0");
+                LastHashCount = long.Parse(data["hash_info"][nameof(LastHashCount)] ?? "0");
             }
             public void NewLastUpdate(long time)
             {
-                data["hash"][nameof(LastUpdate)] = time.ToString();
+                data["hash_info"][nameof(LastUpdate)] = time.ToString();
                 ini.WriteFile(iniPath, data);
             }
             public void NewLastHashCount(long Count)
             {
-                data["hash"][nameof(LastHashCount)] = Count.ToString();
+                data["hash_info"][nameof(LastHashCount)] = Count.ToString();
                 ini.WriteFile(iniPath, data);
             }
         }

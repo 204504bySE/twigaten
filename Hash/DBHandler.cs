@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Diagnostics;
 using System.Data;
 using MySqlConnector;
 using System.Threading.Tasks;
-using Twigaten.Lib;
-using System.Threading;
 using System.Threading.Tasks.Dataflow;
-using System.Collections.Concurrent;
+using System.Collections.Immutable;
 
 namespace Twigaten.Hash
 {
@@ -28,7 +25,7 @@ namespace Twigaten.Hash
             else
             {
                 Array.Sort(StorePairs, HashPair.Comparison);   //deadlock防止
-                using (MySqlCommand Cmd =  new MySqlCommand(
+                using (var Cmd =  new MySqlCommand(
                     StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
                         : BulkCmdStr(StorePairs.Length, 2, StoreMediaPairsHead)))
                 { 
@@ -40,6 +37,14 @@ namespace Twigaten.Hash
                     }
                     return await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                 }
+            }
+        }
+
+        public async Task<long> Min_downloaded_at()
+        {
+            using (var cmd = new MySqlCommand(@"SELECT MIN(downloaded_at) FROM media_downloaded_at;"))
+            {
+                return await SelectCount(cmd,IsolationLevel.ReadUncommitted).ConfigureAwait(false);
             }
         }
 
@@ -109,12 +114,14 @@ GROUP BY dcthash;"))
             catch (Exception e) { Console.WriteLine(e); return -1; }
         }
 
-        //dcthashpairに追加する必要があるハッシュを取得するやつ
-        //これが始まった後に追加されたハッシュは無視されるが
-        //次回の実行で拾われるから問題ない
-
+        /// <summary>
+        ///dcthashpairに追加する必要があるハッシュを取得するやつ
+        ///これが始まった後に追加されたハッシュは無視されるが
+        ///次回の実行で拾われるから問題ない
+        /// </summary>
         public async Task<HashSet<long>> NewerMediaHash()
         {
+            string FilePath = SplitQuickSort.NewerHashFilePath(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
             try
             {
                 var ret = new HashSet<long>();
@@ -143,6 +150,11 @@ WHERE downloaded_at BETWEEN @begin AND @end;"))
                 }
                 LoadHashBlock.Complete();
                 await LoadHashBlock.Completion.ConfigureAwait(false);
+                                
+                using (var writer = new UnbufferedLongWriter(FilePath))
+                {
+                    writer.WriteDestructive(ret.ToArray(), ret.Count);
+                }
                 return ret;
             }catch(Exception e) { Console.WriteLine(e); return null; }
         }

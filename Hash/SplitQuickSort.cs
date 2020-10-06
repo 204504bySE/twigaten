@@ -9,6 +9,7 @@ using Twigaten.Lib;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Numerics;
+using System.Data;
 
 namespace Twigaten.Hash
 {
@@ -16,15 +17,19 @@ namespace Twigaten.Hash
     {
         static readonly Config config = Config.Instance;
 
-        public const string AllHashFileName = "allhash";
-        public const string SortFilePrefix = "sort";
-        public const string FileExtension = ".zst";
+        const string AllHashFileName = "allhash";
+        const string NewerHashPrefix = "newhash";
+        const string SortFilePrefix = "sort";
+        const string FileExtension = ".zst";
         ///<summary>DBから全ハッシュを読み込んだファイルの命名規則</summary>
-        public static string AllHashFilePath { get { return HashFilePath(AllHashFileName); } }
+        public static string AllHashFilePath => HashFilePath(AllHashFileName);
+        ///<summary>DBから新しいハッシュを読み込んだファイルの命名規則</summary>
+        public static string NewerHashFilePath(string UnixTime) => HashFilePath(NewerHashPrefix + UnixTime);
         public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName) + FileExtension;
-        
+
         ///<summary>ソート過程のファイル名規則</summary>
-        public static string SortingFilePath(int index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index.ToString()) + FileExtension;
+        public static string SortingFilePath(int index) => SortingFilePath(index.ToString());
+        public static string SortingFilePath(string index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index) + FileExtension;
 
         ///<summary>ブロックソートをLINQに投げる用</summary>
         class BlockSortComparer : IComparer<long>
@@ -54,56 +59,84 @@ namespace Twigaten.Hash
             }
         }
 
+        static readonly int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long) / Vector<long>.Count * Vector<long>.Count;
+
         ///<summary>全ハッシュを一定サイズに分轄してソートする
-        ///分轄されたファイルをマージソートすると完全なソート済み列が得られる</summary>
-        public static async Task<int> QuickSortAll(long SortMask, long HashCount)
+        ///分割されたファイルをマージソートすると完全なソート済み列が得られる</summary>
+        public static async Task<int> QuickSortAll(long SortMask)
         {
-            //↓ベンチマーク用に古いファイルを使う時用(数字はファイル数に合わせて変える)
-            //return 57;
             int FileCount = 0;
+            var SortComp = new BlockSortComparer(SortMask);
+
+            //これにソート用の配列を入れてメモリ割り当てを減らしてみる
+            var LongPool = new ConcurrentQueue<long[]>();
+
+            //メモリを食い潰さないようにペースを調整させるぞ
+            var FirstSortBlock = new ActionBlock<FirstSort>(async (t) =>
+            {
+                await QuickSortParllel(SortMask, t.ToSort, t.Length, SortComp).ConfigureAwait(false);
+                //Array.Sort(t.ToSort, SortComp);
+
+                //書き込みは並列で行う
+                using (var writer = new UnbufferedLongWriter(t.WriteFilePath))
+                {
+                    writer.WriteDestructive(t.ToSort, t.Length);
+                }
+                //ここでLongPoolに配列を返却する
+                LongPool.Enqueue(t.ToSort);
+            }, new ExecutionDataflowBlockOptions()
+            {   //ここでメモリを節約する、かもしれない
+                SingleProducerConstrained = true,
+                MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
+                BoundedCapacity = config.hash.InitialSortConcurrency
+            });
+
+            //まずはAllHashを読む
             using (var reader = new UnbufferedLongReader(AllHashFilePath))
             {
-                int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long) / Vector<long>.Count * Vector<long>.Count;
-
-                var SortComp = new BlockSortComparer(SortMask);
-
-                //これにソート用の配列を入れてメモリ割り当てを減らしてみる
-                var LongPool = new ConcurrentQueue<long[]>();
-
-                //メモリを食い潰さないようにペースを調整させるぞ
-                var FirstSortBlock = new ActionBlock<FirstSort>(async (t) =>
-                {
-                    await QuickSortAll(SortMask, t.ToSort, t.Length, SortComp).ConfigureAwait(false);
-                    //Array.Sort(t.ToSort, SortComp);
-
-                    //書き込みは並列で行う
-                    using (var writer = new UnbufferedLongWriter(t.WriteFilePath))
-                    {
-                        writer.WriteDestructive(t.ToSort, t.Length);
-                    }
-                    LongPool.Enqueue(t.ToSort);
-                }, new ExecutionDataflowBlockOptions()
-                {   //ここでメモリを節約する、かもしれない
-                    SingleProducerConstrained = true,
-                    MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
-                    BoundedCapacity = config.hash.InitialSortConcurrency + 1
-                });
-                //読み込み過ぎてメモリを食い潰さないように進める
                 for(; reader.Readable; FileCount++)
                 {
-                    if (!LongPool.TryDequeue(out long[] ToSort)) { ToSort = new long[InitialSortUnit]; }
+                    if (!LongPool.TryDequeue(out var ToSort)) { ToSort = new long[InitialSortUnit]; }
                     int ToSortLength = reader.Read(ToSort);
                     await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength)).ConfigureAwait(false);
                 }
-                FirstSortBlock.Complete();
-                await FirstSortBlock.Completion.ConfigureAwait(false);
             }
+
+            //NewerHashを読む
+            int ToSortNewerCursor = 0;
+            if (!LongPool.TryDequeue(out var ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
+            foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(NewerHashFilePath("*"))))
+            {
+                using (var reader = new BufferedLongReader(filePath))
+                {
+                    while (reader.Readable)
+                    {
+                        for (; ToSortNewerCursor < ToSortNewer.Length; ToSortNewerCursor++)
+                        {
+                            if (!reader.MoveNext()) { break; }
+                            ToSortNewer[ToSortNewerCursor] = reader.Current;
+                        }
+                        if (InitialSortUnit <= ToSortNewerCursor)
+                        {
+                            await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSortNewer, ToSortNewer.Length)).ConfigureAwait(false);
+                            FileCount++;
+                            ToSortNewerCursor = 0;
+                            if (!LongPool.TryDequeue(out ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
+                        }
+                    }
+                }
+            }
+            await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSortNewer, ToSortNewerCursor)).ConfigureAwait(false);
+            FileCount++;
+            FirstSortBlock.Complete();
+            await FirstSortBlock.Completion.ConfigureAwait(false);
+
             return FileCount;
         }
 
         static readonly int QuickSortAllConcurrency = Environment.ProcessorCount / config.hash.InitialSortConcurrency + 1;
         ///<summary>配列の0~SortListLengthまでを並列ソート</summary>
-        static async Task QuickSortAll(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
+        static async Task QuickSortParllel(long SortMask, long[] SortList, int SortListLength, IComparer<long> Comparer)
         {
             //クイックソート1再帰分
             (int Begin1, int End1, int Begin2, int End2)? QuickSortUnit((int Begin, int End) SortRange)

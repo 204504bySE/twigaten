@@ -13,8 +13,9 @@ using Twigaten.Lib;
 using Zstandard.Net;
 
 namespace Twigaten.Hash
-{
+{ 
     /// <summary>
+    /// zstdで圧縮されたlongの配列を読み込む
     /// ファイル全体を1発で速く読み込みたい時用
     /// </summary>
     class UnbufferedLongReader : IDisposable
@@ -73,6 +74,7 @@ namespace Twigaten.Hash
     }
 
     /// <summary>
+    /// zstdで圧縮されたlongの配列を書き込む
     /// ファイル全体を一発で速く書き込みたい時用
     /// </summary>
     class UnbufferedLongWriter : IDisposable
@@ -124,7 +126,10 @@ namespace Twigaten.Hash
         }
     }
 
-    ///<summary>ReadInt64()を普通に呼ぶと遅いのでまとめて読む</summary>
+    ///<summary>
+    /// zstdで圧縮されたlongの配列を読み込む
+    /// ReadInt64()を普通に呼ぶと遅いのでまとめて読む
+    ///</summary>
     class BufferedLongReader : IEnumerable<long>, IEnumerator<long>, IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
@@ -228,7 +233,10 @@ namespace Twigaten.Hash
         public void Reset() { throw new NotSupportedException(); }
     }
 
-    ///<summary>WriteInt64()を普通に呼ぶと遅いのでまとめて書く</summary>
+    ///<summary>
+    ///zstdで圧縮されたlongの配列を書き込む
+    ///WriteInt64()を普通に呼ぶと遅いのでまとめて書く
+    ///</summary>
     class BufferedLongWriter : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
