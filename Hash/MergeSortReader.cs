@@ -13,7 +13,7 @@ using Twigaten.Lib;
 namespace Twigaten.Hash
 {
     ///<summary>分割してブロックソートされたファイルを必要な単位で読み出すやつ
-    ///重複排除は行わない
+    ///重複排除を行う
     ///Dispose()で読み込んだファイルを削除する</summary>
     class MergeSortReader : IDisposable
     {
@@ -60,10 +60,18 @@ namespace Twigaten.Hash
             int ValueIndex = LastIndex;
             while (0 < SortedMemory.Length)
             {
+                //SortedMemoryはActualRead()毎に変わるのでここでSpanにする
                 var SortedValues = SortedMemory.Span;
-                for(; ValueIndex < SortedValues.Length; ValueIndex++)
+                //重複排除用 最初は絶対に一致させない
+                long PreviousValue = ~SortedValues[ValueIndex];
+
+                for (; ValueIndex < SortedValues.Length; ValueIndex++)
                 {
                     long Value = SortedValues[ValueIndex];
+                    //ここで重複排除する
+                    if(Value == PreviousValue) { continue; }
+                    PreviousValue = Value;
+
                     long MaskedValue = Value & SortMask;
                     if (MaskedKey == MaskedValue)
                     {
@@ -100,6 +108,7 @@ namespace Twigaten.Hash
                         //最初だけ必ずここに入る
                         else
                         {
+                            //先頭の要素数のダミーを入れる
                             ReadBlockList.Add(0);
                             ReadBlockList.Add(Value);
                             BlockCount = 1;

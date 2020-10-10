@@ -6,9 +6,7 @@ using System.IO.Compression;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Twigaten.Lib;
 using Zstandard.Net;
 
@@ -115,14 +113,15 @@ namespace Twigaten.Hash
             }
         }
 
+        bool Disposed = false;
         public void Dispose()
         {
-            //ZstdStreamは Flush()せずにDispose()すると読み込み時にUnknown Frame descriptorされる
-            zip.Flush();
-            zip.Dispose();
-            //Flush()してもUnknown Frame descriptorされるときはされるのでおまじない #ウンコード
-            file.Flush(true);
-            file.Dispose();
+            if (!Disposed)
+            {
+                Disposed = true;
+                zip.Dispose();
+                file.Dispose();
+            }
         }
     }
 
@@ -294,16 +293,19 @@ namespace Twigaten.Hash
             BufCursor = 0;
         }
 
+        bool Disposed = false;
         public void Dispose()
         {
-            if (BufCursor > 0) { ActualWrite().Wait(); }
-            ActualWriteTask.Wait();
-            //ZstdStreamは Flush()せずにDispose()すると読み込み時にUnknown Frame descriptorされる
-            zip.Flush();
-            zip.Dispose();
-            //Flush()してもUnknown Frame descriptorされるときはされるのでおまじない #ウンコード
-            file.Flush(true);
-            file.Dispose();
+            if (!Disposed)
+            {
+                Disposed = true;
+                if (BufCursor > 0) { ActualWrite().Wait(); }
+                ActualWriteTask.Wait();
+                zip.Dispose();
+                file.Dispose();
+                GC.SuppressFinalize(this);
+            }
         }
+        ~BufferedLongWriter() { Dispose(); }
     }
 }

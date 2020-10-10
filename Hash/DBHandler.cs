@@ -119,9 +119,9 @@ GROUP BY dcthash;"))
         ///これが始まった後に追加されたハッシュは無視されるが
         ///次回の実行で拾われるから問題ない
         /// </summary>
-        public async Task<HashSet<long>> NewerMediaHash()
+        public async Task<HashSet<long>> NewerMediaHash(long BeginUnixTime)
         {
-            string FilePath = SplitQuickSort.NewerHashFilePath(DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
+            string FilePath = SplitQuickSort.NewerHashFilePath(BeginUnixTime.ToString());
             try
             {
                 var ret = new HashSet<long>();

@@ -131,13 +131,13 @@ namespace Twigaten.Hash
                     //新しい値を含まないやつは省略
                     if(NewHash != null)
                     {
-                        int i;
-                        for(i = 0; i < SortedSpan.Length; i++)
+                        for(int i = 0; i < SortedSpan.Length; i++)
                         {
-                            if (NewHash.Contains(SortedSpan[i])) { break; }
+                            if (NewHash.Contains(SortedSpan[i])) { goto HasNewHash; }
                         }
-                        if(i == SortedSpan.Length) { continue; }
+                        continue;
                     }
+                    HasNewHash:
 
                     for (int i = 0; i < SortedSpan.Length; i++)
                     {
@@ -147,8 +147,6 @@ namespace Twigaten.Hash
                         for (int j = i + 1; j < SortedSpan.Length; j++)
                         {
                             long Sorted_j = SortedSpan[j];                            
-                            if(Sorted_i == Sorted_j) { continue; }  //MergeSortReaderは重複排除をしないのでここで排除する
-
                             //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
                             //すでにDBに入っているペアは処理しない
                             if ((NeedInsert_i || NewHash.Contains(Sorted_j))    //NewHashがnullなら後者は処理されないからセーフ

@@ -15,25 +15,35 @@ namespace Twigaten.Hash
         {
             //CheckOldProcess.CheckandExit();
 
-            Config config = Config.Instance;
-            AddOnlyList<long>.Pool = ArrayPool<long>.Create(
-                Math.Max(DBHandler.TableListSize, config.hash.MultipleSortBufferElements),
-                config.hash.MultipleSortBufferCount + Environment.ProcessorCount);
-
-            DBHandler db = new DBHandler();
-            Stopwatch sw = new Stopwatch();
-            
-            sw.Restart();
+            var config = Config.Instance;
+            var db = new DBHandler();
+            var sw = Stopwatch.StartNew();
 
             HashSet<long> NewHash = null;
-            long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 60; //とりあえず1分前
+            long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long MinDownloadedAt = await db.Min_downloaded_at().ConfigureAwait(false);
 
-            if(MinDownloadedAt < config.hash.LastUpdate - 600)
+            Directory.CreateDirectory(config.hash.TempDir);
+            //前回正常に終了せずマージソート用のファイルが残ってたらここで消す
+            foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(SplitQuickSort.SortingFilePath("*"))).ToArray())
+            {
+                File.Delete(filePath);
+            }
+
+            if (MinDownloadedAt < config.hash.LastUpdate - 600)
             {
                 //前回の更新以降のハッシュを読む(つもり)
                 Console.WriteLine("Loading New hash.");
-                NewHash = await db.NewerMediaHash().ConfigureAwait(false);
+
+                //前回正常に終了せず残った半端なハッシュを消す
+                foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(SplitQuickSort.NewerHashFilePath("*"))).ToArray())
+                {
+                    if (!long.TryParse(Path.GetFileNameWithoutExtension(filePath).Substring(SplitQuickSort.NewerHashPrefix.Length), out long time)
+                        || config.hash.LastUpdate < time) 
+                    { File.Delete(filePath); }
+                }
+                //とりあえず60秒前のハッシュから取得する
+                NewHash = await db.NewerMediaHash(config.hash.LastUpdate - 60).ConfigureAwait(false);
                 if (NewHash == null) { Console.WriteLine("New hash load failed."); Environment.Exit(1); }
                 Console.WriteLine("{0} New hash", NewHash.Count);
             }
@@ -59,10 +69,11 @@ namespace Twigaten.Hash
 
                 long Count = await db.AllMediaHash().ConfigureAwait(false);
                 if (Count < 0) { Console.WriteLine("Hash load failed."); Environment.Exit(1); }
-                Console.WriteLine("{0} Hash loaded in {1} ms", Count, sw.ElapsedMilliseconds);
+                Console.WriteLine("{0} Hash loaded.", Count);
                 config.hash.NewLastHashCount(Count);
             }
             sw.Stop();
+            Console.WriteLine("Hash Load: {0}ms", sw.ElapsedMilliseconds);
             sw.Restart();
             MediaHashSorter media = new MediaHashSorter(NewHash, db,
                 config.hash.MaxHammingDistance,
@@ -72,11 +83,6 @@ namespace Twigaten.Hash
             sw.Stop();
             Console.WriteLine("Multiple Sort, Store: {0}ms", sw.ElapsedMilliseconds);
 
-            //マージソート用のファイルが残ってたらここで消す
-            foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(SplitQuickSort.SortingFilePath("*"))).ToArray())
-            {
-                File.Delete(filePath);
-            }
             config.hash.NewLastUpdate(NewLastUpdate);
         }
     }

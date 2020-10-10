@@ -12,8 +12,7 @@ namespace Twigaten.Hash
     /// <typeparam name="T"></typeparam>
     class AddOnlyList<T> : IDisposable where T : struct
     {
-        ///<summary>1個でもインスタンスを作った後に変更すると死ぬ</summary>
-        public static ArrayPool<T> Pool { get; set; } = ArrayPool<T>.Shared;
+        static ArrayPool<T> Pool { get; } = ArrayPool<T>.Shared;
         public AddOnlyList(int InitialLength) { InnerArray = Pool.Rent(InitialLength); }
         ///<summary>中の配列を直接覗く
         ///スレッドセーフでもないし全ては自己責任で</summary>
@@ -26,7 +25,7 @@ namespace Twigaten.Hash
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ExpendIfNeccesary(int MinSize)
-        {
+        {            
             if (InnerArray.Length <= MinSize)
             {
                 var NextArray = Pool.Rent(Math.Max(MinSize, InnerArray.Length << 1));
@@ -38,15 +37,17 @@ namespace Twigaten.Hash
         ///<summary>末尾に要素を1個追加</summary>
         public void Add(T value)
         {
-            ExpendIfNeccesary(Count);
-            InnerArray[Count] = value;
-            Count++;
+            int c = Count;
+            ExpendIfNeccesary(c);
+            InnerArray[c] = value;
+            Count = c + 1;
         }
         ///<summary>末尾に要素をまとめて追加</summary>
         public void AddRange(Span<T> values)
         {
-            ExpendIfNeccesary(Count + values.Length);
-            values.CopyTo(InnerArray.AsSpan(Count, values.Length));
+            int c = Count;
+            ExpendIfNeccesary(c + values.Length);
+            values.CopyTo(InnerArray.AsSpan(c, values.Length));
             Count += values.Length;
         }
         ///<summary>末尾の要素を上書き</summary>
