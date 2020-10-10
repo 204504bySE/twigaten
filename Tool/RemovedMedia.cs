@@ -16,7 +16,7 @@ namespace Twigaten.Tool
 
     class RemovedMedia : Lib.DBHandler
     {
-        const int DownloadConcurrency = 256;
+        const int DownloadConcurrency = 64;
         public RemovedMedia() : base(config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2))
         {
             Counter.AutoRefresh();
@@ -119,15 +119,12 @@ AND u.isprotected IS FALSE);
                     {
                         mediaparam.Value = mid;
                         //全部画像転載の時だけ次の画像に進める
-                        int i = 0;
-                        for(; i < 10; i++)
+                        while (true)
                         {
                             long val = await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
                             if (val == 0) { return; } else if (val > 0) { break; }
-                            await Task.Delay(100).ConfigureAwait(false);
+                            await Task.Delay(1000).ConfigureAwait(false);
                         }
-                        //リトライに失敗したらあきらめる
-                        if (10 <= i) { return; }
                     }
                 }
                 Counter.TweetCheckHit.Increment();
@@ -197,7 +194,7 @@ LIMIT 1000;"))
                         }
                         MediaIdList.Add(t.media_id); 
                     }
-                    if (Table.Count > 0) { tweet_param.Value = Table.Last().tweet_id; }
+                    if (Table.Count > 0) { tweet_param.Value = Table.Last().tweet_id + 1; }
                 } while (Table.Count > 0 && last_tweet_id < exclude_tweet_id);
 
                 CheckTweetBlock.Complete();
