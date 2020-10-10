@@ -73,7 +73,7 @@ namespace Twigaten.Hash
                         new ExecutionDataflowBlockOptions()
                         {
                             MaxDegreeOfParallelism = 1,
-                            BoundedCapacity = config.hash.MultipleSortBufferCount
+                            BoundedCapacity = 2
                         });
 
                     var LoadHashBlock = new ActionBlock<long>(async (i) =>

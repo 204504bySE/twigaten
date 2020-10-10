@@ -77,7 +77,11 @@ namespace Twigaten.Hash
                 do { AddCount = await db.StoreMediaPairs(p).ConfigureAwait(false); } while (AddCount < 0);    //失敗したら無限に再試行
                 if (0 < AddCount) { Interlocked.Add(ref DBAddCount, AddCount); }
             },
-            new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true, MaxDegreeOfParallelism = Environment.ProcessorCount });
+            new ExecutionDataflowBlockOptions() 
+            {
+                SingleProducerConstrained = true, 
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            });
             PairBatchBlock.LinkTo(PairStoreBlock, new DataflowLinkOptions() { PropagateCompletion = true });
         }
 
@@ -187,7 +191,7 @@ namespace Twigaten.Hash
             }, new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
-                BoundedCapacity = config.hash.MultipleSortBufferCount,
+                BoundedCapacity = Environment.ProcessorCount << 1,
                 SingleProducerConstrained = true
             });
 

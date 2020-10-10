@@ -81,7 +81,6 @@ namespace Twigaten.Hash
                     }
                     else
                     {   //Maskしたやつが一致しない場合はオレオレ配列1サイクル分終了
-                        //LastValueは次回もどうせ一致しないので代入しない
                         MaskedKey = MaskedValue;
                         //2要素以上あれば確定して次のサイクルに進む
                         if (1 < BlockCount)
@@ -120,14 +119,17 @@ namespace Twigaten.Hash
             }
             //ここに来るのはファイルの読み込みが終わったときだけ
             //読み込み終了後の呼び出しならnullを返す必要がある
-            if(ReadBlockList.Count == 0)
+            if (ReadBlockList.Count == 0)
             {
                 ReadBlockList.Dispose();
                 return null;
             }
-            //終端に0をつけて完成
-            ReadBlockList.Add(0);
-            return ReadBlockList; 
+            else
+            {
+                //終端に0をつけて完成
+                ReadBlockList.Add(0);
+                return ReadBlockList;
+            }
         }
 
         //ReaderはCreator.Dispose()の中でDispose()されるので呼ぶ必要はない

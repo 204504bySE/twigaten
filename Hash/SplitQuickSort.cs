@@ -71,8 +71,8 @@ namespace Twigaten.Hash
             //これにソート用の配列を入れてメモリ割り当てを減らしてみる
             var LongPool = new ConcurrentQueue<long[]>();
 
-            //FirstSortBlockの処理1個が完了したことを知るためだけのBlock 値に意味はない
-            var FirstSortCompleteBlock = new BufferBlock<byte>();
+            //FirstSortBlockの並列数が空いたら空くセマフォ
+            var FirstSortSemaphore = new SemaphoreSlim(config.hash.InitialSortConcurrency);
             //ソート→書き込み はこの中で行う
             var FirstSortBlock = new ActionBlock<FirstSort>(async (t) =>
             {
@@ -86,35 +86,29 @@ namespace Twigaten.Hash
                 }
                 //ここでLongPoolに配列を返却する
                 LongPool.Enqueue(t.ToSort);
-                //Blockが空いたことを通知したいだけなので値に意味はない
-                FirstSortCompleteBlock.Post<byte>(0);
+                FirstSortSemaphore.Release();
             }, new ExecutionDataflowBlockOptions()
             {   //ここでメモリを節約する、かもしれない
                 SingleProducerConstrained = true,
                 MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
                 BoundedCapacity = config.hash.InitialSortConcurrency
             });
-            int FirstSortingCount = 0;
 
             //まずはAllHashを読む
             using (var reader = new UnbufferedLongReader(AllHashFilePath))
             {
                 for(; reader.Readable; FileCount++)
                 {
-
+                    await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
                     if (!LongPool.TryDequeue(out var ToSort)) { ToSort = new long[InitialSortUnit]; }
                     int ToSortLength = reader.Read(ToSort);
                     await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength)).ConfigureAwait(false);
-                    while (config.hash.InitialSortConcurrency <= FirstSortingCount)
-                    {
-                        await FirstSortCompleteBlock.ReceiveAsync().ConfigureAwait(false);
-                        FirstSortingCount--;
-                    }
                 }
             }
 
             //NewerHashを読む
             int ToSortNewerCursor = 0;
+            await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
             if (!LongPool.TryDequeue(out var ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
             foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(NewerHashFilePath("*"))))
             {
@@ -130,14 +124,9 @@ namespace Twigaten.Hash
                         if (InitialSortUnit <= ToSortNewerCursor)
                         {
                             await FirstSortBlock.SendAsync(new FirstSort(SortingFilePath(FileCount), ToSortNewer, ToSortNewer.Length)).ConfigureAwait(false);
-                            FirstSortingCount++;
-                            while (FirstSortingCount <= config.hash.InitialSortConcurrency)
-                            {
-                                await FirstSortCompleteBlock.ReceiveAsync().ConfigureAwait(false);
-                                FirstSortingCount--;
-                            }
                             FileCount++;
                             ToSortNewerCursor = 0;
+                            await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
                             if (!LongPool.TryDequeue(out ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
                         }
                     }
