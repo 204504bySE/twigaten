@@ -42,6 +42,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", "/users/" + User.user_id.ToString());
             output.Attributes.SetAttribute("class", "twigaten-screenname twigaten-cookie-click");
+            if (User.isprotected) { output.Attributes.SetAttribute("rel", "nofollow"); }
             output.Content.SetContent("@" + User.screen_name);
         }
     }

@@ -66,6 +66,7 @@ namespace Twigaten.Web.TagHelpers
             output.Attributes.SetAttribute("class", "twigaten-unixtime twigaten-cookie-click"
                 + (Tweet.created_at < MainTweet?.created_at ? " has-text-weight-bold" : ""));
             output.Attributes.SetAttribute("data-unixtime", Tweet.created_at.ToUnixTimeSeconds());
+            if (Tweet.user.isprotected) { output.Attributes.SetAttribute("rel", "nofollow"); }
         }
     }
 
@@ -88,6 +89,7 @@ namespace Twigaten.Web.TagHelpers
 
     /// <summary>
     /// 「もっと見る」「別ページで見る」ボタン
+    /// TweetにはRTじゃなくて元ツイートを渡す
     /// </summary>
     [HtmlTargetElement("tweet-more-button")]
     public class TweetMoreButtonTagHelper : TagHelper
@@ -101,6 +103,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("href", "/tweet/" + Tweet.tweet_id.ToString() + (IsMore ? "/more#" : "#") + Media.media_id.ToString());
             output.Attributes.SetAttribute("class", "button button-viewmore " + (IsMore ? "is-primary" : "is-light"));
+            if (Tweet.user.isprotected) { output.Attributes.SetAttribute("rel", "nofollow"); }
             output.Content.SetContent(IsMore ? Locale.Locale.SimilarMedia_ViewMore : Locale.Locale.SimilarMedia_SeparatePage);
         }
     }
