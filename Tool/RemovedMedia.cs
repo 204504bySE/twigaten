@@ -16,7 +16,7 @@ namespace Twigaten.Tool
 
     class RemovedMedia : Lib.DBHandler
     {
-        const int DownloadConcurrency = 64;
+        const int DownloadConcurrency = 128;
         public RemovedMedia() : base(config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2))
         {
             Counter.AutoRefresh();
@@ -62,8 +62,8 @@ namespace Twigaten.Tool
                         using (var res = await Http.SendAsync(req).ConfigureAwait(false))
                         {
                             if (res.StatusCode == HttpStatusCode.NotFound
-                                || res.StatusCode == HttpStatusCode.Gone
-                                || res.StatusCode == HttpStatusCode.Forbidden)
+                                || res.StatusCode == HttpStatusCode.Forbidden
+                                || res.StatusCode == HttpStatusCode.Gone)
                             { Counter.MediaGone.Increment(); }
                             else { return; }
                         }

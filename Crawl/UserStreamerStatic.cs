@@ -178,20 +178,27 @@ namespace Twigaten.Crawl
                         using (var req = new HttpRequestMessage(HttpMethod.Get, ProfileImageUrl))
                         {
                             req.Headers.Referrer = new Uri(StatusUrl(x));
-                            using (var res = await Http.SendAsync(req).ConfigureAwait(false))
+                            using (var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                             {
                                 if (res.IsSuccessStatusCode)
                                 {
-                                    using (var file = File.Create(LocalPath))
+                                    try
                                     {
+                                        using var file = File.Create(LocalPath);
                                         await res.Content.CopyToAsync(file).ConfigureAwait(false);
                                         await file.FlushAsync().ConfigureAwait(false);
+                                        DownloadOK = true; break;
                                     }
-                                    DownloadOK = true; break;
+                                    catch
+                                    {
+                                        File.Delete(LocalPath);
+                                        continue;
+                                    }
                                 }
-                                else if (res.StatusCode == HttpStatusCode.Forbidden
-                                    || res.StatusCode == HttpStatusCode.NotFound)
-                                { DownloadOK = false; break; }
+                                else if (res.StatusCode == HttpStatusCode.NotFound
+                                    || res.StatusCode == HttpStatusCode.Forbidden
+                                    || res.StatusCode == HttpStatusCode.Gone)
+                                { break; }
                             }
                         }
                     }
@@ -263,7 +270,7 @@ namespace Twigaten.Crawl
                         req.Headers.Referrer = new Uri(StatusUrl(a.x));
                         try
                         {
-                            using (var res = await Http.SendAsync(req).ConfigureAwait(false))
+                            using (var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                             {
                                 if (res.IsSuccessStatusCode)
                                 {
@@ -271,7 +278,7 @@ namespace Twigaten.Crawl
                                     long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
                                     //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
                                     //つまりdownloaded_atは画像の保存に失敗しても値が入る
-                                    if (dcthash != null && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
+                                    if (dcthash.HasValue && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
                                     {
                                         using (var file = File.Create(LocalPaththumb))
                                         {

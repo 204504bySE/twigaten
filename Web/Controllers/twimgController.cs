@@ -159,12 +159,13 @@ namespace Twigaten.Web.Controllers
             using (var req = new HttpRequestMessage(HttpMethod.Get, Url))
             {
                 req.Headers.Referrer = new Uri(Referer);
-                using (var res = await Http.SendAsync(req).ConfigureAwait(false))
+                using (var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                 {
                     if (res.IsSuccessStatusCode)
                     {
                         Counter.MediaSuccess.Increment();
-                        return (res.StatusCode, await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false));
+                        try { return (res.StatusCode, await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false)); }
+                        catch { return (HttpStatusCode.BadGateway, null); }
                     }
                     else { return (res.StatusCode, null); }
                 }
@@ -179,8 +180,8 @@ namespace Twigaten.Web.Controllers
         bool RemovedStatusCode(HttpStatusCode StatusCode)
         {
             return StatusCode == HttpStatusCode.NotFound
-                || StatusCode == HttpStatusCode.Gone
-                || StatusCode == HttpStatusCode.Forbidden;
+                || StatusCode == HttpStatusCode.Forbidden
+                || StatusCode == HttpStatusCode.Gone;
         }
     }
 }
