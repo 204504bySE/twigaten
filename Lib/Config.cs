@@ -146,6 +146,7 @@ namespace Twigaten.Lib
             public int InitialSortFileSize { get; }
             public int InitialSortConcurrency { get; }
             public int MergeSortCompareUnit { get; }
+            public int MergeSortPostponePairCount { get; }
             public int ZipBufferElements { get; }
             public int MultipleSortBufferElements { get; }
             public long LastUpdate { get; }
@@ -160,6 +161,7 @@ namespace Twigaten.Lib
                 InitialSortFileSize = int.Parse(data["hash"][nameof(InitialSortFileSize)] ?? "1073741824");
                 InitialSortConcurrency = int.Parse(data["hash"][nameof(InitialSortConcurrency)] ?? "1");
                 MergeSortCompareUnit = int.Parse(data["hash"][nameof(MergeSortCompareUnit)] ?? "2");
+                MergeSortPostponePairCount = int.Parse(data["hash"][nameof(MergeSortPostponePairCount)] ?? "10000000");
                 ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "32768");
                 MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "25000");
                 LastUpdate = long.Parse(data["hash_info"][nameof(LastUpdate)] ?? "0");

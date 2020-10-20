@@ -5,7 +5,7 @@ using System.Data;
 using MySqlConnector;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using System.Collections.Immutable;
+using System.Collections.Concurrent;
 
 namespace Twigaten.Hash
 {
@@ -17,26 +17,47 @@ namespace Twigaten.Hash
         public const int StoreMediaPairsUnit = 1000;
         static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 2, StoreMediaPairsHead);
 
+        readonly ConcurrentBag<MySqlCommand> StoreMediaPairsCmdPool = new ConcurrentBag<MySqlCommand>();
+
         public async Task<int> StoreMediaPairs(HashPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
             if (StorePairs.Length > StoreMediaPairsUnit) { throw new ArgumentException(); }
             else if (StorePairs.Length == 0) { return 0; }
-            else
-            {
-                Array.Sort(StorePairs, HashPair.Comparison);   //deadlock防止
-                using (var Cmd =  new MySqlCommand(
-                    StorePairs.Length == StoreMediaPairsUnit ? StoreMediaPairsStrFull
-                        : BulkCmdStr(StorePairs.Length, 2, StoreMediaPairsHead)))
-                { 
-                    for (int i = 0; i < StorePairs.Length; i++)
+
+            Array.Sort(StorePairs, HashPair.Comparison);   //deadlock防止
+            if (StorePairs.Length == StoreMediaPairsUnit)
+            {   //MySqlCommandをプールしてMySqlCommandおよびstringの生成を抑制する
+                if (!StoreMediaPairsCmdPool.TryTake(out var cmd))
+                {
+                    cmd = new MySqlCommand(StoreMediaPairsStrFull);
+                    for (int i = 0; i < StoreMediaPairsUnit; i++)
                     {
                         string numstr = i.ToString();
-                        Cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = StorePairs[i].small;
-                        Cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = StorePairs[i].large;
+                        cmd.Parameters.Insert(i << 1, new MySqlParameter("@a" + numstr, MySqlDbType.Int64));
+                        cmd.Parameters.Insert(i << 1 | 1, new MySqlParameter("@b" + numstr, MySqlDbType.Int64));
                     }
-                    return await ExecuteNonQuery(Cmd).ConfigureAwait(false);
                 }
+                for (int i = 0; i < StoreMediaPairsUnit; i++)
+                {
+                    cmd.Parameters[i << 1].Value = StorePairs[i].small;
+                    cmd.Parameters[i << 1 | 1].Value = StorePairs[i].large;
+                }
+                int ret = await ExecuteNonQuery(cmd).ConfigureAwait(false);
+                cmd.Connection = null;
+                StoreMediaPairsCmdPool.Add(cmd);
+                return ret;
+            }
+            else
+            {
+                using var cmd = new MySqlCommand(BulkCmdStr(StorePairs.Length, 2, StoreMediaPairsHead));
+                for (int i = 0; i < StorePairs.Length; i++)
+                {
+                    string numstr = i.ToString();
+                    cmd.Parameters.Add("@a" + numstr, MySqlDbType.Int64).Value = StorePairs[i].small;
+                    cmd.Parameters.Add("@b" + numstr, MySqlDbType.Int64).Value = StorePairs[i].large;
+                }
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
             }
         }
 
@@ -63,32 +84,30 @@ namespace Twigaten.Hash
                 {
                     long TotalHashCount = 0;
 
-                    var WriterBlock = new ActionBlock<AddOnlyList<long>>(
-                        async (table) => 
-                        {
-                            await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
-                            TotalHashCount += table.Count;
-                            table.Dispose();
-                        },
-                        new ExecutionDataflowBlockOptions()
-                        {
-                            MaxDegreeOfParallelism = 1,
-                            BoundedCapacity = 2
-                        });
+                    var WriterBlock = new ActionBlock<AddOnlyList<long>>(async (table) => 
+                    {
+                        await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
+                        TotalHashCount += table.Count;
+                        table.Dispose();
+                    }, new ExecutionDataflowBlockOptions()
+                    {
+                        MaxDegreeOfParallelism = 1,
+                        BoundedCapacity = 2
+                    });
 
                     var LoadHashBlock = new ActionBlock<long>(async (i) =>
                     {
                         var table = new AddOnlyList<long>(TableListSize);
                         while(true)
                         {
-                            using (MySqlCommand Cmd = new MySqlCommand(@"SELECT DISTINCT dcthash
+                            using (MySqlCommand cmd = new MySqlCommand(@"SELECT DISTINCT dcthash
 FROM media
 WHERE dcthash BETWEEN @begin AND @end
 GROUP BY dcthash;"))
                             {
-                                Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
-                                Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = ((i + 1) << HashUnitBits) - 1;
-                                if( await ExecuteReader(Cmd, (r) => table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
+                                cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
+                                cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = ((i + 1) << HashUnitBits) - 1;
+                                if( await ExecuteReader(cmd, (r) => table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
                                 else { table.Clear(); }
                             }
                         }
@@ -131,14 +150,14 @@ GROUP BY dcthash;"))
                     var Table = new List<long>();
                     while(true)
                     {
-                        using (MySqlCommand Cmd = new MySqlCommand(@"SELECT dcthash
+                        using (MySqlCommand cmd = new MySqlCommand(@"SELECT dcthash
 FROM media_downloaded_at
 NATURAL JOIN media
 WHERE downloaded_at BETWEEN @begin AND @end;"))
                         {
-                            Cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * i;
-                            Cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
-                            if (await ExecuteReader(Cmd, (r) => Table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
+                            cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * i;
+                            cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
+                            if (await ExecuteReader(cmd, (r) => Table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
                             else { Table.Clear(); }
                         }
                     }

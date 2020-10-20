@@ -10,6 +10,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Numerics;
 using System.Data;
+using System.Runtime.CompilerServices;
 
 namespace Twigaten.Hash
 {
@@ -69,7 +70,8 @@ namespace Twigaten.Hash
             var SortComp = new BlockSortComparer(SortMask);
 
             //これにソート用の配列を入れてメモリ割り当てを減らしてみる
-            var LongPool = new ConcurrentQueue<long[]>();
+            var LongPool = new ConcurrentBag<long[]>();
+            bool LongPoolReturn = true;
             //ソート用の配列の個数に制限を設ける
             var FirstSortSemaphore = new SemaphoreSlim(config.hash.InitialSortConcurrency);
 
@@ -89,7 +91,7 @@ namespace Twigaten.Hash
                     writer.WriteDestructive(t.ToSort, t.Length);
                 }
                 //ここでLongPoolに配列を返却する
-                LongPool.Enqueue(t.ToSort);
+                if (LongPoolReturn) { LongPool.Add(t.ToSort); }
                 FirstSortSemaphore.Release();
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
             FirstSortBlock.LinkTo(WriterBlock, new DataflowLinkOptions() { PropagateCompletion = true });
@@ -101,7 +103,7 @@ namespace Twigaten.Hash
                 for(; reader.Readable; FileCount++)
                 {
                     await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
-                    if (!LongPool.TryDequeue(out var ToSort)) { ToSort = new long[InitialSortUnit]; }
+                    if (!LongPool.TryTake(out var ToSort)) { ToSort = new long[InitialSortUnit]; }
                     int ToSortLength = reader.Read(ToSort);
                     FirstSortBlock.Post(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength));
                 }
@@ -110,7 +112,7 @@ namespace Twigaten.Hash
             //NewerHashを読む
             int ToSortNewerCursor = 0;
             await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
-            if (!LongPool.TryDequeue(out var ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
+            if (!LongPool.TryTake(out var ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
             foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(NewerHashFilePath("*"))))
             {
                 using (var reader = new BufferedLongReader(filePath))
@@ -128,11 +130,13 @@ namespace Twigaten.Hash
                             FileCount++;
                             ToSortNewerCursor = 0;
                             await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
-                            if (!LongPool.TryDequeue(out ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
+                            if (!LongPool.TryTake(out ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
                         }
                     }
                 }
             }
+            //ソート用配列は作り終わったので用が済んだ配列は解放させる
+            LongPoolReturn = false;
             //余った要素もソートさせる FirstSortingCountはもう使わないので放置
             FirstSortBlock.Post(new FirstSort(SortingFilePath(FileCount), ToSortNewer, ToSortNewerCursor));
             FileCount++;

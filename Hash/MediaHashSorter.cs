@@ -12,6 +12,7 @@ using System.Runtime.Intrinsics.X86;
 using System.Runtime.CompilerServices;
 using System.Buffers;
 using Twigaten.Lib;
+using System.Runtime;
 
 namespace Twigaten.Hash
 {
@@ -32,7 +33,7 @@ namespace Twigaten.Hash
                 small = _media1;
                 large = _media0;
             }
-            else { throw new ArgumentException(nameof(_media0) + " == " + nameof(_media1)); }
+            else { throw new ArgumentException(nameof(_media0) + " == " + nameof(_media1) + ": " + _media0.ToString()); }
         }
 
         ///<summary>small, large順で比較</summary>
@@ -112,6 +113,14 @@ namespace Twigaten.Hash
 
             //適当なサイズに切ってそれぞれをクイックソート
             int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask).ConfigureAwait(false);
+            //↓ベンチマーク用 sortのファイル数を入れてやる
+            //int SortedFileCount = 52;
+
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Default, true, false);
+            GC.WaitForPendingFinalizers();
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect();
+
             QuickSortSW.Stop();
             Console.WriteLine("{0}\tFile Sort\t{1}ms ", Index, QuickSortSW.ElapsedMilliseconds);
 
@@ -133,9 +142,9 @@ namespace Twigaten.Hash
                     var SortedSpan = Block.AsSpan(BlockIndex + 1, CurrentBlockLength);
 
                     //新しい値を含まないやつは省略
-                    if(NewHash != null)
+                    if (NewHash != null)
                     {
-                        for(int i = 0; i < SortedSpan.Length; i++)
+                        for (int i = 0; i < SortedSpan.Length; i++)
                         {
                             if (NewHash.Contains(SortedSpan[i])) { goto HasNewHash; }
                         }
@@ -147,14 +156,16 @@ namespace Twigaten.Hash
                     {
                         long Sorted_i = SortedSpan[i];
                         bool NeedInsert_i = NewHash?.Contains(Sorted_i) ?? true;
-                        long maskedhash_i = Sorted_i & SortMask;
+                        //long maskedhash_i = Sorted_i & SortMask;
                         for (int j = i + 1; j < SortedSpan.Length; j++)
                         {
-                            long Sorted_j = SortedSpan[j];                            
+                            long Sorted_j = SortedSpan[j];
+                            //重複排除を行う(ブロックソート後に連続していない重複は残っている)
+                            if (Sorted_i == Sorted_j) { continue; }
                             //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
                             //すでにDBに入っているペアは処理しない
                             if ((NeedInsert_i || NewHash.Contains(Sorted_j))    //NewHashがnullなら後者は処理されないからセーフ
-                                //ブロックソートで一致した組のハミング距離を測る
+                                                                                //ブロックソートで一致した組のハミング距離を測る
                                 && HammingDistance(Sorted_i, Sorted_j) <= MaxHammingDistance)
                             {
                                 //一致したペアが見つかる最初の組合せを調べる
@@ -200,10 +211,23 @@ namespace Twigaten.Hash
             //クイックソートしたファイル群をマージソートしながら読み込む
             using (var Reader = new MergeSortReader(SortedFileCount, SortMask))
             {
+                int PostponeCount = 1 + config.hash.MergeSortPostponePairCount / DBHandler.StoreMediaPairsUnit;
+                var GCStopWatch = Stopwatch.StartNew();
                 AddOnlyList<long> Sorted;
                 while ((Sorted = Reader.ReadBlocks()) != null)
                 {
                     await MultipleSortBlock.SendAsync(Sorted).ConfigureAwait(false);
+                    //DBにハッシュのペアを入れる処理が詰まったら休んだりGCしたりする
+                    while (PostponeCount < PairStoreBlock.InputCount)
+                    {
+                        if (60000 <= GCStopWatch.ElapsedMilliseconds)
+                        {
+                            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                            GC.Collect();
+                            GCStopWatch.Restart();
+                        }
+                        await Task.Delay(1000).ConfigureAwait(false); 
+                    }
                 }
             }
             //余りをDBに入れるついでにここで制御を戻してしまう

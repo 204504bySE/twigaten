@@ -13,7 +13,7 @@ using Twigaten.Lib;
 namespace Twigaten.Hash
 {
     ///<summary>分割してブロックソートされたファイルを必要な単位で読み出すやつ
-    ///重複排除を行う
+    ///重複排除を行うが全て排除はされない(ブロックソート後に同じ値が連続するもののみ)
     ///Dispose()で読み込んだファイルを削除する</summary>
     class MergeSortReader : IDisposable
     {
@@ -30,6 +30,8 @@ namespace Twigaten.Hash
             Reader = Creator.Enumerator;
             //最初はここで強制的に読ませる
             ActualRead();
+            var Sorted = SortedMemory.Span;
+            if (0 < Sorted.Length) { LastValue = ~Sorted[0]; }
         }
 
         readonly int BlockElementsMin = config.hash.MultipleSortBufferElements;
@@ -41,6 +43,8 @@ namespace Twigaten.Hash
         void ActualRead() { SortedMemory = Reader.Read(); }
         //ReadBlocks()を抜けたときのSortedMemoryの読み込み位置を覚えておく
         int LastIndex;
+        //重複排除用 最初は絶対に一致させない
+        long LastValue;
 
         ///<summary>ブロックソートで一致する範囲ごとに読み出す
         ///長さ2以上のやつは全部返す(NewHashが含まれてなくても返す)
@@ -56,21 +60,19 @@ namespace Twigaten.Hash
             int BlockCountIndex = 0;
             //最初は絶対に一致させないように-1
             long MaskedKey = -1;
+            //重複排除用
+            long PreviousValue = LastValue;
 
             int ValueIndex = LastIndex;
             while (0 < SortedMemory.Length)
             {
                 //SortedMemoryはActualRead()毎に変わるのでここでSpanにする
                 var SortedValues = SortedMemory.Span;
-                //重複排除用 最初は絶対に一致させない
-                long PreviousValue = ~SortedValues[ValueIndex];
 
                 for (; ValueIndex < SortedValues.Length; ValueIndex++)
                 {
                     long Value = SortedValues[ValueIndex];
-                    //ここで重複排除する
-                    if(Value == PreviousValue) { continue; }
-                    PreviousValue = Value;
+                    if(PreviousValue == Value) { continue; }
 
                     long MaskedValue = Value & SortMask;
                     if (MaskedKey == MaskedValue)
@@ -113,6 +115,7 @@ namespace Twigaten.Hash
                             BlockCount = 1;
                         }
                     }
+                    PreviousValue = Value;
                 }
                 ActualRead();
                 ValueIndex = 0;
@@ -283,6 +286,7 @@ namespace Twigaten.Hash
     }
 
     ///<summary>バッファーを用意して別スレッドで読み込ませる
+    ///マージソートの最後段で使う
     ///1要素ずつじゃなくてまとめて読み出すようにしたけど速くなったようには見えない</summary>
     class MergeSortBuffer : IDisposable
     {

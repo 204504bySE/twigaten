@@ -22,7 +22,7 @@ namespace Twigaten.Hash
             HashSet<long> NewHash = null;
             long NewLastUpdate = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long MinDownloadedAt = await db.Min_downloaded_at().ConfigureAwait(false);
-
+            
             Directory.CreateDirectory(config.hash.TempDir);
             //前回正常に終了せずマージソート用のファイルが残ってたらここで消す
             foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(SplitQuickSort.SortingFilePath("*"))).ToArray())
@@ -72,6 +72,7 @@ namespace Twigaten.Hash
                 Console.WriteLine("{0} Hash loaded.", Count);
                 config.hash.NewLastHashCount(Count);
             }
+            
             sw.Stop();
             Console.WriteLine("Hash Load: {0}ms", sw.ElapsedMilliseconds);
             sw.Restart();
