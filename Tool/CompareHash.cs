@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 using Twigaten.Lib;
@@ -39,9 +40,9 @@ namespace Twigaten.Tool
 
         public static async Task Proceed()
         {
-            int counter = 0;
             int mismatch = 0;
             int failure = 0;
+            long[] mismatchBits = new long[sizeof(long) * 8];
             var config = Config.Instance;
             var db = new DBHandler();
             foreach(string p in await db.GetMediaPath().ConfigureAwait(false))
@@ -53,17 +54,22 @@ namespace Twigaten.Tool
                     await file.CopyToAsync(mem).ConfigureAwait(false);
                     mediabytes = mem.ToArray();
                 }
-                var a = DCTHash(mediabytes, @"http://[2405:6580:9320:5b00:182b:e24c:568f:21ef]:12305/hash/dct", Path.GetFileName(p));
-                var b = DCTHash(mediabytes, @"http://localhost:12305/hash/dct", Path.GetFileName(p));
+                var a = DCTHash(mediabytes, @"http://192.168.238.8:12305/hash/dct", Path.GetFileName(p));
+                var b = DCTHash(mediabytes, @"http://[::1]:12305/hash/dct", Path.GetFileName(p));
                 await Task.WhenAll(a, b).ConfigureAwait(false);
                 if(!a.Result.HasValue || !b.Result.HasValue) { failure++; }
                 else if (a.Result.Value != b.Result.Value) 
                 {
                     mismatch++;
-                    Console.WriteLine("{0:X16}", a.Result.Value ^ b.Result.Value);
+                    ulong bits = (ulong)(a.Result.Value ^ b.Result.Value);
+                    mismatchBits[Popcnt.X64.PopCount(bits)]++;
+                    Console.WriteLine("{0:X16}", bits);
                 }
-                counter++;
             }
+            for(int i = 0; i < mismatchBits.Length; i++)
+            {
+                if (0 < mismatchBits[i]) { Console.WriteLine("{0}: {1}", i, mismatchBits[i]); }
+            Console.WriteLine("{0} mismatches.", mismatch);
         }
 
     }

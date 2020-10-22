@@ -26,6 +26,7 @@ namespace Twigaten.Lib
                 locker = new _locker(data);
                 //hashはiniに書き込む必要がある
                 hash = new _hash(iniPath, ini, data);
+                dcthashserver = new _dcthashserver(data);
                 web = new _web(data);
                 database = new _database(data);
             }
@@ -179,6 +180,20 @@ namespace Twigaten.Lib
             }
         }
         public _hash hash;
+
+        public class _dcthashserver
+        {
+            public bool ListenIPv6 { get; }
+            public bool ListenIPv4 { get; }
+            public int ListenPort { get; }
+            public _dcthashserver(IniData data)
+            {
+                ListenIPv6 = bool.Parse(data["dcthashserver"][nameof(ListenIPv6)] ?? "true");
+                ListenIPv4 = bool.Parse(data["dcthashserver"][nameof(ListenIPv4)] ?? "false");
+                ListenPort = int.Parse(data["dcthashserver"][nameof(ListenPort)] ?? "12305");
+            }
+        }
+        public _dcthashserver dcthashserver;
 
         public class _web
         {

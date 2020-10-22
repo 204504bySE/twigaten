@@ -53,9 +53,9 @@ namespace Twigaten.Crawl
                 if (Elapsed < 60000)
                 {
                     await Task.Delay(Math.Min(10000, 60000 - (int)Elapsed >> 1)).ConfigureAwait(false);
-                    GC.Collect();
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Default, true, false);
                     GC.WaitForPendingFinalizers();
-                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要                    GC.wait
+                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要
                     GC.Collect();
                     //まだ時間が残ってたら休む
                     Elapsed = sw.ElapsedMilliseconds;

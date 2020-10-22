@@ -8,29 +8,31 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Twigaten.Lib;
 
 namespace Twigaten.DctHashServer
 {
     public class Program
     {
-        //ポート番号は適宜
-        const int ListenPort = 12305;
-
         public static void Main(string[] args)
         {
-            BuildWebHost(args).Run();
-        }
-
-        public static IWebHost BuildWebHost(string[] args) =>
+            var config = Config.Instance.dcthashserver;
             WebHost.CreateDefaultBuilder(args)
                 .UseKestrel(options =>
                 {
-                    //WindowsではIPv4とIPv6は別々にListenする必要がある
-                    options.Listen(IPAddress.Any, ListenPort);
-                    options.Listen(IPAddress.IPv6Any, ListenPort);
+                    //LinuxではIPv6だけListenすればIPv4もListenされる
+                    if (config.ListenIPv6)
+                    {
+                        options.Listen(IPAddress.IPv6Loopback, config.ListenPort);
+                        Console.WriteLine("Listening [{0}]:{1}", IPAddress.IPv6Loopback, config.ListenPort);
+                    }
+                    if (config.ListenIPv4)
+                    {
+                        options.Listen(IPAddress.Loopback, config.ListenPort);
+                        Console.WriteLine("Listening {0}:{1}", IPAddress.Loopback, config.ListenPort);
+                    }
                 })
-                .UseStartup<Startup>()
-                //.UseUrls("http://*:12305/")     
+                .UseStartup<Startup>()  
                 .ConfigureLogging((hostingContext, logging) =>
                 {
                     logging.ClearProviders();
@@ -39,6 +41,8 @@ namespace Twigaten.DctHashServer
                     logging.AddConsole();
                     logging.AddDebug();
                 })
-                .Build();
+                .Build()
+                .Run();
+        }
     }
 }
