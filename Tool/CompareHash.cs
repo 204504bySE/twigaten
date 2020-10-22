@@ -48,16 +48,20 @@ namespace Twigaten.Tool
             foreach(string p in await db.GetMediaPath().ConfigureAwait(false))
             {
                 byte[] mediabytes;
-                using (var file = File.OpenRead(Path.Combine(config.crawl.PictPaththumb, p)))
-                using (var mem = new MemoryStream())
+                try
                 {
-                    await file.CopyToAsync(mem).ConfigureAwait(false);
-                    mediabytes = mem.ToArray();
+                    using (var file = File.OpenRead(Path.Combine(config.crawl.PictPaththumb, p)))
+                    using (var mem = new MemoryStream())
+                    {
+                        await file.CopyToAsync(mem).ConfigureAwait(false);
+                        mediabytes = mem.ToArray();
+                    }
                 }
-                var a = DCTHash(mediabytes, @"http://192.168.238.8:12305/hash/dct", Path.GetFileName(p));
+                catch (Exception e) { Console.WriteLine(e.Message); continue; }
+                var a = Task.FromResult(new long?(long.MaxValue)); //DCTHash(mediabytes, @"http://192.168.238.8:12305/hash/dct", Path.GetFileName(p));
                 var b = DCTHash(mediabytes, @"http://[::1]:12305/hash/dct", Path.GetFileName(p));
                 await Task.WhenAll(a, b).ConfigureAwait(false);
-                if(!a.Result.HasValue || !b.Result.HasValue) { failure++; }
+                if(!a.Result.HasValue || !b.Result.HasValue) { failure++; Console.WriteLine("\t\t\tfailure"); }
                 else if (a.Result.Value != b.Result.Value) 
                 {
                     mismatch++;
@@ -66,13 +70,11 @@ namespace Twigaten.Tool
                     Console.WriteLine("{0:X16}", bits);
                 }
             }
-            for(int i = 0; i < mismatchBits.Length; i++)
+            for (int i = 0; i < mismatchBits.Length; i++)
             {
                 if (0 < mismatchBits[i]) { Console.WriteLine("{0}: {1}", i, mismatchBits[i]); }
-            Console.WriteLine("{0} mismatches.", mismatch);
+                Console.WriteLine("{0} mismatches.", mismatch);
+            }
         }
-
     }
-
-
 }

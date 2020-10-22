@@ -5,6 +5,7 @@
     <!--<PublishWithAspNetCoreTargetManifest>false</PublishWithAspNetCoreTargetManifest>-->
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <RootNamespace>Twigaten.DctHashServer</RootNamespace>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

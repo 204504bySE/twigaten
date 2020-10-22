@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Numerics;
+using System.Buffers;
 
 namespace twidown
 {
@@ -77,12 +78,14 @@ namespace twidown
         public static long? DCTHash(Stream imgStream, bool Crop = false)
         {
             if(imgStream == null) { return null; }
-            var hashbuf = MemoryMarshal.Cast<float, Vector<float>>(MonoImage(imgStream, 32, Crop)); //モノクロ縮小画像
-            if (hashbuf == null) { return null; }  //正常な場合は0にはならない
+            var monoimage = MonoImage(imgStream, Crop);
+            var hashbuf = MemoryMarshal.Cast<float, Vector<float>>(monoimage); //モノクロ縮小画像
+            if (hashbuf == null) { return null; }
             //DCTやる phashで必要な成分だけ求める
             //http://www.ice.gunma-ct.ac.jp/~tsurumi/courses/ImagePro/DCT/2D_DCT.htm
-            float[] dctbuf = new float[64];
+            Span<float> dctbuf = stackalloc float[64];
             for (int u = 0; u < 8; u++)
+            {
                 for (int v = 0; v < 8; v++)
                 {
                     /*
@@ -98,23 +101,29 @@ namespace twidown
                     float sum = 0;
                     for (int y = 0; y < 32; y++)
                     {
-                        var tosumvec = hashbuf[y * xCount] * cos32Vector_1_8[v * xCount];                        
+                        var tosumvec = hashbuf[y * xCount] * cos32Vector_1_8[v * xCount];
                         for (int x = 1; x < xCount; x++)
                         {
                             tosumvec += hashbuf[y * xCount + x] * cos32Vector_1_8[v * xCount + x];
                         }
                         float tosum = 0;
                         for (int i = 0; i < VectorCount; i++)
-                        {                            
+                        {
                             tosum += tosumvec[i];
                         }
                         sum += tosum * cos32_1_8[u << 5 | y];
                     }
                     dctbuf[(u << 3) | v] = sum; //dct32[u, v]をかけていないので実際の64倍の値
                 }
-
+            }
+            ArrayPool<float>.Shared.Return(monoimage);
             long ret = 0;
-            float ave = dctbuf.Average();
+            float ave = 0;
+            for (int i = 0; i < dctbuf.Length; i++) 
+            {
+                ave += dctbuf[i];
+            }
+            ave /= 64;
             for (int i = 0; i < dctbuf.Length; i++)
             {
                 if (dctbuf[i] < ave) { ret |= 1L << i; }
@@ -123,10 +132,11 @@ namespace twidown
             return ret;
         }
 
+        const int size = 32;
         //正方形、モノクロの画像に対応するバイト列を返す
-        static float[] MonoImage(Stream imgStream, int size, bool Crop = false)
+        static float[] MonoImage(Stream imgStream, bool Crop = false)
         {
-            byte[] imgbuf = new byte[size * size * 4];
+            var imgbuf = ArrayPool<byte>.Shared.Rent(size * size * 4);
             using (Image img = Image.FromStream(imgStream))
             using (Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb))
             using (Graphics g = Graphics.FromImage(miniimage))
@@ -148,16 +158,18 @@ namespace twidown
                 //バイト配列に取り出す
                 //http://www.84kure.com/blog/2014/07/13/c-%E3%83%93%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97%E3%81%AB%E3%83%94%E3%82%AF%E3%82%BB%E3%83%AB%E5%8D%98%E4%BD%8D%E3%81%A7%E9%AB%98%E9%80%9F%E3%81%AB%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9/
                 BitmapData imgdata = miniimage.LockBits(new Rectangle(0, 0, size, size), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-                Marshal.Copy(imgdata.Scan0, imgbuf, 0, imgbuf.Length);
+                Marshal.Copy(imgdata.Scan0, imgbuf, 0, size * size * 4);
             }
             //モノクロに変換
-            var ret = new float[size * size];
+            var ret = ArrayPool<float>.Shared.Rent(size * size);
             for(int i = 0; i < ret.Length; i++)
             { 
+                if(size * size <= i) { break; }
                 int PixelIndexShift = i << 2;
                 //RとBの係数が逆になっているが今更どうしようもない
                 ret[i] = (0.299F * imgbuf[PixelIndexShift] + 0.587F * imgbuf[PixelIndexShift + 1] + 0.114F * imgbuf[PixelIndexShift + 2]);
             }
+            ArrayPool<byte>.Shared.Return(imgbuf);
             return ret;
         }
     }
