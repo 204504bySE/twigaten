@@ -23,7 +23,7 @@ namespace Twigaten.Crawl
         /// 常に最大数のツイートを取得する
         /// </summary>
         /// <returns></returns>
-        public async Task<int> Proceed()
+        public async Task<int> Proceed(bool getTweet = false)
         {
             var tokens = (await db.SelectUserStreamerSetting(DBHandler.SelectTokenMode.All).ConfigureAwait(false)).ToArray();
             if (tokens.Length > 0) { Console.WriteLine("App: {0} Accounts to REST", tokens.Length); }
@@ -33,7 +33,7 @@ namespace Twigaten.Crawl
                 var s = new UserStreamer(new UserStreamer.UserStreamerSetting() { Token = t });
                 await s.RestFriend().ConfigureAwait(false);
                 await s.RestBlock().ConfigureAwait(false);
-                //await s.RestMyTweet().ConfigureAwait(false);
+                if (getTweet) { await s.RestMyTweet().ConfigureAwait(false); }
                 await s.VerifyCredentials().ConfigureAwait(false);
             }, new ExecutionDataflowBlockOptions()
             {

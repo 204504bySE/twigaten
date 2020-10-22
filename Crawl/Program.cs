@@ -28,12 +28,25 @@ namespace Twigaten.Crawl
                 //Console.WriteLine("App: ThreadPool: {0}, {1}", MinThreads, CompletionThreads);
             }
 
-            if (args.Length >= 1 && args[0] == "/REST")
+            if (args.Length >= 1)
             {
-                Console.WriteLine("App: Running in REST mode.");
-                int RestCount = await new RestManager().Proceed().ConfigureAwait(false);
-                Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
-                return;
+                int RestCount;
+                switch (args[0]) 
+                {
+                    case "/REST":
+                        Console.WriteLine("App: Running in REST mode.");
+                        RestCount = await new RestManager().Proceed().ConfigureAwait(false);
+                        Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
+                        return;
+                    case "/RESTTWEET":
+                        Console.WriteLine("App: Running in RESTTWEET mode.");
+                        RestCount = await new RestManager().Proceed(true).ConfigureAwait(false);
+                        Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
+                        return;
+                    default:
+                        Console.WriteLine("Invalid argument");
+                        return;
+                }
             }
             else if (args.Length >= 1 && long.TryParse(args[0], out long user_id))
             {
