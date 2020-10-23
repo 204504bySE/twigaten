@@ -24,16 +24,24 @@ namespace twidown
                         FileName = FileName,
                     };
                     Form.Add(File);
-                    using (var req = new HttpRequestMessage(HttpMethod.Post, ServerUrl) { Content = Form })
-                    using (var res = await Http.SendAsync(req).ConfigureAwait(false))
-                    {
-                        if (!res.IsSuccessStatusCode) { Console.WriteLine(res.StatusCode); return null; }
-                        if (long.TryParse(await res.Content.ReadAsStringAsync().ConfigureAwait(false), out long ret)) { return ret; }
-                        else { return null; }
-                    }
+                    using var req = new HttpRequestMessage(HttpMethod.Post, ServerUrl) { Content = Form };
+                    using var res = await Http.SendAsync(req).ConfigureAwait(false);
+                    if (!res.IsSuccessStatusCode) { Console.WriteLine(res.StatusCode); return null; }
+                    if (long.TryParse(await res.Content.ReadAsStringAsync().ConfigureAwait(false), out long ret)) { return ret; }
+                    else { return null; }
                 }
             }
             catch (Exception e) { Console.WriteLine(e); return null; }
+        }
+        
+        /// <summary>
+        /// クソサーバーにGCを要求するスーパークソ
+        /// </summary>
+        /// <returns></returns>
+        public static async Task GCNow(string ServerUrl)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Head, ServerUrl);
+            await Http.SendAsync(req).ConfigureAwait(false);
         }
     }
 }

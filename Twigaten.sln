@@ -19,6 +19,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Web", "Web\Web.csproj", "{5
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Lib", "Lib\Lib.shproj", "{1996D371-AD00-4D45-A03A-511E942B8DD5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DctHash", "DctHash\DctHash.csproj", "{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Lib\Lib.projitems*{0d3f41e7-a0ae-4c08-b084-d938090d9ea7}*SharedItemsImports = 5
@@ -26,6 +28,7 @@ Global
 		Lib\Lib.projitems*{2798fda6-5fd1-4c41-b4bc-8d8aeb6bdea7}*SharedItemsImports = 5
 		Lib\Lib.projitems*{5d4c4fe7-67b2-476a-988b-4c4500257d1b}*SharedItemsImports = 5
 		Lib\Lib.projitems*{be6bde09-f094-4088-a078-10df8ae5ae20}*SharedItemsImports = 5
+		Lib\Lib.projitems*{d2545444-be3e-4fbf-b0bd-3a54e5f558af}*SharedItemsImports = 5
 		Lib\Lib.projitems*{d50d52eb-e166-4c46-8217-7baf43946f2c}*SharedItemsImports = 5
 		Lib\Lib.projitems*{d5bc6216-3a12-4be3-afcd-c5220197b029}*SharedItemsImports = 5
 		Lib\Lib.projitems*{ea9f3e22-0ac2-4305-a7f1-91822c03a51f}*SharedItemsImports = 5
@@ -63,6 +66,10 @@ Global
 		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5D4C4FE7-67B2-476A-988B-4C4500257D1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

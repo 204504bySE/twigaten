@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +25,19 @@ namespace Twigaten.DctHashServer.Controllers
             return Content(twidown.PictHash.DCTHash(File.OpenReadStream(), true).ToString(), "text/plain");
         }
 
+        /// <summary>
+        /// GCをやらせるひどいAPI
+        /// </summary>
+        /// <returns></returns>
+        [HttpHead("dct")]
+        public IActionResult GCNow()
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Default, true, false);
+            GC.WaitForPendingFinalizers();
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要
+            GC.Collect();
+            return Ok();
+        }
 
         [HttpGet("index")]
         public IActionResult Index()
