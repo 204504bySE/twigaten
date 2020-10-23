@@ -30,29 +30,32 @@ namespace Twigaten.Crawl
 
             if (args.Length >= 1)
             {
-                int RestCount;
-                switch (args[0]) 
+                if (long.TryParse(args[0], out long user_id))
                 {
-                    case "/REST":
-                        Console.WriteLine("App: Running in REST mode.");
-                        RestCount = await new RestManager().Proceed().ConfigureAwait(false);
-                        Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
-                        return;
-                    case "/RESTTWEET":
-                        Console.WriteLine("App: Running in RESTTWEET mode.");
-                        RestCount = await new RestManager().Proceed(true).ConfigureAwait(false);
-                        Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
-                        return;
-                    default:
-                        Console.WriteLine("Invalid argument");
-                        return;
+                    Console.WriteLine("App: Running in user_id mode: {0}", user_id);
+                    await new RestManager().OneAccount(user_id).ConfigureAwait(false);
+                    return;
                 }
-            }
-            else if (args.Length >= 1 && long.TryParse(args[0], out long user_id))
-            {
-                Console.WriteLine("App: Running in user_id mode: {0}", user_id);
-                await new RestManager().OneAccount(user_id).ConfigureAwait(false);
-                return;
+                else
+                {
+                    int RestCount;
+                    switch (args[0])
+                    {
+                        case "/REST":
+                            Console.WriteLine("App: Running in REST mode.");
+                            RestCount = await new RestManager().Proceed().ConfigureAwait(false);
+                            Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
+                            return;
+                        case "/RESTTWEET":
+                            Console.WriteLine("App: Running in RESTTWEET mode.");
+                            RestCount = await new RestManager().Proceed(true).ConfigureAwait(false);
+                            Console.WriteLine("App: {0} Accounts REST Tweets Completed.", RestCount);
+                            return;
+                        default:
+                            Console.WriteLine("Invalid argument");
+                            return;
+                    }
+                }
             }
 
             await Task.Delay(10000).ConfigureAwait(false);
