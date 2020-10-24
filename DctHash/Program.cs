@@ -21,6 +21,7 @@ namespace Twigaten.DctHash
             bool restartListener = false;
             var restartListerSw = Stopwatch.StartNew();
             listener.Start();
+            Console.WriteLine("Listening on {0}", listener.LocalEndpoint);
             while (true)
             {
                 try
@@ -35,8 +36,6 @@ namespace Twigaten.DctHash
                             Console.WriteLine("Listening restarted.", listener.LocalEndpoint);
                         }
                         restartListener = false;
-
-                        Console.WriteLine("Listening on {0}", listener.LocalEndpoint);
                     }
                     var client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
                     client.NoDelay = true;

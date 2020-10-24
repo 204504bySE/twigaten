@@ -83,7 +83,7 @@ namespace twidown
                     tcp.Dispose();
                     //再試行はdcthashの再起動待ち時間をある程度考慮して選ぶ
                     //あと待ち時間をランダム化したらdcthashが落ちにくくなった気がする(wineつらい)
-                    await Task.Delay(random.Next(2000, 3000)).ConfigureAwait(false);
+                    await Task.Delay(random.Next(4000, 10000)).ConfigureAwait(false);
                 }
             }
             return null;

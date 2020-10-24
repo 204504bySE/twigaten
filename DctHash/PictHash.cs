@@ -61,7 +61,14 @@ namespace Twigaten.DctHash
             }
         }
 
-        //pHashっぽいDCT Hashの自前実装
+        /// <summary>
+        /// pHashっぽいDCT Hashの自前実装
+        /// 途中でリサイズしてるけどDCTってリサイズしても意味ないんだよねorz
+        /// </summary>
+        /// <param name="imgStream">画像ファイルそのもの</param>
+        /// <param name="Crop">画像をTwitterの :thumb っぽく正方形に切り抜く</param>
+        /// <returns></returns>
+
         public static long? DCTHash(Stream imgStream, bool Crop = false)
         {
             if(imgStream == null) { return null; }
