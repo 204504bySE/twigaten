@@ -19,7 +19,8 @@ namespace Twigaten.Web.Controllers
     [ApiController]
     public class SearchController : ControllerBase
     {
-        static readonly string HashServerCropUrl = Config.Instance.web.HashServerCropUrl;
+        static readonly string HashServerCropHost = Config.Instance.web.HashServerCropHost;
+        static readonly int HashServerCropPort = Config.Instance.web.HashServerCropPort;
         [HttpPost("media")]
         public async Task<ActionResult<long>> Media(IFormFile File)
         {
@@ -31,7 +32,7 @@ namespace Twigaten.Web.Controllers
             {
                 await File.CopyToAsync(memstream);
             }
-            long? hash = await PictHash.DCTHash(mem, HashServerCropUrl, File.FileName).ConfigureAwait(false);
+            long? hash = await PictHash.DCTHash(mem, HashServerCropHost, HashServerCropPort).ConfigureAwait(false);
 
             //見つからなかったりhashを計算できなかったりしたら検索ページに戻す
             if (hash == null) { return LocalRedirect("/search"); }

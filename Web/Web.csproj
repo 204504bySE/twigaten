@@ -11,6 +11,8 @@
     <PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
     <PackageReference Include="CoreTweet" Version="1.0.0.483" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
+    <PackageReference Include="MessagePack" Version="2.2.60" />
+    <PackageReference Include="MessagePack.Annotations" Version="2.2.60" />
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.2.0" />
     <PackageReference Include="Microsoft.TypeScript.MSBuild" Version="4.0.3">
       <PrivateAssets>all</PrivateAssets>

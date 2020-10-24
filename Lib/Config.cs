@@ -70,7 +70,8 @@ namespace Twigaten.Lib
             public int WatchDogPort { get; }
             public int TweetLockSize { get; }
             public int ConnectPostponeSize { get; }
-            public string HashServerUrl { get; }
+            public string HashServerHost { get; }
+            public int HashServerPort { get; }
             public _crawl(IniData data)
             {
                 PictPathProfileImage = data["crawl"][nameof(PictPathProfileImage)] ?? Path.Combine(Directory.GetCurrentDirectory(), @"pict\profile_image\");
@@ -90,7 +91,8 @@ namespace Twigaten.Lib
                 WatchDogPort = int.Parse(data["crawlparent"][nameof(WatchDogPort)] ?? "58250");
                 TweetLockSize = int.Parse(data["crawl"][nameof(TweetLockSize)] ?? "10000");
                 ConnectPostponeSize = int.Parse(data["crawl"][nameof(ConnectPostponeSize)] ?? "10000");
-                HashServerUrl = data["crawl"][nameof(HashServerUrl)];
+                HashServerHost = data["crawl"][nameof(HashServerHost)] ?? "localhost";
+                HashServerPort = int.Parse(data["crawl"][nameof(HashServerPort)] ?? "12306");
                 //http://absg.hatenablog.com/entry/2014/07/03/195043
                 //フォロー6000程度でピークは60ツイート/分程度らしい
             }
@@ -202,7 +204,8 @@ namespace Twigaten.Lib
             public bool ListenIPv4 { get; }
             public int ListenPort { get; }
             public string ListenUnixSocketPath { get; }
-            public string HashServerCropUrl { get; }
+            public string HashServerCropHost { get; }
+            public int HashServerCropPort { get; }
             public _web(IniData data)
             {
                 CallBackUrl = data["web"][nameof(CallBackUrl)] ?? "";
@@ -210,7 +213,8 @@ namespace Twigaten.Lib
                 ListenIPv4 = bool.Parse(data["web"][nameof(ListenIPv4)] ?? "false");
                 ListenPort = int.Parse(data["web"][nameof(ListenPort)] ?? "12309");
                 ListenUnixSocketPath = data["web"][nameof(ListenUnixSocketPath)];
-                HashServerCropUrl = data["web"][nameof(HashServerCropUrl)];
+                HashServerCropHost = data["web"][nameof(HashServerCropHost)] ?? "localhost";
+                HashServerCropPort = int.Parse(data["web"][nameof(HashServerCropPort)] ?? "12306");
             }
         }
         public _web web;

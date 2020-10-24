@@ -243,8 +243,10 @@ namespace Twigaten.Crawl
                     //URLぶち抜き転載の場合はここでツイートをダウンロード(すでにあればキャンセルされる
                     //x.Idのツイートのダウンロード失敗については何もしない(成功したツイートのみPostするべき
                     bool OtherSourceTweet = m.SourceStatusId.HasValue && m.SourceStatusId.Value != a.x.Id;    //URLぶち抜きならtrue
+
                     switch (await db.ExistMedia_source_tweet_id(m.Id).ConfigureAwait(false))
                     {
+                        //すでにDBに入ってたらダウンロードしない
                         case true:
                             if (OtherSourceTweet) { await db.Storetweet_media(a.x.Id, m.Id).ConfigureAwait(false); }
                             continue;
@@ -275,7 +277,7 @@ namespace Twigaten.Crawl
                                 if (res.IsSuccessStatusCode)
                                 {
                                     byte[] mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                                    long? dcthash = await PictHash.DCTHash(mem, config.crawl.HashServerUrl, Path.GetFileName(MediaUrl)).ConfigureAwait(false);
+                                    long? dcthash = await PictHash.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
                                     //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
                                     //つまりdownloaded_atは画像の保存に失敗しても値が入る
                                     if (dcthash.HasValue && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))

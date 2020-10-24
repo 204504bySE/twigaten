@@ -93,22 +93,4 @@ namespace Twigaten.Tool
             Console.WriteLine("{0} mismatches.", mismatch);
         }
     }
-    [MessagePackObject]
-    public class PictHashRequest
-    {
-        [Key(0)]
-        public long UniqueId { get; set; }
-        [Key(1)]
-        public bool Crop { get; set; }
-        [Key(2)]
-        public byte[] MediaFile { get; set; }
-    }
-    [MessagePackObject]
-    public class PictHashResult
-    {
-        [Key(0)]
-        public long UniqueId { get; set; }
-        [Key(1)]
-        public long? DctHash { get; set; }
-    }
 }

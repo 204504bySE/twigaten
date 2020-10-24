@@ -1,36 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
+using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
+using MessagePack;
 using Twigaten.Lib;
 
 namespace Twigaten.Web
 {
     static class PictHash
     {
-        static readonly HttpClient Http = new HttpClient(new HttpClientHandler() { UseCookies = false });
         ///<summary>クソサーバーからDCTHashをもらってくる</summary>
-        public static async Task<long?> DCTHash(byte[] mem, string ServerUrl, string FileName)
+        public static async Task<long?> DCTHash(byte[] Source, string HostName, int Port)
         {
-            try
+            using var Client = new TcpClient(HostName, Port) { NoDelay = true };
+            using var Stream = Client.GetStream();
+            using var Reader = new MessagePackStreamReader(Stream);
+            long id = Environment.TickCount64;
+            await MessagePackSerializer.SerializeAsync(Stream, new PictHashRequest() { UniqueId = id, Crop = true, MediaFile = Source }).ConfigureAwait(false);
+            var msgpack = await Reader.ReadAsync(CancellationToken.None);
+            if (msgpack.HasValue)
             {
-                MultipartFormDataContent Form = new MultipartFormDataContent();
-                ByteArrayContent File = new ByteArrayContent(mem);
-                File.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
-                {
-                    Name = "File",
-                    FileName = FileName,
-                };
-                Form.Add(File);
-                using (HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ServerUrl) { Content = Form })
-                using (HttpResponseMessage res = await Http.SendAsync(req).ConfigureAwait(false))
-                {
-                    if (long.TryParse(await res.Content.ReadAsStringAsync().ConfigureAwait(false), out long ret)) { return ret; }
-                    else { return null; }
-                }
+                var result = MessagePackSerializer.Deserialize<PictHashResult>(msgpack.Value);
+                if (result.UniqueId == id) { return result.DctHash; }
             }
-            catch { return null; }
+            return null;
         }
     }
 }

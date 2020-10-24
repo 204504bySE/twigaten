@@ -61,20 +61,7 @@ namespace Twigaten.DctHash
             }
         }
 
-        public static long? DCTHash(string imgPath)
-        {
-            try
-            {
-                using (FileStream imgStream = new FileStream(imgPath, FileMode.Open))
-                {
-                    return DCTHash(imgStream);
-                }
-            }
-            catch(Exception e) { System.Diagnostics.Debug.WriteLine(e); return null; }
-        }
-
         //pHashっぽいDCT Hashの自前実装
-
         public static long? DCTHash(Stream imgStream, bool Crop = false)
         {
             if(imgStream == null) { return null; }
