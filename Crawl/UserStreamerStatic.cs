@@ -266,6 +266,8 @@ namespace Twigaten.Crawl
                     //画像の保存先パスを生成しておく
                     string LocalPaththumb = Path.Combine(config.crawl.PictPaththumb, MediaFolderPath.ThumbPath(m.Id, MediaUrl));
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
+
+                    byte[] mem = null;
                     Counter.MediaToStore.Increment();
                     using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
                     {
@@ -274,31 +276,31 @@ namespace Twigaten.Crawl
                         {
                             using (var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                             {
-                                if (res.IsSuccessStatusCode)
-                                {
-                                    byte[] mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                                    long? dcthash = await PictHash.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
-                                    //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
-                                    //つまりdownloaded_atは画像の保存に失敗しても値が入る
-                                    if (dcthash.HasValue && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
-                                    {
-                                        using (var file = File.Create(LocalPaththumb))
-                                        {
-                                            await file.WriteAsync(mem, 0, mem.Length).ConfigureAwait(false);
-                                            await file.FlushAsync().ConfigureAwait(false);
-                                        }
-                                        Counter.MediaSuccess.Increment();
-                                    }
-                                    break;
-                                }
+                                if (res.IsSuccessStatusCode) { mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false); }
+                                //この画像はリトライしても無駄なのであきらめる
                                 else if (res.StatusCode == HttpStatusCode.NotFound
                                     || res.StatusCode == HttpStatusCode.Gone
                                     || res.StatusCode == HttpStatusCode.Forbidden)
-                                { break; }
+                                { continue; }
+                                else { RetryDownloadStoreBlock.Post(a); continue; }
                             }
                         }
                         //画像の取得に失敗したら多分後でやり直す
-                        catch { RetryDownloadStoreBlock.Post(a); }
+                        catch { RetryDownloadStoreBlock.Post(a); continue; }
+                    }
+                    if(mem == null) { RetryDownloadStoreBlock.Post(a); continue; }
+
+                    long? dcthash = await PictHash.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
+                    //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
+                    //つまりdownloaded_atは画像の保存に失敗しても値が入る
+                    if (dcthash.HasValue && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
+                    {
+                        using (var file = File.Create(LocalPaththumb))
+                        {
+                            await file.WriteAsync(mem, 0, mem.Length).ConfigureAwait(false);
+                            await file.FlushAsync().ConfigureAwait(false);
+                        }
+                        Counter.MediaSuccess.Increment();
                     }
                     //URL転載元もペアを記録する
                     if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }
