@@ -131,7 +131,8 @@ namespace Twigaten.DctHash
         static float[] MonoImage(Stream imgStream, bool Crop = false)
         {
             var imgbuf = ArrayPool<byte>.Shared.Rent(size * size * 4);
-            //wineでネイティブのgdiplusを使うときはシングルスレッドにしないとめっちゃ落ちる＼(^o^)／
+            //wineでネイティブのgdiplusを使うときはシングルスレッドにしないと落ちる＼(^o^)／
+            //なおCPUAffinityも1コアにしないと結局落ちる
             lock (GdiPlusLock)
             {
                 using (Image img = Image.FromStream(imgStream))
