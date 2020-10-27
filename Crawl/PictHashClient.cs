@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 using MessagePack;
 using Twigaten.Lib;
 
-namespace twidown
+namespace Twigaten.Crawl
 {
-    static class PictHash
+    static class PictHashClient
     {
         readonly struct TcpPoolItem : IDisposable
         {
@@ -61,29 +61,26 @@ namespace twidown
                     using var cancel = new CancellationTokenSource(10000);
                     await MessagePackSerializer.SerializeAsync(tcp.Stream, new PictHashRequest() { UniqueId = media_id, MediaFile = Source },null, cancel.Token).ConfigureAwait(false);
                     var msgpack = await tcp.Reader.ReadAsync(cancel.Token);
+                    //ときどき接続を解放する
+                    if (60000 < PoolRelease.ElapsedMilliseconds)
+                    {
+                        PoolRelease.Restart();
+                        tcp.Dispose();
+                    }
+                    else { TcpPool.Add(tcp); }
+
                     if (msgpack.HasValue) 
                     {
                         var result = MessagePackSerializer.Deserialize<PictHashResult>(msgpack.Value);
-                        if (result.UniqueId == media_id)
-                        {
-                            //ときどき接続を解放する
-                            if (60000 < PoolRelease.ElapsedMilliseconds)
-                            {
-                                PoolRelease.Restart();
-                                tcp.Dispose();
-                            }
-                            else { TcpPool.Add(tcp); }
-                            return result.DctHash;
-                        }
+                        if (result.UniqueId == media_id) { return result.DctHash; }
                     }
-                    TcpPool.Add(tcp);
                 }
                 catch 
                 {
                     tcp.Dispose();
                     //再試行はdcthashの再起動待ち時間をある程度考慮して選ぶ
-                    //あと待ち時間をランダム化したらdcthashが落ちにくくなった気がする(wineつらい)
-                    await Task.Delay(random.Next(4000, 10000)).ConfigureAwait(false);
+                    int retryms = 4000 << i;
+                    await Task.Delay(random.Next(retryms, retryms << 1)).ConfigureAwait(false);
                 }
             }
             return null;

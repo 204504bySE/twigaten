@@ -13,7 +13,6 @@ using System.Threading.Tasks.Dataflow;
 using CoreTweet;
 using CoreTweet.Streaming;
 using Twigaten.Lib;
-using twidown;
 using System.Net.Http;
 
 namespace Twigaten.Crawl
@@ -290,7 +289,7 @@ namespace Twigaten.Crawl
                     }
                     if(mem == null) { RetryDownloadStoreBlock.Post(a); continue; }
 
-                    long? dcthash = await PictHash.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
+                    long? dcthash = await PictHashClient.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
                     //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
                     //つまりdownloaded_atは画像の保存に失敗しても値が入る
                     if (dcthash.HasValue && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))

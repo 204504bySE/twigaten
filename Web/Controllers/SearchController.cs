@@ -32,7 +32,7 @@ namespace Twigaten.Web.Controllers
             {
                 await File.CopyToAsync(memstream);
             }
-            long? hash = await PictHash.DCTHash(mem, HashServerCropHost, HashServerCropPort).ConfigureAwait(false);
+            long? hash = await PictHashClient.DCTHashCrop(mem, HashServerCropHost, HashServerCropPort).ConfigureAwait(false);
 
             //見つからなかったりhashを計算できなかったりしたら検索ページに戻す
             if (hash == null) { return LocalRedirect("/search"); }

@@ -11,9 +11,7 @@ using CoreTweet.Streaming;
 
 using Twigaten.Lib;
 using System.Diagnostics;
-using System.Threading;
 using static Twigaten.Crawl.UserStreamer;
-using System.Windows.Markup;
 
 namespace Twigaten.Crawl
 {
