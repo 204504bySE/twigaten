@@ -71,7 +71,9 @@ namespace Twigaten.DctHash
         public static long? DCTHash(Stream imgStream, bool Crop = false)
         {
             if(imgStream == null) { return null; }
-            var monoimage = MonoImage(imgStream, Crop);
+            Span<float> monoimage = stackalloc float[size * size];
+            MonoImage(imgStream, monoimage, Crop);
+            //var monoimage = MonoImage(imgStream, Crop);
             var hashbuf = MemoryMarshal.Cast<float, Vector<float>>(monoimage); //モノクロ縮小画像
             if (hashbuf == null) { return null; }
             //DCTやる phashで必要な成分だけ求める
@@ -109,7 +111,7 @@ namespace Twigaten.DctHash
                     dctbuf[(u << 3) | v] = sum; //dct32[u, v]をかけていないので実際の64倍の値
                 }
             }
-            ArrayPool<float>.Shared.Return(monoimage);
+            //ArrayPool<float>.Shared.Return(monoimage);
             long ret = 0;
             float ave = 0;
             for (int i = 0; i < dctbuf.Length; i++) 
@@ -126,21 +128,29 @@ namespace Twigaten.DctHash
         }
 
         const int size = 32;
-        static readonly object GdiPlusLock = new object();
-        //正方形、モノクロの画像に対応するバイト列を返す
-        static float[] MonoImage(Stream imgStream, bool Crop = false)
+        //static readonly object GdiPlusLock = new object();
+        //static readonly byte[] imgbuf = new byte[size * size * 4];
+        //static readonly Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+        //static readonly Graphics g = Graphics.FromImage(miniimage);
+        /// <summary>
+        /// 正方形、モノクロの画像32x32)に
+        /// </summary>
+        /// <param name="imgStream"></param>
+        /// <param name="ret"></param>
+        /// <param name="Crop"></param>
+        static void MonoImage(Stream imgStream, Span<float> ret, bool Crop = false)
         {
             var imgbuf = ArrayPool<byte>.Shared.Rent(size * size * 4);
             //wineでネイティブのgdiplusを使うときはシングルスレッドにしないと落ちる＼(^o^)／
             //なおCPUAffinityも1コアにしないと結局落ちる
-            lock (GdiPlusLock)
+            //lock (GdiPlusLock)
             {
+                using Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+                using Graphics g = Graphics.FromImage(miniimage);
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.High;  //HighQualityBilinerは非対応
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
                 using (Image img = Image.FromStream(imgStream))
-                using (Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb))
-                using (Graphics g = Graphics.FromImage(miniimage))
                 {
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.High;  //HighQualityBilinerは非対応
-                    g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
                     if (Crop)
                     {   //Twitterの正方形切り抜きが微妙にずれているのをどうやって再現するか
                         g.DrawImage(img,
@@ -152,24 +162,21 @@ namespace Twigaten.DctHash
                             GraphicsUnit.Pixel);
                     }
                     else { g.DrawImage(img, 0, 0, size, size); }
-
-                    //バイト配列に取り出す
-                    //http://www.84kure.com/blog/2014/07/13/c-%E3%83%93%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97%E3%81%AB%E3%83%94%E3%82%AF%E3%82%BB%E3%83%AB%E5%8D%98%E4%BD%8D%E3%81%A7%E9%AB%98%E9%80%9F%E3%81%AB%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9/
-                    BitmapData imgdata = miniimage.LockBits(new Rectangle(0, 0, size, size), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-                    Marshal.Copy(imgdata.Scan0, imgbuf, 0, size * size * 4);
                 }
+                //バイト配列に取り出す
+                //http://www.84kure.com/blog/2014/07/13/c-%E3%83%93%E3%83%83%E3%83%88%E3%83%9E%E3%83%83%E3%83%97%E3%81%AB%E3%83%94%E3%82%AF%E3%82%BB%E3%83%AB%E5%8D%98%E4%BD%8D%E3%81%A7%E9%AB%98%E9%80%9F%E3%81%AB%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9/
+                BitmapData imgdata = miniimage.LockBits(new Rectangle(0, 0, size, size), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+                Marshal.Copy(imgdata.Scan0, imgbuf, 0, size * size * 4);
+                miniimage.UnlockBits(imgdata);
             }
             //モノクロに変換
-            var ret = ArrayPool<float>.Shared.Rent(size * size);
             for(int i = 0; i < ret.Length; i++)
             { 
-                if(size * size <= i) { break; }
                 int PixelIndexShift = i << 2;
                 //RとBの係数が逆になっているが今更どうしようもない
                 ret[i] = (0.299F * imgbuf[PixelIndexShift] + 0.587F * imgbuf[PixelIndexShift + 1] + 0.114F * imgbuf[PixelIndexShift + 2]);
             }
             ArrayPool<byte>.Shared.Return(imgbuf);
-            return ret;
         }
     }
 }
