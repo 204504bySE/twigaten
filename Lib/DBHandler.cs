@@ -111,36 +111,6 @@ namespace Twigaten.Lib
             return BulkCmdStrIn(count, BulkCmd.ToString());
         }
 
-        protected async Task<DataTable> SelectTable(MySqlCommand cmd, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
-        {
-            try
-            {
-                DataTable ret;
-                using (var conn = NewConnection())
-                {
-                    await conn.OpenAsync().ConfigureAwait(false);
-                    using (var tran = await conn.BeginTransactionAsync(IsolationLevel).ConfigureAwait(false))
-                    {
-                        cmd.Connection = conn;
-                        cmd.Transaction = tran;
-                        try
-                        {
-                            using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
-                            {
-                                ret = new DataTable();
-                                adapter.Fill(ret);
-                            }
-                            await tran.CommitAsync().ConfigureAwait(false);
-                            return ret;
-                        }
-                        catch (MySqlException) { await tran.RollbackAsync().ConfigureAwait(false); }
-                    }
-                }
-            }
-            catch (Exception e) { }
-            return null;
-        }
-
         ///<summary>ReadActionには1行読む毎にやる処理を書く 最後まで成功したらTrue</summary>
         protected async Task<bool> ExecuteReader(MySqlCommand cmd, Action<DbDataReader> ReadAction, IsolationLevel IsolationLevel = IsolationLevel.ReadCommitted)
         {
@@ -237,67 +207,6 @@ namespace Twigaten.Lib
             return -1;
         }
     }
-
-    ///<summary>.NET Coreで廃止されてるやつをやっつけで追加</summary>
-    static class DbExtension
-    {
-        public static T Field<T>(this DataRow row, int columnIndex)
-        {
-            return UnboxT<T>.Unbox(row[columnIndex]);
-        }
-        public static IEnumerable<DataRow> AsEnumerable(this DataTable table)
-        {
-            for(int i = 0; i < table.Rows.Count; i++) { yield return table.Rows[i]; }
-        }
-
-
-        //DataRowExtenstions.cs
-        private static class UnboxT<T>
-        {
-            internal static readonly Converter<object, T> Unbox = Create(typeof(T));
-
-            private static Converter<object, T> Create(Type type)
-            {
-                if (type.IsValueType)
-                {
-                    if (type.IsGenericType && !type.IsGenericTypeDefinition && (typeof(Nullable<>) == type.GetGenericTypeDefinition()))
-                    {
-                        return (Converter<object, T>)Delegate.CreateDelegate(
-                            typeof(Converter<object, T>),
-                                typeof(UnboxT<T>)
-                                    .GetMethod("NullableField", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-                                    .MakeGenericMethod(type.GetGenericArguments()[0]));
-                    }
-                    return ValueField;
-                }
-                return ReferenceField;
-            }
-
-            private static T ReferenceField(object value)
-            {
-                return ((DBNull.Value == value) ? default(T) : (T)value);
-            }
-
-            private static T ValueField(object value)
-            {
-                if (DBNull.Value == value)
-                {
-                    throw new InvalidCastException();
-                }
-                return (T)value;
-            }
-
-            private static TElem? NullableField<TElem>(object value) where TElem : struct
-            {
-                if (DBNull.Value == value)
-                {
-                    return default(TElem?);
-                }
-                return new TElem?((TElem)value);
-            }
-        }
-    }
-
    
     static class CheckOldProcess
     {
