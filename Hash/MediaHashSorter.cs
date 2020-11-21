@@ -1,18 +1,15 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Runtime;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using System.Runtime.Intrinsics.X86;
-using System.Runtime.CompilerServices;
 using System.Buffers;
 using Twigaten.Lib;
-using System.Runtime;
 
 namespace Twigaten.Hash
 {
@@ -56,7 +53,7 @@ namespace Twigaten.Hash
     {
         readonly Config config = Config.Instance;
         readonly HashSet<long> NewHash;
-        readonly ulong MaxHammingDistance;
+        readonly int MaxHammingDistance;
         readonly Combinations Combi;
 
         readonly BatchBlock<HashPair> PairBatchBlock = new BatchBlock<HashPair>(DBHandler.StoreMediaPairsUnit);
@@ -67,7 +64,7 @@ namespace Twigaten.Hash
         public MediaHashSorter(HashSet<long> NewHash, DBHandler db, int MaxHammingDistance, int ExtraBlock)
         {
             this.NewHash = NewHash; //nullだったら全hashが処理対象
-            this.MaxHammingDistance = (ulong)MaxHammingDistance;
+            this.MaxHammingDistance = MaxHammingDistance;
             Combi = new Combinations(MaxHammingDistance + ExtraBlock, ExtraBlock);
 
             //このブロックは全MultipleSortUnitで共有する
@@ -160,13 +157,13 @@ namespace Twigaten.Hash
                         for (int j = i + 1; j < SortedSpan.Length; j++)
                         {
                             long Sorted_j = SortedSpan[j];
-                            //重複排除を行う(ブロックソート後に連続していない重複は残っている)
+                            //重複排除を行う(マージソート時に排除してもブロックソート後に連続していない重複は残っている)
                             if (Sorted_i == Sorted_j) { continue; }
                             //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
-                            //すでにDBに入っているペアは処理しない
+                            //間違いなくすでにDBに入っているペアは処理しない
                             if ((NeedInsert_i || NewHash.Contains(Sorted_j))    //NewHashがnullなら後者は処理されないからセーフ
-                                                                                //ブロックソートで一致した組のハミング距離を測る
-                                && HammingDistance(Sorted_i, Sorted_j) <= MaxHammingDistance)
+                                //ブロックソートで一致した組のハミング距離を測る
+                                && BitOperations.PopCount((ulong)(Sorted_i ^ Sorted_j)) <= MaxHammingDistance)
                             {
                                 //一致したペアが見つかる最初の組合せを調べる
                                 int matchblockindex = 0;
@@ -263,22 +260,6 @@ namespace Twigaten.Hash
                 }
             }
             return ret;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        ///<summary>ハミング距離を計算する</summary>
-        ulong HammingDistance(long a, long b)
-        {
-            //xorしてpopcnt
-            if (Popcnt.X64.IsSupported) { return Popcnt.X64.PopCount((ulong)(a ^ b)); }
-            else
-            {
-                ulong value = (ulong)(a ^ b);
-                //http://stackoverflow.com/questions/6097635/checking-cpu-popcount-from-c-sharp
-                ulong result = value - ((value >> 1) & 0x5555555555555555L);
-                result = (result & 0x3333333333333333L) + ((result >> 2) & 0x3333333333333333L);
-                return unchecked(((result + (result >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56;
-            }
         }
     }
 }

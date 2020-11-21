@@ -61,7 +61,7 @@ namespace Twigaten.Hash
             //最初は絶対に一致させないように-1
             long MaskedKey = -1;
             //重複排除用
-            long PreviousValue = LastValue;
+            //long PreviousValue = LastValue;
 
             int ValueIndex = LastIndex;
             while (0 < SortedMemory.Length)
@@ -72,7 +72,9 @@ namespace Twigaten.Hash
                 for (; ValueIndex < SortedValues.Length; ValueIndex++)
                 {
                     long Value = SortedValues[ValueIndex];
-                    if(PreviousValue == Value) { continue; }
+                    //連続する重複要素はここで排除する
+                    //と思ったがここで排除しても速くならないねえ
+                    //if(PreviousValue == Value) { continue; }
 
                     long MaskedValue = Value & SortMask;
                     if (MaskedKey == MaskedValue)
@@ -115,7 +117,7 @@ namespace Twigaten.Hash
                             BlockCount = 1;
                         }
                     }
-                    PreviousValue = Value;
+                    //PreviousValue = Value;
                 }
                 ActualRead();
                 ValueIndex = 0;

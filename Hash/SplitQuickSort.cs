@@ -37,13 +37,7 @@ namespace Twigaten.Hash
         {
             readonly long SortMask;
             public BlockSortComparer(long SortMask) { this.SortMask = SortMask; }
-            public int Compare(long x, long y)
-            {
-                long result = (x & SortMask) - (y & SortMask);
-                if(result > 0) { return 1; }
-                else if(result < 0) { return -1; }
-                else { return 0; }
-            }
+            public int Compare(long x, long y) => Math.Sign((x & SortMask) - (y & SortMask));
         }
 
         ///<summary>MergeSortAllの中でちょっと使うだけ</summary>
