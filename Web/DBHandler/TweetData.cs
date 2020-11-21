@@ -37,9 +37,7 @@ namespace Twigaten.Web.DBHandler
             public string local_profile_image_url { get; set; }
             public bool is_default_profile_image { get; set; }
             public string location { get; set; }
-            /// <summary>
-            /// リンクや改行などをhtmlにして突っ込む
-            /// </summary>
+            /// <summary>リンクや改行などをhtmlにして突っ込む</summary>
             public string description_html { get; set; }
         }
 
@@ -49,9 +47,7 @@ namespace Twigaten.Web.DBHandler
             public long tweet_id { get; set; }
             public DateTimeOffset created_at { get; set; }
             public string text { get; set; }
-            /// <summary>
-            /// リンクや改行などをhtmlにして突っ込む
-            /// </summary>
+            /// <summary>リンクや改行などをhtmlにして突っ込む</summary>
             public string text_html { get; set; }
             public _tweet retweet { get; set; }
             public int retweet_count { get; set; }
@@ -62,8 +58,11 @@ namespace Twigaten.Web.DBHandler
         {
             public long media_id { get; set; }
             //public long source_tweet_id { get; set; }
+            /// <summary>photo/video/animated_gif</summary>
             public string type { get; set; }
+            /// <summary>pbs.twimg.comなどのURL</summary>
             public string orig_media_url { get; set; }
+            /// <summary>自鯖内のURL(/twimg/~~~ など)</summary>
             public string local_media_url { get; set; }
             //public long dcthash { get; set; }
         }

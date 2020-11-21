@@ -128,7 +128,7 @@ namespace Twigaten.Crawl
             SingleProducerConstrained = true
         });
 
-        static async Task HandleTweet(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)    //stream(=true)からのツイートならふぁぼRT数を上書きする
+        static async Task HandleTweet(Status x, Tokens t, bool stream, bool rtlocked, bool storeuser, bool storertuser)    //stream(=true)からのツイートならふぁぼRT数を上書きする(streamが存在するならね…)
         {
             //画像なしツイートは先に捨ててるのでここでは確認しない(n回目
             //RTを先にやる(キー制約)
