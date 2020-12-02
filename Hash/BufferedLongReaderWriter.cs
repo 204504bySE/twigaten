@@ -7,6 +7,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Mono.Unix.Native;
 using Twigaten.Lib;
 using Zstandard.Net;
 
@@ -24,8 +25,8 @@ namespace Twigaten.Hash
 
         public UnbufferedLongReader(string FilePath)
         {
-            file = File.OpenRead(FilePath);
-            zip = new ZstandardStream(file, CompressionMode.Decompress);
+            file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, Math.Min(BufSize * sizeof(long), 131072), FileOptions.SequentialScan);
+            zip = new ZstandardStream(file, CompressionMode.Decompress, true);
         }
 
         ///<summary>続きのデータがあるかどうか</summary>
@@ -66,6 +67,7 @@ namespace Twigaten.Hash
             {
                 Disposed = true;
                 zip.Dispose();
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, 0, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
                 file.Dispose();
             }
         }
@@ -83,7 +85,7 @@ namespace Twigaten.Hash
 
         public UnbufferedLongWriter(string FilePath)
         {
-            file = File.Create(FilePath);
+            file = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None, Math.Min(BufSize * sizeof(long), 131072));
             zip = new ZstandardStream(file, 1, true);
         }
 
@@ -120,6 +122,8 @@ namespace Twigaten.Hash
             {
                 Disposed = true;
                 zip.Dispose();
+                file.Flush(true);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, 0, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
                 file.Dispose();
             }
         }
@@ -144,8 +148,8 @@ namespace Twigaten.Hash
 
         public BufferedLongReader(string FilePath)
         {
-            file = File.OpenRead(FilePath);
-            zip = new ZstandardStream(file, CompressionMode.Decompress);
+            file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, Math.Min(BufSize * sizeof(long), 131072), FileOptions.SequentialScan);
+            zip = new ZstandardStream(file, CompressionMode.Decompress, true);
 
             //最初はここで強制的に読ませる
             FillNextBuf();
@@ -158,6 +162,7 @@ namespace Twigaten.Hash
             FillNextBufTask = Task.Run(async () =>
             {
                 int ReadBytes = await zip.ReadAsync(NextBuf, 0, NextBuf.Length).ConfigureAwait(false);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, file.Position, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
                 if (ReadBytes < sizeof(long)) { return 0; }
 
                 //差分をとるようにしてちょっと圧縮しやすくしてみよう
@@ -248,7 +253,8 @@ namespace Twigaten.Hash
 
         public BufferedLongWriter(string FilePath)
         {
-            file = File.Create(FilePath);
+            file = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None, Math.Min(BufSize * sizeof(long), 131072), FileOptions.WriteThrough);
+
             zip = new ZstandardStream(file, 1, true);
         }
 
@@ -261,7 +267,11 @@ namespace Twigaten.Hash
                 Values.AsSpan(ValuesCursor, CopySize).CopyTo(MemoryMarshal.Cast<byte, long>(Buf).Slice(BufCursor, CopySize));
                 BufCursor += CopySize;
 
-                if (BufCursor >= BufSize) { await ActualWrite().ConfigureAwait(false); }
+                if (BufCursor >= BufSize) 
+                {
+                    await ActualWrite().ConfigureAwait(false);
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, file.Position, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
+                }
                 ValuesCursor += CopySize;
             }
         }
@@ -302,6 +312,8 @@ namespace Twigaten.Hash
                 if (BufCursor > 0) { ActualWrite().Wait(); }
                 ActualWriteTask.Wait();
                 zip.Dispose();
+                file.Flush(true);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, 0, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
                 file.Dispose();
                 GC.SuppressFinalize(this);
             }
