@@ -589,6 +589,12 @@ namespace Twigaten.Crawl
             if(other == null) { return false; }
             return Token.UserId == other.Token.UserId;
         }
+        public override bool Equals(object obj)
+        {
+            if(obj is UserStreamer streamer) { return Equals(streamer); }
+            else { return false; }
+        }
+
         public override int GetHashCode()
         {
             return Token.UserId.GetHashCode();
