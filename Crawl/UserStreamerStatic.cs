@@ -74,7 +74,8 @@ namespace Twigaten.Crawl
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13
         })
         {
-            DefaultRequestVersion = HttpVersion.Version20
+            DefaultRequestVersion = HttpVersion.Version20,
+            Timeout = TimeSpan.FromSeconds(10)
         };
 
         /*

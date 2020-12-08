@@ -46,10 +46,11 @@ namespace Twigaten.Crawl
         {
             UseCookies = false,
             AutomaticDecompression = DecompressionMethods.All,
-            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13
         })
         {
-            DefaultRequestVersion = HttpVersion.Version20
+            DefaultRequestVersion = HttpVersion.Version20,
+            Timeout = TimeSpan.FromSeconds(10)
         };
         static readonly ConnectionOptions TokenOptions = new ConnectionOptions
         {
