@@ -157,7 +157,7 @@ namespace Twigaten.Hash
                         for (int j = i + 1; j < SortedSpan.Length; j++)
                         {
                             long Sorted_j = SortedSpan[j];
-                            //重複排除を行う(マージソート時に排除してもブロックソート後に連続していない重複は残っている)
+                            //重複排除を行う(同じハッシュ同士を比較しないだけ)
                             if (Sorted_i == Sorted_j) { continue; }
                             //if (maskedhash_i != (Sorted[j] & FullMask)) { break; }    //これはSortedFileReaderがやってくれる
                             //間違いなくすでにDBに入っているペアは処理しない

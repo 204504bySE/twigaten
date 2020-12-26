@@ -72,9 +72,6 @@ namespace Twigaten.Hash
                 for (; ValueIndex < SortedValues.Length; ValueIndex++)
                 {
                     long Value = SortedValues[ValueIndex];
-                    //連続する重複要素はここで排除する
-                    //と思ったがここで排除しても速くならないねえ
-                    //if(PreviousValue == Value) { continue; }
 
                     long MaskedValue = Value & SortMask;
                     if (MaskedKey == MaskedValue)

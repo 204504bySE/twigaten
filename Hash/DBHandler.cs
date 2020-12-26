@@ -84,18 +84,7 @@ namespace Twigaten.Hash
                 {
                     long TotalHashCount = 0;
 
-                    var WriterBlock = new ActionBlock<AddOnlyList<long>>(async (table) => 
-                    {
-                        await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
-                        TotalHashCount += table.Count;
-                        table.Dispose();
-                    }, new ExecutionDataflowBlockOptions()
-                    {
-                        MaxDegreeOfParallelism = 1,
-                        BoundedCapacity = 2
-                    });
-
-                    var LoadHashBlock = new ActionBlock<long>(async (i) =>
+                    var LoadHashBlock = new TransformBlock<long, AddOnlyList<long>>(async (i) =>
                     {
                         var table = new AddOnlyList<long>(TableListSize);
                         while(true)
@@ -111,21 +100,27 @@ GROUP BY dcthash;"))
                                 else { table.Clear(); }
                             }
                         }
-                        await WriterBlock.SendAsync(table).ConfigureAwait(false);
+                        return table;
                     }, new ExecutionDataflowBlockOptions()
                     {
                         MaxDegreeOfParallelism = Environment.ProcessorCount,
                         BoundedCapacity = Environment.ProcessorCount << 1,
                         SingleProducerConstrained = true
                     });
+                    var WriterBlock = new ActionBlock<AddOnlyList<long>>(async (table) =>
+                    {
+                        await writer.Write(table.InnerArray, table.Count).ConfigureAwait(false);
+                        TotalHashCount += table.Count;
+                        table.Dispose();
+                    }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
+                    LoadHashBlock.LinkTo(WriterBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-                    for(int i = 0; i < 1 << (64 - HashUnitBits); i++)
+
+                    for (int i = 0; i < 1 << (64 - HashUnitBits); i++)
                     { 
                         await LoadHashBlock.SendAsync(i).ConfigureAwait(false);
                     }
                     LoadHashBlock.Complete();
-                    await LoadHashBlock.Completion.ConfigureAwait(false);
-                    WriterBlock.Complete();
                     await WriterBlock.Completion.ConfigureAwait(false);
                     return TotalHashCount;
                 }

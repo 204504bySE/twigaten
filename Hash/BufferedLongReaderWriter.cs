@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Mono.Unix.Native;
 using Twigaten.Lib;
-using Zstandard.Net;
+using ZstdNet;
 
 namespace Twigaten.Hash
 { 
@@ -21,12 +21,13 @@ namespace Twigaten.Hash
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
         readonly FileStream file;
-        readonly ZstandardStream zip;
+        readonly DecompressionStream zip;
 
         public UnbufferedLongReader(string FilePath)
         {
-            file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, Math.Min(BufSize * sizeof(long), 131072), FileOptions.SequentialScan);
-            zip = new ZstandardStream(file, CompressionMode.Decompress, true);
+            int ioBufSize = Math.Min(BufSize * sizeof(long), 131072);
+            file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, ioBufSize, FileOptions.SequentialScan);
+            zip = new DecompressionStream(file, ioBufSize);
         }
 
         ///<summary>続きのデータがあるかどうか</summary>
@@ -66,27 +67,28 @@ namespace Twigaten.Hash
             if (!Disposed)
             {
                 Disposed = true;
-                zip.Dispose();
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, 0, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
+                zip.Dispose();
                 file.Dispose();
             }
         }
     }
 
-    /// <summary>
-    /// zstdで圧縮されたlongの配列を書き込む
+    /// <summary> 
+    /// longの配列をzstdで圧縮して書き込む
     /// ファイル全体を一発で速く書き込みたい時用
     /// </summary>
     class UnbufferedLongWriter : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
         readonly FileStream file;
-        readonly ZstandardStream zip;
+        readonly CompressionStream zip;
 
         public UnbufferedLongWriter(string FilePath)
         {
-            file = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None, Math.Min(BufSize * sizeof(long), 131072));
-            zip = new ZstandardStream(file, 1, true);
+            int ioBufSize = Math.Min(BufSize * sizeof(long), 131072);
+            file = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None, ioBufSize);
+            zip = new CompressionStream(file, new CompressionOptions(1), ioBufSize);
         }
 
         Vector<long> LastWritten = Vector<long>.Zero;
@@ -131,13 +133,12 @@ namespace Twigaten.Hash
 
     ///<summary>
     /// zstdで圧縮されたlongの配列を読み込む
-    /// ReadInt64()を普通に呼ぶと遅いのでまとめて読む
     ///</summary>
     class BufferedLongReader : IEnumerable<long>, IEnumerator<long>, IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
         readonly FileStream file;
-        readonly ZstandardStream zip;
+        readonly DecompressionStream zip;
 
         byte[] Buf = new byte[BufSize * sizeof(long)];
         long[] BufAsLong;   //自称Lengthがbyte[]と同じままなのでLengthでアクセスすると死ぬ
@@ -148,8 +149,9 @@ namespace Twigaten.Hash
 
         public BufferedLongReader(string FilePath)
         {
-            file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, Math.Min(BufSize * sizeof(long), 131072), FileOptions.SequentialScan);
-            zip = new ZstandardStream(file, CompressionMode.Decompress, true);
+            int ioBufSize = Math.Min(BufSize * sizeof(long), 131072);
+            file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, ioBufSize, FileOptions.SequentialScan);
+            zip = new DecompressionStream(file, ioBufSize);
 
             //最初はここで強制的に読ませる
             FillNextBuf();
@@ -238,14 +240,13 @@ namespace Twigaten.Hash
     }
 
     ///<summary>
-    ///zstdで圧縮されたlongの配列を書き込む
-    ///WriteInt64()を普通に呼ぶと遅いのでまとめて書く
+    ///longの配列をzstdで圧縮して書き込む
     ///</summary>
     class BufferedLongWriter : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
         readonly FileStream file;
-        readonly ZstandardStream zip;
+        readonly CompressionStream zip;
         byte[] Buf = new byte[BufSize * sizeof(long)];
         int BufCursor;  //こいつはlong単位で動かすからな
         byte[] WriteBuf = new byte[BufSize * sizeof(long)];
@@ -253,9 +254,9 @@ namespace Twigaten.Hash
 
         public BufferedLongWriter(string FilePath)
         {
-            file = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None, Math.Min(BufSize * sizeof(long), 131072), FileOptions.WriteThrough);
-
-            zip = new ZstandardStream(file, 1, true);
+            int ioBufSize = Math.Min(BufSize * sizeof(long), 131072);
+            file = new FileStream(FilePath, FileMode.Create, FileAccess.Write, FileShare.None, ioBufSize);
+            zip = new CompressionStream(file, new CompressionOptions(1), ioBufSize);
         }
 
         public async Task Write(long[] Values, int Length)
@@ -267,11 +268,7 @@ namespace Twigaten.Hash
                 Values.AsSpan(ValuesCursor, CopySize).CopyTo(MemoryMarshal.Cast<byte, long>(Buf).Slice(BufCursor, CopySize));
                 BufCursor += CopySize;
 
-                if (BufCursor >= BufSize) 
-                {
-                    await ActualWrite().ConfigureAwait(false);
-                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, file.Position, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
-                }
+                if (BufCursor >= BufSize) { await ActualWrite().ConfigureAwait(false); }
                 ValuesCursor += CopySize;
             }
         }
@@ -299,7 +296,9 @@ namespace Twigaten.Hash
                 LastWritten = Before;
             }
             TakeDiff();
-            ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long));
+            ActualWriteTask = zip.WriteAsync(WriteBuf, 0, BufCursor * sizeof(long)).ContinueWith((_) => {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, file.Position, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
+            });
             BufCursor = 0;
         }
 
@@ -309,13 +308,14 @@ namespace Twigaten.Hash
             if (!Disposed)
             {
                 Disposed = true;
+                GC.SuppressFinalize(this);
                 if (BufCursor > 0) { ActualWrite().Wait(); }
                 ActualWriteTask.Wait();
+                zip.Flush();
                 zip.Dispose();
                 file.Flush(true);
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) { Syscall.posix_fadvise((int)file.SafeFileHandle.DangerousGetHandle(), 0, 0, PosixFadviseAdvice.POSIX_FADV_DONTNEED); }
                 file.Dispose();
-                GC.SuppressFinalize(this);
             }
         }
         ~BufferedLongWriter() { Dispose(); }
