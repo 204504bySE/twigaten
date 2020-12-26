@@ -15,11 +15,9 @@ namespace Twigaten.DctHash
 {
     class Program
     {
-        const int RetryWait = 1000;
-
         static async Task Main(string[] args)
         {
-            int connectionCount = 0;
+            //int connectionCount = 0;
             var config = Config.Instance.dcthashserver;
             var listener = new TcpListener(config.ListenIPv6 ? IPAddress.IPv6Any : IPAddress.Any, config.ListenPort);
 
@@ -31,46 +29,28 @@ namespace Twigaten.DctHash
             }
             Console.WriteLine("Listening on {0}", listener.LocalEndpoint);
 
-            bool idleFlag = true;
-            Task.Run(async () =>
-            {
-                var idleSw = Stopwatch.StartNew();
-                while (true)
-                {
-                    await Task.Delay(5000).ConfigureAwait(false);
-                    if (idleFlag && 60000 < idleSw.ElapsedMilliseconds)
-                    {                        
-                        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-                        GC.Collect();
-                        idleSw.Restart();
-                    }
-                    idleFlag = true;
-                }
-            });
-
             while (true)
             {
                 var _client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
-                Interlocked.Increment(ref connectionCount);
+                //Interlocked.Increment(ref connectionCount);
 
                 Task.Run(async () =>
                 {
                     var client = _client;
                     client.NoDelay = true;
                     var endpoint = client.Client.RemoteEndPoint;
-                    Console.WriteLine("New connection({0}): {1}", connectionCount, endpoint);
+                    //Console.WriteLine("New connection({0}): {1}", connectionCount, endpoint);
                     try
                     {
                         using var tcp = client.GetStream();
                         using var reader = new MessagePackStreamReader(tcp);
                         while (true)
                         {
-                            using var cancel = new CancellationTokenSource(3600000);
+                            using var cancel = new CancellationTokenSource(60000);
                             PictHashRequest req;
                             {
                                 var msgpack = await reader.ReadAsync(cancel.Token);
                                 if (!msgpack.HasValue) { break; }
-                                idleFlag = false;
                                 req = MessagePackSerializer.Deserialize<PictHashRequest>(msgpack.Value);
                             }
                             using var mem = new MemoryStream(req.MediaFile, false);
@@ -82,8 +62,8 @@ namespace Twigaten.DctHash
                     catch (OperationCanceledException) { }  //CancellationToken
                     catch (Exception e) { Console.WriteLine(e); }
                     client.Dispose();
-                    Interlocked.Decrement(ref connectionCount);
-                    Console.WriteLine("Disconnected({0}): {1}", connectionCount, endpoint);
+                    //Interlocked.Decrement(ref connectionCount);
+                    //Console.WriteLine("Disconnected({0}): {1}", connectionCount, endpoint);
                 });
             }
         }

@@ -61,13 +61,7 @@ namespace Twigaten.Crawl
                     using var cancel = new CancellationTokenSource(10000);
                     await MessagePackSerializer.SerializeAsync(tcp.Stream, new PictHashRequest() { UniqueId = media_id, MediaFile = Source },null, cancel.Token).ConfigureAwait(false);
                     var msgpack = await tcp.Reader.ReadAsync(cancel.Token);
-                    //ときどき接続を解放する
-                    if (60000 < PoolRelease.ElapsedMilliseconds)
-                    {
-                        PoolRelease.Restart();
-                        tcp.Dispose();
-                    }
-                    else { TcpPool.Add(tcp); }
+                    TcpPool.Add(tcp);
 
                     if (msgpack.HasValue) 
                     {
