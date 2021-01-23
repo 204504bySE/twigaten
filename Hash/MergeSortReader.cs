@@ -259,7 +259,7 @@ namespace Twigaten.Hash
                 //1回でマージしきれないときはファイル数を均等に振って並列に処理したい
                 int temp = (SorterQueue.Count + MergeSortCompareUnit - 1) / MergeSortCompareUnit;
                 int CompareUnit = (FileCount + temp - 1) / temp;
-                while (1 < SorterQueue.Count)
+                while (0 < SorterQueue.Count)
                 {
                     for (int i = 0; 0 < SorterQueue.Count && i < CompareUnit; i++)
                     {
