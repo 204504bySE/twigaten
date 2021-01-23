@@ -222,7 +222,7 @@ namespace Twigaten.Crawl
         /// </summary>
         static readonly ActionBlock<(Status, Tokens)> RetryDownloadStoreBlock = new ActionBlock<(Status, Tokens)>(async (a) =>
         {
-            do { await Task.Delay(100); } while (0 < DownloadStoreMediaBlock.InputCount);
+            do { await Task.Delay(1000); } while (0 < DownloadStoreMediaBlock.InputCount);
             DownloadStoreMediaBlock.Post(a);
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
@@ -288,7 +288,6 @@ namespace Twigaten.Crawl
                         //画像の取得に失敗したら多分後でやり直す
                         catch { RetryDownloadStoreBlock.Post(a); continue; }
                     }
-                    if(mem == null) { RetryDownloadStoreBlock.Post(a); continue; }
 
                     long? dcthash = await PictHashClient.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
                     //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する

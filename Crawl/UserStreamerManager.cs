@@ -208,9 +208,10 @@ namespace Twigaten.Crawl
             Counter.PrintReset();
 
             //TLがある程度進んでいるアカウントと一定時間取得してないアカウントだけ接続する
+            var now = DateTimeOffset.UtcNow;
             var StreamersSelected = Streamers.Select(s => s.Value)
                 .Where(s => s.EstimatedTweetToReceive >= config.crawl.StreamSpeedTweets
-                    || (s.LastMessageTime - DateTimeOffset.UtcNow).TotalSeconds > config.crawl.MaxRestInterval)
+                    || (s.LastMessageTime - now).TotalSeconds > config.crawl.MaxRestInterval)
                 .OrderByDescending(s => s.EstimatedTweetToReceive)
                 .ToArray();
             foreach (var s in StreamersSelected)

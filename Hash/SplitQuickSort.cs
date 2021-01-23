@@ -29,8 +29,8 @@ namespace Twigaten.Hash
         public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName) + FileExtension;
 
         ///<summary>ソート過程のファイル名規則</summary>
-        public static string SortingFilePath(int index) => SortingFilePath(index.ToString());
-        public static string SortingFilePath(string index) => Path.Combine(config.hash.TempDir, SortFilePrefix + index) + FileExtension;
+        public static string SortingFilePath(int SortIndex, int FileIndex) => SortingFilePath(SortIndex.ToString() + "_" +  FileIndex.ToString());
+        public static string SortingFilePath(string Name) => Path.Combine(config.hash.TempDir, SortFilePrefix + Name) + FileExtension;
 
         ///<summary>ブロックソートをLINQに投げる用</summary>
         class BlockSortComparer : IComparer<long>
@@ -56,9 +56,9 @@ namespace Twigaten.Hash
 
         static readonly int InitialSortUnit = config.hash.InitialSortFileSize / sizeof(long) / Vector<long>.Count * Vector<long>.Count;
 
-        ///<summary>全ハッシュを一定サイズに分轄してソートする
+        ///<summary>全ハッシュを一定サイズに分割してソートする
         ///分割されたファイルをマージソートすると完全なソート済み列が得られる</summary>
-        public static async Task<int> QuickSortAll(long SortMask)
+        public static async Task<int> QuickSortAll(int Index, long SortMask)
         {
             int FileCount = 0;
             var SortComp = new BlockSortComparer(SortMask);
@@ -90,7 +90,6 @@ namespace Twigaten.Hash
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
             FirstSortBlock.LinkTo(WriterBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-
             //まずはAllHashを読む
             using (var reader = new UnbufferedLongReader(AllHashFilePath))
             {
@@ -99,7 +98,7 @@ namespace Twigaten.Hash
                     await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
                     if (!LongPool.TryTake(out var ToSort)) { ToSort = new long[InitialSortUnit]; }
                     int ToSortLength = reader.Read(ToSort);
-                    FirstSortBlock.Post(new FirstSort(SortingFilePath(FileCount), ToSort, ToSortLength));
+                    FirstSortBlock.Post(new FirstSort(SortingFilePath(Index, FileCount), ToSort, ToSortLength));
                 }
             }
 
@@ -120,7 +119,7 @@ namespace Twigaten.Hash
                         }
                         if (InitialSortUnit <= ToSortNewerCursor)
                         {
-                            FirstSortBlock.Post(new FirstSort(SortingFilePath(FileCount), ToSortNewer, ToSortNewer.Length));
+                            FirstSortBlock.Post(new FirstSort(SortingFilePath(Index, FileCount), ToSortNewer, ToSortNewer.Length));
                             FileCount++;
                             ToSortNewerCursor = 0;
                             await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
@@ -129,12 +128,17 @@ namespace Twigaten.Hash
                     }
                 }
             }
+            //余った要素もソートさせる FirstSortingCountはもう使わないので放置
+            if (0 < ToSortNewerCursor)
+            {
+                FirstSortBlock.Post(new FirstSort(SortingFilePath(Index, FileCount), ToSortNewer, ToSortNewerCursor));
+                FileCount++;
+            }
+            FirstSortBlock.Complete();
             //ソート用配列は作り終わったので用が済んだ配列は解放させる
             LongPoolReturn = false;
-            //余った要素もソートさせる FirstSortingCountはもう使わないので放置
-            FirstSortBlock.Post(new FirstSort(SortingFilePath(FileCount), ToSortNewer, ToSortNewerCursor));
-            FileCount++;
-            FirstSortBlock.Complete();
+            LongPool.Clear();
+
             await WriterBlock.Completion.ConfigureAwait(false);
             return FileCount;
         }

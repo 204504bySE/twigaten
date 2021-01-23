@@ -23,10 +23,10 @@ namespace Twigaten.Hash
         readonly MergedEnumerator Creator;
         readonly MergeSortBuffer Reader;
 
-        public MergeSortReader(int FileCount, long SortMask)
+        public MergeSortReader(int SortIndex, int FileCount, long SortMask)
         {
             this.SortMask = SortMask;
-            Creator = new MergedEnumerator(FileCount, SortMask);
+            Creator = new MergedEnumerator(SortIndex, FileCount, SortMask);
             Reader = Creator.Enumerator;
             //最初はここで強制的に読ませる
             ActualRead();
@@ -240,16 +240,14 @@ namespace Twigaten.Hash
         ///<summary>マージソートの最終結果を出すやつ</summary>
         public MergeSortBuffer Enumerator { get; }
 
-        public MergedEnumerator(int FileCount, long SortMask)
+        public MergedEnumerator(int SortIndex, int FileCount, long SortMask)
         {
-            var Readers = new MergeSortFileReader[FileCount];
-            for (int i = 0; i < Readers.Length; i++)
-            {
-                Readers[i] = new MergeSortFileReader(SplitQuickSort.SortingFilePath(i), SortMask);
-            }
-
             //マージソート階層を作る
-            var SorterQueue = new Queue<MergeSorterBase>(Readers);
+            var SorterQueue = new Queue<MergeSorterBase>();
+            for (int i = 0; i < FileCount; i++)
+            {
+                SorterQueue.Enqueue(new MergeSortFileReader(SplitQuickSort.SortingFilePath(SortIndex, i), SortMask));
+            }
             var TempSorter = new List<MergeSorterBase>();
             var NextSorter = new List<MergeSorterBase>();
 

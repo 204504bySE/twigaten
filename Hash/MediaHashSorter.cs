@@ -109,7 +109,7 @@ namespace Twigaten.Hash
             var QuickSortSW = Stopwatch.StartNew();
 
             //適当なサイズに切ってそれぞれをクイックソート
-            int SortedFileCount = await SplitQuickSort.QuickSortAll(SortMask).ConfigureAwait(false);
+            int SortedFileCount = await SplitQuickSort.QuickSortAll(Index, SortMask).ConfigureAwait(false);
             //↓ベンチマーク用 sortのファイル数を入れてやる
             //int SortedFileCount = 52;
 
@@ -206,7 +206,7 @@ namespace Twigaten.Hash
             var MultipleSortSW = Stopwatch.StartNew();
 
             //クイックソートしたファイル群をマージソートしながら読み込む
-            using (var Reader = new MergeSortReader(SortedFileCount, SortMask))
+            using (var Reader = new MergeSortReader(Index, SortedFileCount, SortMask))
             {
                 int PostponeCount = 1 + config.hash.MergeSortPostponePairCount / DBHandler.StoreMediaPairsUnit;
                 var GCStopWatch = Stopwatch.StartNew();
