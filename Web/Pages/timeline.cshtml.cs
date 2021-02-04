@@ -78,7 +78,6 @@ namespace Twigaten.Web.Pages.Tweet
             //一瞬でも速くしたいので先にTaskを作って必要なところでawaitする
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
-            var CrawlInfoTask = View.SelectCrawlInfo(Params.ID.Value);
 
             if (Date.HasValue) { Before = SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeSeconds(Date.Value), true); }
             long LastTweet = Before ?? After ?? SnowFlake.Now(true);
@@ -86,6 +85,7 @@ namespace Twigaten.Web.Pages.Tweet
 
             await ParamsTask.ConfigureAwait(false);
             if (!Params.ID.HasValue) { return LocalRedirect("/"); }
+            var CrawlInfoTask = View.SelectCrawlInfo(Params.ID.Value);
             var TargetUserTask = View.SelectUser(Params.ID.Value);
             var TweetsTask = View.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 

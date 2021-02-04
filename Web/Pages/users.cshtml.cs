@@ -83,14 +83,15 @@ namespace Twigaten.Web.Pages.Tweet
             var TargetUserTask = View.SelectUser(UserId);
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
-            //crawlinfoは「自分のツイート」のときだけ取得する
-            var CrawlInfoTask = Params.ID == UserId ? View.SelectCrawlInfo(UserId) : null;
 
             if (Date.HasValue) { Before = SnowFlake.SecondinSnowFlake(DateTimeOffset.FromUnixTimeSeconds(Date.Value), true); }
             long LastTweet = Before ?? After ?? SnowFlake.Now(true);
             bool IsBefore = Before.HasValue || !After.HasValue;
 
             await ParamsTask.ConfigureAwait(false);
+            //crawlinfoは「自分のツイート」のときだけ取得する
+            var CrawlInfoTask = Params.ID == UserId ? View.SelectCrawlInfo(UserId) : null;
+
             var TweetsTask = View.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);

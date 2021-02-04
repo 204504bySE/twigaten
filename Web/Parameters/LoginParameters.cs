@@ -31,10 +31,7 @@ namespace Twigaten.Web.Parameters
             set 
             {
                 _ID = value;
-                if (value.HasValue)
-                {
-                    SetCookie(nameof(ID), value.Value.ToString(), false);
-                } 
+                if (value.HasValue) { SetCookie(nameof(ID), value.Value.ToString(), false); }
                 else { ClearCookie(nameof(ID)); } 
             }
         }
