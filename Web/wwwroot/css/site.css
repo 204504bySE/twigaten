@@ -47,6 +47,10 @@ h3.twigaten-headline {
     margin: 0;
 }
 
+option.placeholder {
+    display: none;
+}
+
 /* enforce dropdown on any display width */
 .navbar-item.is-active .navbar-dropdown, .navbar-item.is-hoverable:focus .navbar-dropdown, .navbar-item.is-hoverable:focus-within .navbar-dropdown, .navbar-item.is-hoverable:hover .navbar-dropdown {
     display: block;
