@@ -111,7 +111,6 @@ namespace Twigaten.DctHash
                     dctbuf[(u << 3) | v] = sum; //dct32[u, v]をかけていないので実際の64倍の値
                 }
             }
-            //ArrayPool<float>.Shared.Return(monoimage);
             long ret = 0;
             float ave = 0;
             for (int i = 0; i < dctbuf.Length; i++) 
@@ -147,7 +146,7 @@ namespace Twigaten.DctHash
             {
                 using Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb);
                 using Graphics g = Graphics.FromImage(miniimage);
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.High;  //HighQualityBilinerは非対応
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;  //HighQualityBilinerは非対応←???
                 g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
                 using (Image img = Image.FromStream(imgStream))
                 {

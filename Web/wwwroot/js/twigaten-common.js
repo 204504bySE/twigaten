@@ -9,7 +9,7 @@ var twigatenCookies = twigatenCookies || {};
     const TLUser_Count = Cookies.get('TLUser_Count');
     const TLUser_RT = Cookies.get('TLUser_RT');
     const TLUser_Show0 = Cookies.get('TLUser_Show0');
-    //こいつを呼ぶ
+    //こいつを呼んでCookieを更新する
     twigatenCookies.set = function () {
         if (UserSearch_LikeMode) { Cookies.set('UserSearch_LikeMode', UserSearch_LikeMode, cookieOption); }
         if (Featured_Order) { Cookies.set('Featured_Order', Featured_Order, cookieOption); }
