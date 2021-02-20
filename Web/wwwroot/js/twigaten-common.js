@@ -81,8 +81,17 @@ var twigatenCookies = twigatenCookies || {};
     menuBurgered.classList.toggle('is-active');
   });
 
-  //サインインとサインアウト
-
+  var aSubmitLimitter = false;
+  //aタグでsubmitする(サインインとサインアウト)
+  Array.prototype.forEach.call(document.getElementsByClassName('twigaten-a-submit'), function (x) {
+    x.addEventListener('click', function (event) {
+      event.preventDefault();
+      if (aSubmitLimitter) { return; }
+      aSubmitLimitter = true;
+      x.closest("form").submit();
+      setTimeout(function () { aSubmitLimitter = false; }, 1000);
+    });
+  }); 
 
   // クリックしたらCookieをセットして移動/リロードするやつ
   // <a>は data-keyとdata-valueなCookieをセット → hrefがあれば移動,なければリロード

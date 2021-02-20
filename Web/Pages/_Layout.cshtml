@@ -35,11 +35,17 @@
                     <a id="menu-mytweet" class="navbar-item twigaten-cookie-click">@Locale.Menu_MyTweet</a>
                     <a href="/timeline" class="navbar-item twigaten-cookie-click">@Locale.Menu_Timeline</a>
                     <hr class="navbar-divider">
-                    <a href="/auth/logout" class="navbar-item">@Locale.Menu_Logout</a>
+                    <form asp-controller="auth" asp-action="logout" method="post" class="is-flex">
+                        @Html.AntiForgeryToken()
+                        <a class="navbar-item twigaten-a-submit">@Locale.Menu_Logout</a>
+                    </form>
                 </div>
             </div>
             <div id="menu-login" class="is-flex">
-                <a href="/auth/login" rel="nofollow" class="navbar-item">@Locale.Menu_Login</a>
+                <form action="/auth/login" method="post" class="is-flex">
+                    @Html.AntiForgeryToken()
+                    <a class="navbar-item twigaten-a-submit">@Locale.Menu_Login</a>
+                </form>
             </div>
             <a id="menu-burger" role="button" class="navbar-burger is-pulled-right" aria-label="menu" aria-expanded="false">
                 <span aria-hidden="true"></span>

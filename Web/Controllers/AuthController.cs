@@ -13,17 +13,19 @@ using Twigaten.Web.Parameters;
 
 namespace Twigaten.Web.Controllers
 {
+    [AutoValidateAntiforgeryToken]
     [Route("auth")]
     public class AuthController : ControllerBase
     {
         static readonly Config config = Config.Instance;
+               
 
         /// <summary>
         /// 「Twitterでサインイン」を始める
         /// </summary>
         /// <returns></returns>
         //http://nakaji.hatenablog.com/entry/2014/09/19/024341
-        [HttpGet("login")]
+        [HttpPost("login")]
         public ActionResult Login()
         {
             //"{TwitterApiKey}", "{TwitterApiKeySecret}", "http://mydomain.com:63543/AuthCallback/Twitter"
@@ -34,7 +36,7 @@ namespace Twigaten.Web.Controllers
             return Redirect(OAuthSession.AuthorizeUri.OriginalString);
         }
 
-        [HttpGet("logout")]
+        [HttpPost("logout")]
         public async Task<ActionResult> Logout(LoginParameters p)
         {
             await p.InitValidate(HttpContext).ConfigureAwait(false);
