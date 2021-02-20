@@ -33,7 +33,9 @@ namespace Twigaten.Web.Controllers
 
             // セッション情報にOAuthSessionの内容を保存
             HttpContext.Session.Set(nameof(OAuthSession), JsonSerializer.SerializeToUtf8Bytes(OAuthSession));
-            return Redirect(OAuthSession.AuthorizeUri.OriginalString);
+
+            HttpContext.Response.Headers.Add("Location", OAuthSession.AuthorizeUri.OriginalString);
+            return StatusCode(StatusCodes.Status303SeeOther);
         }
 
         [HttpPost("logout")]
@@ -41,7 +43,8 @@ namespace Twigaten.Web.Controllers
         {
             await p.InitValidate(HttpContext).ConfigureAwait(false);
             p.Logout(true);
-            return LocalRedirect("/");
+            HttpContext.Response.Headers.Add("Location", "/");
+            return StatusCode(StatusCodes.Status303SeeOther);
         }
 
         public class TwitterCallbackParameters : LoginParameters
@@ -102,22 +105,35 @@ namespace Twigaten.Web.Controllers
         public async Task<ActionResult> TwitterCallback(TwitterCallbackParameters p)
         {
             //直リンやTwitterの認証拒否はトップページに飛ばす
-            if (p.oauth_token == null || p.oauth_verifier == null) { return LocalRedirect("/"); }
+            if (p.oauth_token == null || p.oauth_verifier == null) 
+            {
+                HttpContext.Response.Headers.Add("Location", "/");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
             await p.InitValidate(HttpContext).ConfigureAwait(false);
             OAuth.OAuthSession Session;
-            if ((Session = p.OAuthSession()) == null) { return LocalRedirect("/"); } 
+            if ((Session = p.OAuthSession()) == null) 
+            {
+                HttpContext.Response.Headers.Add("Location", "/");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            } 
 
             // tokenをDBに保存
             Tokens token = Session.GetTokens(p.oauth_verifier);
             var VeryfyTokenResult = await p.StoreNewLogin(token).ConfigureAwait(false);
 
             //すでにサインインしてたユーザーならそいつのページに飛ばす
-            if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) { return LocalRedirect("/users/" + token.UserId.ToString()); }
+            if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) 
+            {
+                HttpContext.Response.Headers.Add("Location", "/users/" + token.UserId.ToString());
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
             else 
             {
                 //新規ユーザーはツイート等を取得させる
                 CrawlManager.Run(token.UserId);
-                return LocalRedirect("/auth/first"); 
+                HttpContext.Response.Headers.Add("Location", "/auth/first");
+                return StatusCode(StatusCodes.Status303SeeOther);
             }
         }
 
@@ -133,9 +149,14 @@ namespace Twigaten.Web.Controllers
             if (Params.ID.HasValue) 
             {
                 await CrawlManager.WhenCrawled(Params.ID.Value).ConfigureAwait(false);
-                return LocalRedirect("/users/" + Params.ID.Value.ToString());
+                HttpContext.Response.Headers.Add("Location", "/users/" + Params.ID.Value.ToString());
+                return StatusCode(StatusCodes.Status303SeeOther);
             }
-            else { return LocalRedirect("/"); }
+            else
+            {
+                HttpContext.Response.Headers.Add("Location", "/");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
 
         }
     }

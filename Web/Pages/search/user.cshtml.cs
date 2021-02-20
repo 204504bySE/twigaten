@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Twigaten.Web.DBHandler;
@@ -37,9 +38,17 @@ namespace Twigaten.Web
         {
             if (string.IsNullOrWhiteSpace(Q)) { return LocalRedirect("/search/"); }
             SearchScreenName = ScreenNameRegex.Match(Q.Trim()).Value;
-            if (string.IsNullOrWhiteSpace(SearchScreenName)) { return LocalRedirect("/search/"); }
+            if (string.IsNullOrWhiteSpace(SearchScreenName)) 
+            {
+                HttpContext.Response.Headers.Add("Location", "/search");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
             long? TargetUserID = await View.SelectID_Unique_screen_name(SearchScreenName).ConfigureAwait(false);
-            if (Direct != false && TargetUserID.HasValue) { return LocalRedirect("/users/" + TargetUserID.Value.ToString()); }
+            if (Direct != false && TargetUserID.HasValue) 
+            {
+                HttpContext.Response.Headers.Add("Location", "/users/" + TargetUserID.Value.ToString());
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
 
             var sw = Stopwatch.StartNew();
             Params = new UserSearchParameters();

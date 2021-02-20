@@ -99,7 +99,11 @@ namespace Twigaten.Web.Controllers
                 }
             }
             //アイコンが見つからないときは額縁画像を返す
-            else { return LocalRedirect("/img/tenframe.png"); }
+            else
+            {
+                HttpContext.Response.Headers.Add("Location", "/img/tenframe.png");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
         }
 
         /// <summary>

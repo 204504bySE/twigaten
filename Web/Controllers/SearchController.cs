@@ -35,11 +35,20 @@ namespace Twigaten.Web.Controllers
             long? hash = await PictHashClient.DCTHashCrop(mem, HashServerCropHost, HashServerCropPort).ConfigureAwait(false);
 
             //見つからなかったりhashを計算できなかったりしたら検索ページに戻す
-            if (hash == null) { return LocalRedirect("/search"); }
+            if (hash == null)
+            {
+                HttpContext.Response.Headers.Add("Location", "/search");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
             var MatchMedia = await View.HashtoTweet(hash, Params.ID).ConfigureAwait(false);
-            if (MatchMedia == null) { return LocalRedirect("/search"); }
+            if (MatchMedia == null) 
+            {
+                HttpContext.Response.Headers.Add("Location", "/search");
+                return StatusCode(StatusCodes.Status303SeeOther);
+            }
             //その画像を含む最も古いツイートにリダイレクト
-            return LocalRedirect("/tweet/" + MatchMedia.Value.tweet_id.ToString()+ "#" + MatchMedia.Value.media_id.ToString());
+            HttpContext.Response.Headers.Add("Location", "/tweet/" + MatchMedia.Value.tweet_id.ToString()+ "#" + MatchMedia.Value.media_id.ToString());
+            return StatusCode(StatusCodes.Status303SeeOther);
         }
     }
 }
