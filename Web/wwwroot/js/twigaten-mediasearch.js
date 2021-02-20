@@ -38,4 +38,9 @@
     mediaDrop.classList.toggle('dropped', true);
     mediaForm.submit();
   });
+
+  //戻るボタン等でこのページに来たら色を戻す
+  window.addEventListener('pageshow', function () {
+    mediaDrop.classList.toggle('dropped', false);
+  });
 })();
