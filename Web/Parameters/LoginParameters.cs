@@ -43,7 +43,7 @@ namespace Twigaten.Web.Parameters
             get { return _LoginToken; }
             set { if (value != null) { SetCookie(nameof(LoginToken), value, true); } else { ClearCookie(nameof(LoginToken)); } }
         }
-        ///<summary>アカウント名(Session)</summary>
+        ///<summary>アカウント名(Cookie)</summary>
         public string ScreenName 
         {
             get { return TryGetCookie(nameof(ScreenName), out string ret) ? ret : null; }
@@ -61,7 +61,7 @@ namespace Twigaten.Web.Parameters
         {
             Context = _Context;
 
-            //Cookieと由来のパラメーターを読み込む
+            //Cookie由来のパラメーターを読み込む
             _ID = TryGetCookie(nameof(ID), out string IDStr) && long.TryParse(IDStr, out long __ID) ? __ID : null as long?;
             _LoginToken = TryGetCookie(nameof(LoginToken), out string __LoginToken) ? __LoginToken : null;
 
