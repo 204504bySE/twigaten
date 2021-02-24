@@ -191,25 +191,30 @@ ORDER BY updated_at LIMIT @limit;"))
             Console.WriteLine("{0} Icons removed.", RemovedCount);
         }
 
-        public async Task<string[]> GetMediaPath()
+        public async Task<(long MinDownloadedAt,string[] MediaPath)> GetMediaPath(long downloaded_at)
         {
-            try
-            {
-                using (var cmd = new MySqlCommand(@"SELECT
+            using (var cmd = new MySqlCommand(@"SELECT
 m.media_id, mt.media_url
 FROM media m
 JOIN media_downloaded_at md ON m.media_id = md.media_id
 JOIN media_text mt ON m.media_id = mt.media_id
+WHERE md.downloaded_at <= @downloaded_at
 ORDER BY md.downloaded_at DESC
 LIMIT @limit"))
+            {
+                cmd.Parameters.AddWithValue("@downloaded_at", downloaded_at);
+                cmd.Parameters.AddWithValue("@limit", 1000);
+
+                var ret = new List<string>();
+                long minDownloadedAt = long.MaxValue;
+                await ExecuteReader(cmd, (r) =>
                 {
-                    var ret = new List<string>();
-                    cmd.Parameters.AddWithValue("@limit", 10000);
-                    await ExecuteReader(cmd, (r) => ret.Add(MediaFolderPath.ThumbPath(r.GetInt64(0), r.GetString(1)))).ConfigureAwait(false);
-                    return ret.ToArray();
-                }
+                    long down = r.GetInt64(0);
+                    if(down < minDownloadedAt) { minDownloadedAt = down; }
+                    ret.Add(MediaFolderPath.ThumbPath(down, r.GetString(1)));
+                }).ConfigureAwait(false);
+                return (minDownloadedAt, ret.ToArray());
             }
-            catch(Exception e) { Console.WriteLine(e); return Array.Empty<string>(); }
         }
 
         /*

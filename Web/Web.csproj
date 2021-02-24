@@ -26,6 +26,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Blurhash.Core">
+      <HintPath>..\Blurhash.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Blurhash.System.Drawing.Common">
+      <HintPath>..\Blurhash.System.Drawing.Common.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Locale\Locale.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>

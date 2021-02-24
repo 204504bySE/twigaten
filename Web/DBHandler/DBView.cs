@@ -630,7 +630,7 @@ ou.user_id, ou.name, ou.screen_name, ou.profile_image_url, ou.is_default_profile
 o.tweet_id, o.created_at, ot.text, o.favorite_count, o.retweet_count,
 rt.tweet_id, ru.user_id, ru.name, ru.screen_name, ru.profile_image_url, ru.is_default_profile_image, ru.isprotected,
 rt.created_at, rtt.text, rt.favorite_count, rt.retweet_count,
-m.media_id, mt.media_url, mt.type,
+m.media_id, mt.media_url, mt.type, mt.blurhash,
 (SELECT COUNT(media_id) FROM media WHERE dcthash = m.dctHash) - 1
     + (SELECT COUNT(media_id) FROM dcthashpairslim
         JOIN media ON hash_large = media.dcthash
@@ -647,7 +647,7 @@ m.media_id, mt.media_url, mt.type,
 ou.user_id, ou.name, ou.screen_name, ou.profile_image_url, ou.is_default_profile_image, ou.isprotected,
 o.tweet_id, o.created_at, ot.text, o.favorite_count, o.retweet_count,
 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-m.media_id, mt.media_url, mt.type,
+m.media_id, mt.media_url, mt.type, mt.blurhash,
 (SELECT COUNT(media_id) FROM media WHERE dcthash = m.dctHash) - 1
     + (SELECT COUNT(media_id) FROM dcthashpairslim
         JOIN media ON hash_large = media.dcthash
@@ -722,7 +722,8 @@ m.media_id, mt.media_url, mt.type,
                 rettmp.media.orig_media_url = r.GetString(23);
                 rettmp.media.type = r.GetString(24);
                 rettmp.media.local_media_url = LocalText.MediaUrl(rettmp.media);
-                rettmp.SimilarMediaCount = r.IsDBNull(25) ? -1 : r.GetInt64(25);    //COUNTはNOT NULLじゃない
+                rettmp.media.blurhash = r.GetString(25);
+                rettmp.SimilarMediaCount = r.IsDBNull(26) ? -1 : r.GetInt64(26);    //COUNTはNOT NULLじゃない
                 rettmp.ExistsMoreMedia = SimilarLimit < rettmp.SimilarMediaCount;
 
                 TweetList.Add(rettmp);
@@ -765,7 +766,7 @@ m.media_id, mt.media_url, mt.type,
 ou.user_id, ou.name, ou.screen_name, ou.profile_image_url,  ou.is_default_profile_image, ou.isprotected,
 o.tweet_id, o.created_at, ot.text, o.favorite_count, o.retweet_count,
 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-a.media_id, a.media_url, a.type,
+a.media_id, a.media_url, a.type, a.blurhash,
 NULL
 FROM(
     SELECT t.tweet_id, m.media_id, mt.media_url, mt.type

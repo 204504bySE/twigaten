@@ -14,6 +14,7 @@ using CoreTweet;
 using CoreTweet.Streaming;
 using Twigaten.Lib;
 using System.Net.Http;
+using System.Drawing;
 
 namespace Twigaten.Crawl
 {
@@ -227,6 +228,8 @@ namespace Twigaten.Crawl
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
 
+        static readonly System.Drawing.Common.Blurhash.Encoder BlurhashEncoder = new System.Drawing.Common.Blurhash.Encoder();
+
         ///<summary>
         ///画像を取得するやつ
         ///RTはこれに入れないでね
@@ -290,9 +293,14 @@ namespace Twigaten.Crawl
                     }
 
                     long? dcthash = await PictHashClient.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
+                    string blurhash;
+                    using (var memStream = new MemoryStream(mem, false))
+                    {
+                        blurhash = BlurhashEncoder.Encode(Image.FromStream(memStream), 9, 9);
+                    }
                     //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
                     //つまりdownloaded_atは画像の保存に失敗しても値が入る
-                    if (dcthash.HasValue && await db.StoreMedia(m, a.x, (long)dcthash).ConfigureAwait(false))
+                    if (dcthash.HasValue && await db.StoreMedia(m, a.x, dcthash.Value, blurhash).ConfigureAwait(false))
                     {
                         using (var file = File.Create(LocalPaththumb))
                         {
@@ -343,7 +351,8 @@ namespace Twigaten.Crawl
         static readonly BatchBlock<long> DeleteTweetBatch = new BatchBlock<long>(config.crawl.DeleteTweetBufferSize);
         //ツイ消しはここでDBに投げることにした
         static readonly ActionBlock<long[]> DeleteTweetBlock = new ActionBlock<long[]>
-            (async (long[] ToDelete) => {
+            (async (long[] ToDelete) =>
+            {
                 foreach (long d in (await db.StoreDelete(ToDelete.Distinct().ToArray()).ConfigureAwait(false))) { await DeleteTweetBatch.SendAsync(d).ConfigureAwait(false); }
             }, new ExecutionDataflowBlockOptions()
             {

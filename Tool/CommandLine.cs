@@ -110,16 +110,18 @@ namespace Twigaten.Tool
             else { Console.WriteLine("Invalid argument. See  --help"); }
         }
 
-        [Verb("compare", HelpText = "aaa")]
+        [Verb("compare", Hidden = true)]
         class CompareHashOption 
         {
-            [Option('d', "dummy", Required = false)]
-            public string dummy { get; set; }
+            [Option('m', "marathon", Required = false, Hidden = true)]
+            public bool marathon { get; set; }
         }
         static async Task CompareHashCommand(CompareHashOption opts)
         {
-            await CompareHash.Proceed().ConfigureAwait(false);
+            if (opts.marathon) { await CompareHash.Marathon().ConfigureAwait(false); }
+            else { await CompareHash.Proceed().ConfigureAwait(false); }
         }
+
     }
 
 

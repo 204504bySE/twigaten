@@ -570,7 +570,7 @@ WHERE media_id = @media_id;"))
             }
         }
 
-        public async Task<bool> StoreMedia(MediaEntity m, Status x, long hash)
+        public async Task<bool> StoreMedia(MediaEntity m, Status x, long hash, string blurhash)
         {
             var cmd = new MySqlCommand(@"INSERT IGNORE 
 INTO media (media_id, source_tweet_id, dcthash) 
@@ -583,11 +583,12 @@ dcthash = @dcthash;");
             cmd.Parameters.Add("@dcthash", MySqlDbType.Int64).Value = hash;
 
             var cmdText = new MySqlCommand(@"INSERT IGNORE
-INTO media_text (media_id, type, media_url)
-VALUES (@media_id, @type, @media_url);");
+INTO media_text (media_id, type, media_url, blurhash)
+VALUES (@media_id, @type, @media_url, @blurhash);");
             cmdText.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmdText.Parameters.Add("@type", MySqlDbType.VarChar).Value = m.Type;
             cmdText.Parameters.Add("@media_url", MySqlDbType.Text).Value = m.MediaUrlHttps ?? m.MediaUrl;
+            cmdText.Parameters.Add("@blurhash", MySqlDbType.VarChar).Value = blurhash;
 
             var cmdDownload = new MySqlCommand(@"INSERT IGNORE
 INTO media_downloaded_at

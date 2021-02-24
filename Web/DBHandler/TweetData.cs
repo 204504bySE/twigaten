@@ -57,14 +57,14 @@ namespace Twigaten.Web.DBHandler
         public class _media
         {
             public long media_id { get; set; }
-            //public long source_tweet_id { get; set; }
+
             /// <summary>photo/video/animated_gif</summary>
             public string type { get; set; }
             /// <summary>pbs.twimg.comなどのURL</summary>
             public string orig_media_url { get; set; }
             /// <summary>自鯖内のURL(/twimg/~~~ など)</summary>
             public string local_media_url { get; set; }
-            //public long dcthash { get; set; }
+            public string blurhash { get; set; }
         }
     }
 
