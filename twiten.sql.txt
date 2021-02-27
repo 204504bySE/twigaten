@@ -92,7 +92,7 @@ create table media_text(
 	media_id bigint,
 	type varchar(15) character set ascii not null default 'photo',
 	media_url text character set ascii not null,
-	blurhash varchar(166) character set ascii not null default '',
+	blurhash varchar(255) character set ascii not null default '',
 	primary key (media_id) comment 'cfname=media_text'
 )engine=RocksDB;
 

@@ -769,7 +769,7 @@ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 a.media_id, a.media_url, a.type, a.blurhash,
 NULL
 FROM(
-    SELECT t.tweet_id, m.media_id, mt.media_url, mt.type
+    SELECT t.tweet_id, m.media_id, mt.media_url, mt.type, mt.blurhash
     FROM ((
             SELECT media_id FROM media 
             WHERE dcthash = @media_hash
