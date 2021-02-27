@@ -64,7 +64,6 @@ namespace Twigaten.Web.DBHandler
             public string orig_media_url { get; set; }
             /// <summary>自鯖内のURL(/twimg/~~~ など)</summary>
             public string local_media_url { get; set; }
-            public string blurhash { get; set; }
         }
     }
 
