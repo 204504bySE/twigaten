@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -28,10 +29,12 @@ namespace Twigaten.Web
             if (ExtMime.TryGetContentType(FileName, out string mime)) { return mime; }
             else { return "application/octet-stream"; };
         }
-        public static readonly DBTwimg DB = DBHandler.DB.Twimg;
-        public static readonly DBCrawl DBCrawl = DBHandler.DB.Crawl;
-        public static readonly RemovedMedia Removed = new RemovedMedia();
+        internal static readonly DBTwimg DB = DBHandler.DB.Twimg;
+        internal static readonly DBCrawl DBCrawl = DBHandler.DB.Crawl;
+        internal static readonly DBView DBView = DBHandler.DB.View;
+        internal static readonly RemovedMedia Removed = new RemovedMedia();
 
+        static readonly System.Drawing.Common.Blurhash.Encoder BlurhashEncoder = new System.Drawing.Common.Blurhash.Encoder();
         /// <summary>
         /// 取得した画像(thumb)を保存 DBはdownloaded_atだけ更新する
         /// </summary>
@@ -52,6 +55,22 @@ namespace Twigaten.Web
                 }
                 catch { }
             }
+
+            if (await DBView.SelectBlurhash(m.MediaInfo.media_id).ConfigureAwait(false) == "")
+            {
+                try
+                {
+                    string blurhash;
+                    using (var memStream = new MemoryStream(m.Bytes, false))
+                    {
+                        blurhash = BlurhashEncoder.Encode(Image.FromStream(memStream), 9, 9);
+                    }
+                    await DBView.StoreBlurhash(m.MediaInfo.media_id, blurhash).ConfigureAwait(false);
+                    Counter.MediaBlurhashed.Increment();
+                }
+                catch { }
+            }
+
         }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
         /// <summary>

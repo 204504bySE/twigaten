@@ -107,6 +107,38 @@ namespace Twigaten.Web.DBHandler
         }
 
         /// <summary>
+        /// Blurhashを取得
+        /// ""→Blurhashがない
+        /// null→media_idがない
+        /// </summary>
+        public async Task<string> SelectBlurhash(long media_id)
+        {
+            using (var cmd = new MySqlCommand(@"SELECT blurhash from media_text WHERE media_id = @media_id;"))
+            {
+                string ret = null;
+                cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
+                await ExecuteReader(cmd, r => { ret = r.GetString(0); }).ConfigureAwait(false);
+                return ret;
+            }
+        }
+
+        /// <summary>
+        /// 今のところWebでしか使わないのでこっちにある
+        /// </summary>
+        /// <param name="media_id"></param>
+        /// <param name="blurhash"></param>
+        /// <returns></returns>
+        public async Task<int> StoreBlurhash(long media_id, string blurhash)
+        {
+            using(var cmd = new MySqlCommand(@"UPDATE media_text SET blurhash = @blurhash WHERE media_id = @media_id;"))
+            {
+                cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
+                cmd.Parameters.Add("@blurhash", MySqlDbType.VarChar).Value = blurhash;
+                return await ExecuteNonQuery(cmd).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
         /// GetUsers()で使うSQL文の先頭部分
         /// </summary>
         const string GetUsersHead = @"SELECT
