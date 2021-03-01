@@ -33,17 +33,5 @@ namespace Twigaten.Web
             if (MediaTotal.Get() > 0) { Console.WriteLine("{0} / {1} / {2} / {3} Media Downloaded", MediaBlurhashed.GetReset(), MediaStored.GetReset(), MediaSuccess.GetReset(), MediaTotal.GetReset()); }
             if (TweetToDelete.Get() > 0) { Console.WriteLine("{0} / {1} Tweet Deleted", TweetDeleted.GetReset(), TweetToDelete.GetReset()); }
         }
-
-        public static void AutoRefresh()
-        {
-            Task.Run(async () =>
-            {
-                while (true)
-                {
-                    await Task.Delay(600000).ConfigureAwait(false);
-                    PrintReset();
-                }
-            });
-        }
     }
 }

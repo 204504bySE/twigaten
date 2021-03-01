@@ -17,7 +17,6 @@ namespace Twigaten.Web
     {
         public static async Task Main(string[] args)
         {
-            Counter.AutoRefresh();
             //Codepagesを必要とする処理が動くようにする
             //https://stackoverflow.com/questions/49215791/vs-code-c-sharp-system-notsupportedexception-no-data-is-available-for-encodin?noredirect=1&lq=1
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
@@ -62,9 +61,24 @@ namespace Twigaten.Web
             if (!string.IsNullOrWhiteSpace(config.ListenUnixSocketPath))
             { new UnixFileInfo(config.ListenUnixSocketPath).FileAccessPermissions = FileAccessPermissions.DefaultPermissions; }
             Console.WriteLine("Ready for requests.");
+            AutoRefresh();
             await host.WaitForShutdownAsync().ConfigureAwait(false);
 
         }
 
+
+        public static void AutoRefresh()
+        {
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(600000).ConfigureAwait(false);
+                    int removedPoolCount = twimgStatic.BlurhashPool.RemoveUnused();
+                    if (0 < removedPoolCount) { Console.WriteLine("{0} / {1} Blurhash encoder removed.", removedPoolCount, twimgStatic.BlurhashPool.Count + removedPoolCount); }
+                    Counter.PrintReset();
+                }
+            });
+        }
     }
 }

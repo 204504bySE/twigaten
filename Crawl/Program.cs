@@ -68,21 +68,17 @@ namespace Twigaten.Crawl
                 long Elapsed = sw.ElapsedMilliseconds;
                 if (Elapsed < 60000)
                 {
+                    await Task.Delay(Math.Min(10000, 60000 - (int)Elapsed >> 2)).ConfigureAwait(false);
+                    int removedPoolCount = UserStreamerStatic.BlurhashPool.RemoveUnused();
+                    if (0 < removedPoolCount) { Console.WriteLine("{0} / {1} Blurhash encoder removed.", removedPoolCount, UserStreamerStatic.BlurhashPool.Count + removedPoolCount); }
                     await Task.Delay(Math.Min(10000, 60000 - (int)Elapsed >> 1)).ConfigureAwait(false);
-                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Default, true, false);
-                    GC.WaitForPendingFinalizers();
                     GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要
                     GC.Collect();
                     //まだ時間が残ってたら休む
                     Elapsed = sw.ElapsedMilliseconds;
                     if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
-                    sw.Restart();
                 }
-                else 
-                {
-                    GC.Collect();
-                    sw.Restart(); 
-                }
+                sw.Restart();
                 //最後に取得したツイート等をDBに保存する(画像の消化が終わることを期待して待ってからやる)
                 await manager.StoreCrawlStatus().ConfigureAwait(false);
                 //↓再読み込みしても一部しか反映されないけどね
