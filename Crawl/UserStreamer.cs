@@ -39,22 +39,8 @@ namespace Twigaten.Crawl
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
 
-        /// <summary>
-        /// UserStreamerStatic.Http(画像取得用HttpClient)とはなんとなく分離しておく
-        /// </summary>
-        static readonly HttpClient Http = new HttpClient(new HttpClientHandler()
-        {
-            UseCookies = false,
-            AutomaticDecompression = DecompressionMethods.All,
-            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13
-        })
-        {
-            DefaultRequestVersion = HttpVersion.Version20,
-            Timeout = TimeSpan.FromSeconds(10)
-        };
         static readonly ConnectionOptions TokenOptions = new ConnectionOptions
         {
-            ExternalHttpClient = Http,
             DisableKeepAlive = false,
             UseCompression = true,
             UseCompressionOnStreaming = true
