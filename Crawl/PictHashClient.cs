@@ -41,7 +41,6 @@ namespace Twigaten.Crawl
         }
 
         readonly static ConcurrentBag<TcpPoolItem> TcpPool = new ConcurrentBag<TcpPoolItem>();
-        readonly static Stopwatch PoolRelease = Stopwatch.StartNew();
         static readonly Random random = new Random();
 
         ///<summary>クソサーバーからDCTHashをもらってくる</summary>

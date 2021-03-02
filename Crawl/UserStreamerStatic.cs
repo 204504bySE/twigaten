@@ -37,14 +37,14 @@ namespace Twigaten.Crawl
             int a, b;
             if ((a = TweetDistinctBlock.InputCount) > 0 | (b = HandleTweetBlock.InputCount) > 0)
             { Console.WriteLine("App: {0} -> {1} Tweets in buffer", a, b); }
-            if ((a = DownloadStoreMediaBlock.InputCount) > 0) { Console.WriteLine("App: {0} Media in buffer", a); }
+            if ((a = DownloadMediaBlock.InputCount) > 0) { Console.WriteLine("App: {0} Media in buffer", a); }
         }
 
         public static bool NeedConnectPostpone()
         {
             return TweetDistinctBlock.InputCount > config.crawl.ConnectPostponeSize
                 || HandleTweetBlock.InputCount > config.crawl.ConnectPostponeSize
-                || DownloadStoreMediaBlock.InputCount > config.crawl.ConnectPostponeSize;
+                || DownloadMediaBlock.InputCount > config.crawl.ConnectPostponeSize;
         }
 
         //ツイートをDBに保存したりRTを先に保存したりする
@@ -147,7 +147,7 @@ namespace Twigaten.Crawl
                 //User Stream滅びるし無条件でふぁぼRT数を更新するよ
                 if ((r = await db.StoreTweet(x, true/*stream*/).ConfigureAwait(false)) >= 0)
                 {
-                    if (x.RetweetedStatus == null) { DownloadStoreMediaBlock.Post((x, t)); }
+                    if (x.RetweetedStatus == null) { DownloadMediaBlock.Post((x, t)); }
                     if (r > 0) { if (stream) { Counter.TweetStoredStream.Increment(); } else { Counter.TweetStoredRest.Increment(); } }
                     break;
                 }
@@ -224,8 +224,8 @@ namespace Twigaten.Crawl
         /// </summary>
         static readonly ActionBlock<(Status, Tokens)> RetryDownloadStoreBlock = new ActionBlock<(Status, Tokens)>(async (a) =>
         {
-            do { await Task.Delay(1000); } while (0 < DownloadStoreMediaBlock.InputCount);
-            DownloadStoreMediaBlock.Post(a);
+            do { await Task.Delay(1000); } while (0 < DownloadMediaBlock.InputCount);
+            DownloadMediaBlock.Post(a);
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
 
@@ -234,7 +234,7 @@ namespace Twigaten.Crawl
         ///画像を取得するやつ
         ///RTはこれに入れないでね
         ///</summary>
-        static readonly ActionBlock<(Status, Tokens)> DownloadStoreMediaBlock = new ActionBlock<(Status x, Tokens t)>(async a =>
+        static readonly ActionBlock<(Status, Tokens)> DownloadMediaBlock = new ActionBlock<(Status x, Tokens t)>(async a =>
         {
             try
             {
@@ -265,9 +265,6 @@ namespace Twigaten.Crawl
 
                     //m.Urlとm.MediaUrlは違う
                     string MediaUrl = m.MediaUrlHttps ?? m.MediaUrl;
-
-                    //画像の保存先パスを生成しておく
-                    string LocalPaththumb = Path.Combine(config.crawl.PictPaththumb, MediaFolderPath.ThumbPath(m.Id, MediaUrl));
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
 
                     byte[] mem = null;
@@ -291,34 +288,49 @@ namespace Twigaten.Crawl
                         //画像の取得に失敗したら多分後でやり直す
                         catch { RetryDownloadStoreBlock.Post(a); continue; }
                     }
-
-                    long? dcthash = await PictHashClient.DCTHash(mem, m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort).ConfigureAwait(false);
-                    string blurhash;
-                    using (var memStream = new MemoryStream(mem, false))
-                    using (var image = Image.FromStream(memStream))
-                    {
-                        blurhash = BlurhashPool.GetEncoder(image.Width, image.Height).Encode(image, 9, 9);
-                    }
-                    //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
-                    //つまりdownloaded_atは画像の保存に失敗しても値が入る
-                    if (dcthash.HasValue && await db.StoreMedia(m, a.x, dcthash.Value, blurhash).ConfigureAwait(false))
-                    {
-                        using (var file = File.Create(LocalPaththumb))
-                        {
-                            await file.WriteAsync(mem, 0, mem.Length).ConfigureAwait(false);
-                            await file.FlushAsync().ConfigureAwait(false);
-                        }
-                        Counter.MediaSuccess.Increment();
-                    }
-                    //URL転載元もペアを記録する
-                    if (OtherSourceTweet) { await db.Storetweet_media(m.SourceStatusId.Value, m.Id).ConfigureAwait(false); }
+                    if (mem != null) { StoreMediaBlock.Post((a.x, m, mem, OtherSourceTweet)); }
                 }
             }
             catch { }   //MediaEntityがnullの時があるっぽい
-        }, new ExecutionDataflowBlockOptions()
-        {
-            MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads,
-        });
+        }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads });
+
+        /// <summary>
+        /// DownloadMediaBlockの続き
+        /// Twitterと通信しない部分を分離してこの部分の並列数を抑える
+        /// </summary>
+        static readonly ActionBlock<(Status, MediaEntity, byte[], bool)> StoreMediaBlock = new ActionBlock<(Status x, MediaEntity m, byte[] mem, bool OtherSourceTweet)>(async (a) =>
+       {
+           try
+           {
+               var dcthashTask = PictHashClient.DCTHash(a.mem, a.m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort);
+               string blurhash;
+               using (var memStream = new MemoryStream(a.mem, false))
+               using (var image = Image.FromStream(memStream))
+               {
+                   blurhash = BlurhashPool.GetEncoder(image.Width, image.Height).Encode(image, 9, 9);
+               }
+               long? dcthash = await dcthashTask.ConfigureAwait(false);
+               //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する
+               //つまりdownloaded_atは画像の保存に失敗しても値が入る
+               if (dcthash.HasValue && await db.StoreMedia(a.m, a.x, dcthash.Value, blurhash).ConfigureAwait(false))
+               {
+                   //m.Urlとm.MediaUrlは違う
+                   string MediaUrl = a.m.MediaUrlHttps ?? a.m.MediaUrl;
+                   string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
+                   //画像の保存先パスを生成
+                   string LocalPaththumb = Path.Combine(config.crawl.PictPaththumb, MediaFolderPath.ThumbPath(a.m.Id, MediaUrl));
+                   using (var file = File.Create(LocalPaththumb))
+                   {
+                       await file.WriteAsync(a.mem, 0, a.mem.Length).ConfigureAwait(false);
+                       await file.FlushAsync().ConfigureAwait(false);
+                   }
+                   Counter.MediaSuccess.Increment();
+               }
+               //URL転載元もペアを記録する
+               if (a.OtherSourceTweet) { await db.Storetweet_media(a.m.SourceStatusId.Value, a.m.Id).ConfigureAwait(false); }
+           }
+           catch { }    //同じ画像を同時に書き込もうとすることがある
+       }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
         ///<summary>RestManger終了時に画像取得が終わるまで待つ</summary>
         public static async Task Complete()
@@ -328,8 +340,10 @@ namespace Twigaten.Crawl
             HandleTweetBlock.Complete();
             await HandleTweetBlock.Completion.ConfigureAwait(false);
             RetryDownloadStoreBlock.Complete(); //これはCompletionを待たない
-            DownloadStoreMediaBlock.Complete();
-            await DownloadStoreMediaBlock.Completion.ConfigureAwait(false);
+            DownloadMediaBlock.Complete();
+            await DownloadMediaBlock.Completion.ConfigureAwait(false);
+            StoreMediaBlock.Complete();
+            await StoreMediaBlock.Completion.ConfigureAwait(false);
         }
 
         //API制限対策用
