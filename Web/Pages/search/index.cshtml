@@ -1,7 +1,8 @@
 ﻿@page
+@using Twigaten.Web.Locale;
 @model Twigaten.Web.SearchIndexModel
 @{
-    ViewData["Title"] = "検索";
+    ViewData["Title"] = Locale.Title_Search;
 }
 @section Scripts{
     <environment include="Development">
@@ -15,7 +16,7 @@
     <twitter-card-description />
     <twitter-card-image />
 }
-<h2>検索</h2>
+<h2>@(ViewBag.Title)</h2>
 <p>アカウント名(@@***) またはツイートのURL(twitter.com/***/status/***)で検索できます。</p>
 <form class="field has-addons twigaten-search">
     <input name="q" placeholder="@@name/URL" class="input twigaten-input-long" />

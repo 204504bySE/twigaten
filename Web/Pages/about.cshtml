@@ -3,13 +3,13 @@
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.AboutModel
 @{
-    ViewData["Title"] = "このサイトについて";
+    ViewData["Title"] = Locale.Title_About;
 }
 @section TwitterCard{
     <twitter-card-description />
     <twitter-card-image />
 }
-<h2>@ViewBag.Title</h2>
+<h2>@(ViewBag.Title)</h2>
 <h3>概要</h3>
 <p>
     Twitter上の画像付きツイートを収集し、よく似た画像同士をまとめて表示します。<br />

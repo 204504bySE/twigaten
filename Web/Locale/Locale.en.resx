@@ -252,4 +252,16 @@
   <data name="Headline_TimelineUpdatedAt" xml:space="preserve">
     <value>Last updated</value>
   </data>
+  <data name="Banner_FindDuplicateImages" xml:space="preserve">
+    <value>Find duplicate images in Twitter</value>
+  </data>
+  <data name="Title_FindDuplicateImages" xml:space="preserve">
+    <value>Find duplicate images in Twitter</value>
+  </data>
+  <data name="Title_About" xml:space="preserve">
+    <value>About This Site</value>
+  </data>
+  <data name="Title_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
 </root>

@@ -61,6 +61,15 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
+        ///   類似画像/画像転載を見つけるやつ に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Banner_FindDuplicateImages {
+            get {
+                return ResourceManager.GetString("Banner_FindDuplicateImages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   « トップページに戻る に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Error_BackTop {
@@ -367,11 +376,29 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
+        ///   このサイトについて に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Title_About {
+            get {
+                return ResourceManager.GetString("Title_About", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   人気のツイートと類似画像 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Title_Featured {
             get {
                 return ResourceManager.GetString("Title_Featured", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Twitter上の類似画像/画像転載を見つけるやつ に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Title_FindDuplicateImages {
+            get {
+                return ResourceManager.GetString("Title_FindDuplicateImages", resourceCulture);
             }
         }
         
@@ -390,6 +417,15 @@ namespace Twigaten.Web.Locale {
         public static string Title_OneTweet {
             get {
                 return ResourceManager.GetString("Title_OneTweet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   検索 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Title_Search {
+            get {
+                return ResourceManager.GetString("Title_Search", resourceCulture);
             }
         }
         

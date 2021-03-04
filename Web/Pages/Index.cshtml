@@ -3,7 +3,7 @@
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.IndexModel
 @{
-    ViewData["Title"] = "Twitter上の類似画像/画像転載を見つけるやつ";
+    ViewData["Title"] = Locale.Title_FindDuplicateImages;
 }
 @section Scripts{
     <script async src="https://platform.twitter.com/widgets.js"></script>
@@ -23,7 +23,7 @@
                 <rt>ツイ<small>ッター</small>画<small>像</small>転<small>載<del>奴～！</del></small></rt>
             </ruby>
         </h1>
-        <p class="subtitle">類似画像/画像転載を見つけるやつ</p>
+        <p class="subtitle">@(Locale.Banner_FindDuplicateImages)</p>
         <p><a href="/auth/login" class="button is-primary">@(Locale.Menu_Login) »</a></p>
     </div>
 </section>

@@ -252,4 +252,16 @@
   <data name="Headline_TimelineUpdatedAt" xml:space="preserve">
     <value>最終更新日時</value>
   </data>
+  <data name="Banner_FindDuplicateImages" xml:space="preserve">
+    <value>類似画像/画像転載を見つけるやつ</value>
+  </data>
+  <data name="Title_FindDuplicateImages" xml:space="preserve">
+    <value>Twitter上の類似画像/画像転載を見つけるやつ</value>
+  </data>
+  <data name="Title_About" xml:space="preserve">
+    <value>このサイトについて</value>
+  </data>
+  <data name="Title_Search" xml:space="preserve">
+    <value>検索</value>
+  </data>
 </root>
