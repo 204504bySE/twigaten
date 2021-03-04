@@ -10,12 +10,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using System.Net.Http;
+using Blurhash;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using CoreTweet;
 using CoreTweet.Streaming;
 using Twigaten.Lib;
-using System.Net.Http;
-using System.Drawing;
-using BlurhashCommon = System.Drawing.Common.Blurhash;
 
 namespace Twigaten.Crawl
 {
@@ -229,7 +230,7 @@ namespace Twigaten.Crawl
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
 
-        internal static readonly BlurhashPool<BlurhashCommon.Encoder> BlurhashPool = new BlurhashPool<BlurhashCommon.Encoder>((size) => new BlurhashCommon.Encoder(size.Width, size.Height, 9, 9));
+        internal static readonly BlurhashPool<Blurhash.ImageSharp.Encoder> BlurhashPool = new((size) => new Blurhash.ImageSharp.Encoder(size.Width, size.Height, 9, 9));
         ///<summary>
         ///画像を取得するやつ
         ///RTはこれに入れないでね
@@ -305,7 +306,7 @@ namespace Twigaten.Crawl
                var dcthashTask = PictHashClient.DCTHash(a.mem, a.m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort);
                string blurhash;
                using (var memStream = new MemoryStream(a.mem, false))
-               using (var image = Image.FromStream(memStream))
+               using (var image = await Image.LoadAsync<Rgb24>(memStream).ConfigureAwait(false))
                {
                    blurhash = BlurhashPool.GetEncoder(image.Width, image.Height).Encode(image, 9, 9);
                }

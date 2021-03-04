@@ -21,7 +21,8 @@
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="5.0.1" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
     <PackageReference Include="MySqlConnector" Version="1.2.1" />
-    <PackageReference Include="System.Drawing.Common" Version="5.0.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta0001" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="5.0.0" />
   </ItemGroup>
 
@@ -29,8 +30,8 @@
     <Reference Include="Blurhash.Core">
       <HintPath>..\Blurhash.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Blurhash.System.Drawing.Common">
-      <HintPath>..\Blurhash.System.Drawing.Common.dll</HintPath>
+    <Reference Include="Blurhash.System.ImageSharp">
+      <HintPath>..\Blurhash.ImageSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
 

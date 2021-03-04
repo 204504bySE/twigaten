@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,6 +9,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using Twigaten.Lib;
 using static Twigaten.Web.twimgStatic;
 
@@ -29,7 +30,7 @@ namespace Twigaten.Web.Controllers
             _WebHostEnvironment = environment;
 
             //profile_image_card用の画像をここで読み込んでおく
-            if (FrameImage == null) { FrameImage = Image.FromFile(Path.Combine(_WebHostEnvironment.WebRootPath, "img/tenframe.png")); }
+            if (FrameImage == null) { FrameImage = Image.Load<Rgba32>(Path.Combine(_WebHostEnvironment.WebRootPath, "img/tenframe.png")); }
         }
 
 
@@ -75,7 +76,7 @@ namespace Twigaten.Web.Controllers
         /// <summary>
         /// ユーザーのアイコンをはめ込む額縁画像(コンストラクタで読み込む)
         /// </summary>
-        static Image FrameImage;
+        static Image<Rgba32> FrameImage;
         /// <summary>ユーザーのアイコンを探して返す</summary>
         [HttpGet("profile_image/{FileName}/card.png")]
         public async Task<IActionResult> profile_image_card(string FileName)
@@ -87,14 +88,13 @@ namespace Twigaten.Web.Controllers
             if (Icon.Data != null)
             {
                 //額縁画像をコピーして使う
-                using (var Frame = new Bitmap(FrameImage))  //これでコピーされる
-                using (var IconImage = Image.FromStream(Icon.Data))
-                using (var g = Graphics.FromImage(Frame))
+                using (var Frame = FrameImage.Clone())  //これでコピーされる
+                using (var IconImage = await Image.LoadAsync<Rgba32>(Icon.Data).ConfigureAwait(false))
                 using (var ret = new MemoryStream())
                 {
                     //額縁っぽいやつの中心にアイコンを描く
-                    g.DrawImage(IconImage, (Frame.Width - IconImage.Width) >> 1, (Frame.Height - IconImage.Height) >> 1);
-                    Frame.Save(ret, ImageFormat.Png);
+                    Frame.Mutate(x => x.DrawImage(IconImage, new Point((Frame.Width - IconImage.Width) >> 1, (Frame.Height - IconImage.Height) >> 1), 1));
+                    await Frame.SaveAsPngAsync(ret).ConfigureAwait(false);
                     return File(ret.ToArray(), GetMime("card.png"));
                 }
             }
