@@ -24,13 +24,16 @@
             </ruby>
         </h1>
         <p class="subtitle">@(Locale.Banner_FindDuplicateImages)</p>
-        <p><a href="/auth/login" class="button is-primary">@(Locale.Menu_Login) »</a></p>
+        <form action="/auth/login" method="post" class="is-flex">
+            @Html.AntiForgeryToken()
+            <a class="button is-primary twigaten-a-submit">@Locale.Menu_Login »</a>
+        </form>
     </div>
 </section>
 <tweet-intent />
 <div>
     <br />
-    <p>1/17 「このサイトについて」を少し更新</p>
+    <p>3/5 一部の「@(Locale.Menu_Login)」が使えないのを修正</p>
     <br />
     <p>└(└ ・o・)┘↓こういうのができたようです。ご活用下さい。</p>
     <blockquote class="twitter-tweet" data-lang="ja"><p lang="ja" dir="ltr">ツイートの共有メニューからTwiGaTenに飛ぶためのアプリを作ってみたよ&#13;&#13;&quot;Jump to TwiGaTen - Google Play の Android アプリ&quot; <a href="https://t.co/9ZUZppHQQN">https://t.co/9ZUZppHQQN</a></p>&mdash; 銀卿 (@@Ginkyo0523) <a href="https://twitter.com/Ginkyo0523/status/899956017424777217?ref_src=twsrc%5Etfw">2017年8月22日</a></blockquote>
@@ -51,7 +54,10 @@
         また、タイムライン上の画像付きツイートが収集されます。<br />
         収集対象のツイートが増え、検索のヒット率が向上します(たぶん)
     </p>
-    <p><a href="/auth/login" class="button is-success">@(Locale.Menu_Login) »</a></p>
+    <form action="/auth/login" method="post" class="is-flex">
+        @Html.AntiForgeryToken()
+        <a class="button is-success twigaten-a-submit">@Locale.Menu_Login»</a>
+    </form>
 </div>
 <div>
     <h2>#なお用途は</h2>

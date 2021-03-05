@@ -30,7 +30,10 @@
     対象は公開アカウントのみです。
 </p>
 <h3>タイムライン</h3>
-<p>@Html.ActionLink("サインインすると使用できます。", "Twitter", "Auth")</p>
+<form action="/auth/login" method="post" class="is-flex">
+    @Html.AntiForgeryToken()
+    <a class="twigaten-a-submit"><small>サインインすると使用できます。</small></a>
+</form>
 <p>
     あなたのタイムラインから、類似画像が見つかったツイートを新しい順に表示します。<br />
     リツイートの表示/非表示の切替ができます。
@@ -68,7 +71,6 @@
     <li>Twitterアカウントによるログイン</li>
     <li>ツイート検索設定の保存</li>
 </ul>
-</p>
 
 <h3>ソースコード</h3>
 <p>
