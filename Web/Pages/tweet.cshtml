@@ -3,13 +3,14 @@
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.Tweet.TweetModel
 @section MetaTags{
-    @if (Model.CanonicalTweetId.HasValue)
+    @if (Model.CanonicalTweetId.HasValue || Model.More)
     {
         var uri = new UriBuilder(Request.GetEncodedUrl());
         uri.Query = null;
         uri.Fragment = null;
         if (uri.Uri.IsDefaultPort) { uri.Port = -1; }
-        uri.Path = "/tweet/" + Model.CanonicalTweetId.Value.ToString();
+        if (Model.CanonicalTweetId.HasValue){ uri.Path = "/tweet/" + Model.CanonicalTweetId.Value.ToString(); }
+        else { uri.Path = "/tweet/" + Model.TweetId.ToString(); }
         <link rel="canonical" href="@(uri.Uri.AbsoluteUri)" />
     }
 }
