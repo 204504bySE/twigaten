@@ -36,6 +36,7 @@ namespace Twigaten.Web.Controllers
 
         /// <summary>ツイ画像(:thumbサイズ)を鯖内 > 横流し で探して返す</summary>
         [HttpGet("thumb/{FileName}")]
+        [ResponseCache(Duration = 604800, VaryByHeader = "Accept-Encoding")]
         public async Task<IActionResult> thumb(string FileName)
         {
             if(!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long media_id)) { return StatusCode(400); }
@@ -63,6 +64,7 @@ namespace Twigaten.Web.Controllers
 
         /// <summary>ユーザーのアイコンを探して返す</summary>
         [HttpGet("profile_image/{FileName}")]
+        [ResponseCache(Duration = 604800, VaryByHeader = "Accept-Encoding")]
         public async Task<IActionResult> profile_image(string FileName)
         {
             //変な文字列を突っ込まれてたときの安易な対策
@@ -79,6 +81,7 @@ namespace Twigaten.Web.Controllers
         static Image<Rgba32> FrameImage;
         /// <summary>ユーザーのアイコンを探して返す</summary>
         [HttpGet("profile_image/{FileName}/card.png")]
+        [ResponseCache(Duration = 604800, VaryByHeader = "Accept-Encoding")]
         public async Task<IActionResult> profile_image_card(string FileName)
         {
             //変な文字列を突っ込まれてたときの安易な対策

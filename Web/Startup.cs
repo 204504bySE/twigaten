@@ -79,7 +79,15 @@ namespace Twigaten.Web
 
             app.UseResponseCompression();
             app.UseDefaultFiles();
-            app.UseCompressedStaticFiles();
+            app.UseCompressedStaticFiles(new StaticFileOptions
+            {
+                //asp-append-version がクエリを付加する
+                //クエリ自体の有無で有効期限を切り替える雑な実装
+                OnPrepareResponse = ctx => {
+                    ctx.Context.Response.Headers.Add("Cache-Control", "public, max-age=" + (ctx.Context.Request.Query.Any() ? "31536000" : "604800"));
+                    ctx.Context.Response.Headers.Add("Vary", "Accept-Encoding");
+                }
+            });
 
             //Localeを作ってもここに書かないと効かない
             var SupportedCultures = new[] 
@@ -102,6 +110,7 @@ namespace Twigaten.Web
             app.UseCookiePolicy();
             app.UseSession();
             app.UseRouting();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapRazorPages();
