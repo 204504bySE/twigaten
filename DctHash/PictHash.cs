@@ -6,6 +6,8 @@ using System.Drawing.Imaging;
 using System.Linq;
 using System.Numerics;
 using System.Buffers;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Advanced;
 
 namespace Twigaten.DctHash
 {
@@ -71,9 +73,9 @@ namespace Twigaten.DctHash
         public static long? DCTHash(Stream imgStream, bool Crop = false)
         {
             if(imgStream == null) { return null; }
+
             Span<float> monoimage = stackalloc float[size * size];
             MonoImage(imgStream, monoimage, Crop);
-            //var monoimage = MonoImage(imgStream, Crop);
             var hashbuf = MemoryMarshal.Cast<float, Vector<float>>(monoimage); //モノクロ縮小画像
             if (hashbuf == null) { return null; }
             //DCTやる phashで必要な成分だけ求める
@@ -146,7 +148,7 @@ namespace Twigaten.DctHash
             {
                 using Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb);
                 using Graphics g = Graphics.FromImage(miniimage);
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;  //HighQualityBilinerは非対応←???
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.High;  //HighQualityBilinerは非対応←???←initial commit時点でHighになっていたのでとりあえずHighで
                 g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
                 using (Image img = Image.FromStream(imgStream))
                 {

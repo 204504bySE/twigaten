@@ -8,6 +8,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using MessagePack;
+using SixLabors.ImageSharp.Advanced;
+using SixLabors.ImageSharp.PixelFormats;
 using Twigaten.Lib;
 
 #pragma warning disable CS4014 // この呼び出しは待機されなかったため、現在のメソッドの実行は呼び出しの完了を待たずに続行されます
@@ -22,7 +24,7 @@ namespace Twigaten.DctHash
             var listener = new TcpListener(config.ListenIPv6 ? IPAddress.IPv6Any : IPAddress.Any, config.ListenPort);
 
             try { listener.Start(); }
-            catch 
+            catch
             {
                 Console.WriteLine("Failed to listen on {0} Exiting.", listener.LocalEndpoint);
                 return;
@@ -53,8 +55,21 @@ namespace Twigaten.DctHash
                                 if (!msgpack.HasValue) { break; }
                                 req = MessagePackSerializer.Deserialize<PictHashRequest>(msgpack.Value);
                             }
-                            using var mem = new MemoryStream(req.MediaFile, false);
-                            var res = new PictHashResult() { UniqueId = req.UniqueId, DctHash = PictHash.DCTHash(mem, req.Crop) };
+                            PictHashResult res;
+                            long? dctHash;
+                            using (var mediaMem = new MemoryStream(req.MediaFile, false))
+                            //GdiPlusが腐ってるのでImageSharpで読み込む
+                            using (var mem = new MemoryStream())
+                            {
+                                using (var img = SixLabors.ImageSharp.Image.Load<Rgba32>(mediaMem))
+                                {
+                                    img.Save(mem, img.GetConfiguration().ImageFormatsManager.FindEncoder(SixLabors.ImageSharp.Formats.Bmp.BmpFormat.Instance));
+                                }
+                                mem.Seek(0, SeekOrigin.Begin);
+                                dctHash = PictHash.DCTHash(mem, req.Crop);
+                            }
+                            res = new PictHashResult() { UniqueId = req.UniqueId, DctHash = dctHash };
+
                             await MessagePackSerializer.SerializeAsync(tcp, res, null, cancel.Token).ConfigureAwait(false);
                         }
                     }
