@@ -44,7 +44,6 @@ namespace Twigaten.Web
         }
 
         readonly static ConcurrentBag<TcpPoolItem> TcpPool = new ConcurrentBag<TcpPoolItem>();
-        readonly static Stopwatch PoolRelease = Stopwatch.StartNew();
 
         ///<summary>クソサーバーからDCTHashをもらってくる</summary>
         public static async Task<long?> DCTHashCrop(byte[] Source, string HostName, int Port)

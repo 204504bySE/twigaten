@@ -40,7 +40,7 @@ namespace Twigaten.Crawl
             { Console.WriteLine("App: {0} -> {1} Tweets in buffer", a, b); }
             if ((a = DownloadMediaBlock.InputCount) > 0) { Console.WriteLine("App: {0} Media in buffer", a); }
         }
-
+        
         public static bool NeedConnectPostpone()
         {
             return TweetDistinctBlock.InputCount > config.crawl.ConnectPostponeSize
