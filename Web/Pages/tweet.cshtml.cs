@@ -19,6 +19,10 @@ namespace Twigaten.Web.Pages.Tweet
         [BindProperty(SupportsGet = true)]
         public string MoreStr { get; set; }
         public bool More => MoreStr == "more";
+        /// <summary>
+        /// 検索エンジン向けのツイートURL(このツイと同じ画像がある一番古いツイ, 別に1個だけあるときのみ)
+        /// </summary>
+        public long? CanonicalTweetId { get; set; }
 
         public SimilarMediaTweet[] Tweets;
         public LoginParameters Params;
@@ -39,6 +43,21 @@ namespace Twigaten.Web.Pages.Tweet
             else { Tweets = await View.SimilarMediaTweet(TweetId, Params.ID).ConfigureAwait(false); }
 
             if(Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
+            else
+            {
+                //CanonicalTweetIdを探す
+                var OldestIds = Tweets.Where(t =>
+                {
+                    var oldestSimilar = t.Similars.FirstOrDefault();
+                    return oldestSimilar != null && oldestSimilar.tweet.created_at < t.tweet.created_at;
+                }).Select(t => t.Similars.First().tweet.tweet_id)
+                    .ToArray();
+                if (OldestIds.Length == Tweets.Length)
+                {
+                    long OldestId = OldestIds[0];
+                    if (OldestIds.All(id => id == OldestId)) { CanonicalTweetId = OldestId; }
+                }
+            }
             QueryElapsedMilliseconds = sw.ElapsedMilliseconds;
             return Page();
         }

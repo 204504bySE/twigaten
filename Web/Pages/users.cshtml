@@ -1,4 +1,5 @@
 ﻿@page "{UserId}"
+@using Microsoft.AspNetCore.Http.Extensions;
 @using Twigaten.Web.Locale;
 @using Twigaten.Lib;
 @model Twigaten.Web.Pages.Tweet.UsersModel
@@ -7,7 +8,13 @@
     <partial name="UserTLScript" />
 }
 @section MetaTags{
-    <meta name="robots" content="noindex" />
+    @{
+        var uri = new UriBuilder(Request.GetEncodedUrl());
+        uri.Query = null;
+        uri.Fragment = null;
+        if (uri.Uri.IsDefaultPort) { uri.Port = -1; }
+        <link rel="canonical" href="@(uri.Uri.AbsoluteUri)" />
+    }
 }
 @section TwitterCard{
     <twitter-card-description />

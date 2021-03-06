@@ -1,6 +1,18 @@
 ﻿@page "{TweetId}/{MoreStr?}"
+@using Microsoft.AspNetCore.Http.Extensions;
 @using Twigaten.Web.Locale;
 @model Twigaten.Web.Pages.Tweet.TweetModel
+@section MetaTags{
+    @if (Model.CanonicalTweetId.HasValue)
+    {
+        var uri = new UriBuilder(Request.GetEncodedUrl());
+        uri.Query = null;
+        uri.Fragment = null;
+        if (uri.Uri.IsDefaultPort) { uri.Port = -1; }
+        uri.Path = "/tweet/" + Model.CanonicalTweetId.Value.ToString();
+        <link rel="canonical" href="@(uri.Uri.AbsoluteUri)" />
+    }
+}
 @section Scripts{
     <partial name="TweetScript" />
 }
@@ -25,7 +37,7 @@ else
 {
     ViewData["Title"] = string.Format(Locale.Title_NoTweetToShow, Model.TweetId);
 }
-@{ 
+@{
     ViewData["IsMore"] = Model.More;
 }
 @if (Model.Tweets.Length > 0)
