@@ -279,7 +279,7 @@ ORDER BY o.created_at LIMIT 1
             {
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 long? ret = null;
-                await ExecuteReader(cmd, (r) => ret = r.GetInt64(0)).ConfigureAwait(false);
+                await ExecuteReader(cmd, (r) => { if (!r.IsDBNull(0)){ ret = r.GetInt64(0); } }).ConfigureAwait(false);
                 return ret;
             }
         }
