@@ -43,7 +43,7 @@ namespace Twigaten.Web.Controllers
 
             //まずは鯖内のファイルを探す 拡張子はリクエストURLを信頼して手を抜く
             string localmedia = MediaFolderPath.ThumbPath(media_id, FileName);
-            if (System.IO.File.Exists(localmedia)) { return File(System.IO.File.OpenRead(localmedia), GetMime(FileName), true); }
+            if (System.IO.File.Exists(localmedia)) { return PhysicalFile(localmedia, GetMime(FileName), true); }
 
             //鯖内にファイルがなかったのでtwitterから横流しする
             var MediaInfo = await DB.SelectThumbUrl(media_id).ConfigureAwait(false);
@@ -60,6 +60,17 @@ namespace Twigaten.Web.Controllers
                 return File(ret.FileBytes, GetMime(FileName));
             }
             else { return StatusCode((int)ret.StatusCode); }
+        }
+
+        /// <summary>ツイ画像のblurhashを返す</summary>
+        [HttpGet("thumb/{FileName}/blurhash")]
+        [ResponseCache(Duration = 604800, VaryByHeader = "Accept-Encoding")]
+        public async Task<IActionResult> thumb_blurhash(string FileName)
+        {
+            if (!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long media_id)) { return StatusCode(400); }
+            string blurhash = await DB.SelectThumeBlurHash(media_id).ConfigureAwait(false);
+            if(blurhash == null) { return StatusCode(StatusCodes.Status404NotFound); }
+            return Content(blurhash);
         }
 
         /// <summary>ユーザーのアイコンを探して返す</summary>

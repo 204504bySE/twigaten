@@ -35,6 +35,7 @@
   {
     "outputFileName": "wwwroot/js/twigaten-tweet.min.js",
     "inputFiles": [
+      "wwwroot/js/blurhash_pure_js_port.min.js",
       "wwwroot/js/twigaten-tweet.js"
     ]
   }

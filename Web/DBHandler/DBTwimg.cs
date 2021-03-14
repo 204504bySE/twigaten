@@ -20,6 +20,10 @@ namespace Twigaten.Web.DBHandler
             public string tweet_url { get { return "https://twitter.com/" + screen_name + "/status/" + source_tweet_id.ToString(); } }
         }
 
+        /// <summary>
+        /// ツイート画像の元URL
+        /// 見つからない場合はnull
+        /// </summary>
         public async Task<MediaInfo?> SelectThumbUrl(long media_id)
         {
             MediaInfo? ret = null;
@@ -41,6 +45,24 @@ WHERE media_id = @media_id;"))
             }
             //つまりDBのアクセスに失敗したりしてもnull
             return ret;
+        }
+
+        /// <summary>
+        /// ツイート画像のblurhash
+        /// ない場合はnull(DBには空文字が入っててもnull)
+        /// </summary>
+        public async Task<string> SelectThumeBlurHash(long media_id)
+        {
+            string ret = null;
+            using (var cmd = new MySqlCommand(@"SELECT blurhash
+FROM media_text
+WHERE media_id = @media_id;"))
+            {
+                cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
+                await ExecuteReader(cmd, (r) => ret = r.GetString(0)).ConfigureAwait(false);
+            }
+            //つまりDBのアクセスに失敗したりしてもnull
+            return string.IsNullOrWhiteSpace(ret) ? null : ret;
         }
 
         ///<summary>そのツイートの全画像に対して
