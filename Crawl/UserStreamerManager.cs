@@ -101,7 +101,7 @@ namespace Twigaten.Crawl
         /// UserStreamerの再接続やRESTによるツイート取得などを行うやつ
         /// </summary>
         class ConnectBlock
-        {            
+        {
             readonly ActionBlock<UserStreamer> InnerBlock;
 
             int _ActiveStreamers;
@@ -180,7 +180,7 @@ namespace Twigaten.Crawl
                 });
             }
 
-            public Task<bool> SendAsync(UserStreamer Streamer) => InnerBlock.SendAsync(Streamer);
+            public Task<bool> SendAsync(UserStreamer Streamer, CancellationToken Cancel) => InnerBlock.SendAsync(Streamer, Cancel);
             public Task Complete()
             {
                 InnerBlock.Complete();
@@ -202,9 +202,6 @@ namespace Twigaten.Crawl
             var ConnectBlock = new ConnectBlock(this);
 
             //SetMaxConnections(0);
-
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
             Counter.PrintReset();
 
             //TLがある程度進んでいるアカウントと一定時間取得してないアカウントだけ接続する
@@ -214,17 +211,22 @@ namespace Twigaten.Crawl
                     || (s.LastMessageTime - now).TotalSeconds > config.crawl.MaxRestInterval)
                 .OrderByDescending(s => s.EstimatedTweetToReceive)
                 .ToArray();
-            foreach (var s in StreamersSelected)
+            using (var cancel = new CancellationTokenSource(60000))
             {
-                if (!await ConnectBlock.SendAsync(s).ConfigureAwait(false)) { break; }    //そんなバナナ
-
-                //ツイートが詰まってたら休む 
-                while (UserStreamerStatic.NeedConnectPostpone() && sw.ElapsedMilliseconds <= 60000)
+                try
                 {
-                    await ExistThisPid().ConfigureAwait(false);
-                    await Task.Delay(1000).ConfigureAwait(false);
+                    foreach (var s in StreamersSelected)
+                    {
+                        if (!await ConnectBlock.SendAsync(s, cancel.Token).ConfigureAwait(false)) { break; }    //そんなバナナ
+
+                        //ツイートが詰まってたら休む 
+                        while (UserStreamerStatic.NeedConnectPostpone() && !cancel.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(1000, cancel.Token).ConfigureAwait(false);
+                        }
+                    }
                 }
-                if(sw.ElapsedMilliseconds > 60000) { break; }
+                catch (TaskCanceledException) { }
             }
             await ConnectBlock.Complete().ConfigureAwait(false);
             await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
