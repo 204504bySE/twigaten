@@ -26,10 +26,16 @@ namespace Twigaten.DctHash
             try { listener.Start(); }
             catch
             {
-                Console.WriteLine("Failed to listen on {0} Exiting.", listener.LocalEndpoint);
+                Console.WriteLine("Failed to listen {0} Exiting.", listener.LocalEndpoint);
                 return;
             }
-            Console.WriteLine("Listening on {0}", listener.LocalEndpoint);
+            Console.WriteLine("Listening {0}", listener.LocalEndpoint);
+
+            using var gcTimer = new Timer((_) =>
+            {
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                GC.Collect();
+            }, null, 600000, 600000);
 
             while (true)
             {
@@ -51,16 +57,16 @@ namespace Twigaten.DctHash
                             using var cancel = new CancellationTokenSource(60000);
                             PictHashRequest req;
                             {
-                                var msgpack = await reader.ReadAsync(cancel.Token);
+                                var msgpack = await reader.ReadAsync(cancel.Token).ConfigureAwait(false);
                                 if (!msgpack.HasValue) { break; }
                                 req = MessagePackSerializer.Deserialize<PictHashRequest>(msgpack.Value);
                             }
                             PictHashResult res;
                             long? dctHash;
                             using (var mediaMem = new MemoryStream(req.MediaFile, false))
-                            //GdiPlusが腐ってるのでImageSharpで読み込む
                             using (var mem = new MemoryStream())
                             {
+                                //GdiPlusが腐ってるのでImageSharpで読み込む
                                 using (var img = SixLabors.ImageSharp.Image.Load<Rgba32>(mediaMem))
                                 {
                                     img.Save(mem, img.GetConfiguration().ImageFormatsManager.FindEncoder(SixLabors.ImageSharp.Formats.Bmp.BmpFormat.Instance));
