@@ -68,9 +68,6 @@ namespace Twigaten.Crawl
                 long Elapsed = sw.ElapsedMilliseconds;
                 if (Elapsed < 60000)
                 {
-                    await Task.Delay(Math.Min(10000, 60000 - (int)Elapsed >> 2)).ConfigureAwait(false);
-                    int removedPoolCount = UserStreamerStatic.BlurhashPool.RemoveUnused();
-                    if (0 < removedPoolCount) { Console.WriteLine("{0} / {1} Blurhash encoder removed.", removedPoolCount, UserStreamerStatic.BlurhashPool.Count + removedPoolCount); }
                     await Task.Delay(Math.Min(10000, 60000 - (int)Elapsed >> 1)).ConfigureAwait(false);
                     GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要
                     GC.Collect();

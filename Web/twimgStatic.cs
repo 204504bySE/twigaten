@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Twigaten.Lib;
+using Twigaten.Lib.BlurHash;
 using Twigaten.Web.DBHandler;
 
 namespace Twigaten.Web
@@ -35,8 +36,7 @@ namespace Twigaten.Web
         internal static readonly DBView DBView = DBHandler.DB.View;
         internal static readonly RemovedMedia Removed = new RemovedMedia();
 
-        internal static readonly BlurhashPool<Blurhash.ImageSharp.Encoder> BlurhashPool = new ((size) => new Blurhash.ImageSharp.Encoder(size.Width, size.Height, 9, 9));
-
+        static readonly Blurhash.ImageSharp.Encoder BlurHashEncoder = new(new BasisCache());
         /// <summary>
         /// 取得した画像(thumb)を保存 DBはdownloaded_atだけ更新する
         /// </summary>
@@ -66,7 +66,7 @@ namespace Twigaten.Web
                     using (var memStream = new MemoryStream(m.Bytes, false))
                     using (var image = await Image.LoadAsync<Rgb24>(memStream).ConfigureAwait(false))
                     {
-                        blurhash = BlurhashPool.GetEncoder(image.Width, image.Height).Encode(image, 9, 9);
+                        blurhash = BlurHashEncoder.Encode(image, 9, 9);
                     }
                     await DBView.StoreBlurhash(m.MediaInfo.media_id, blurhash).ConfigureAwait(false);
                     Counter.MediaBlurhashed.Increment();

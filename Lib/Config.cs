@@ -17,7 +17,8 @@ namespace Twigaten.Lib
         {
             try
             {
-                string iniPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twiten.ini");
+                string iniPath = Environment.GetEnvironmentVariable("TWIGATEN_CONFIG_PATH");
+                if (string.IsNullOrWhiteSpace(iniPath)) { iniPath =  Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twiten.ini"); }
                 var ini = new FileIniDataParser();
                 var data = ini.ReadFile(iniPath);
                 token = new _token(data);
@@ -30,7 +31,7 @@ namespace Twigaten.Lib
                 web = new _web(data);
                 database = new _database(data);
             }
-            catch { Console.WriteLine("FAILED TO LOAD twiten.ini"); }
+            catch { Console.WriteLine("FAILED TO LOAD config file."); }
         }
 
         //singletonはこれでインスタンスを取得して使う

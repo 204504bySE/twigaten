@@ -79,7 +79,7 @@ namespace Twigaten.Web.TagHelpers
 
             output.Attributes.SetAttribute("href", new HtmlString("https://twitter.com/intent/tweet?text="
                 + Uri.EscapeDataString(ViewContext.ViewData["title"] + " - TwiGaTen")
-                + "&url=" + Uri.EscapeDataString(Builder.ToString())));
+                + "&url=" + Uri.EscapeDataString(Builder.Uri.AbsoluteUri)));
             output.Attributes.SetAttribute("rel", "nofollow noopener noreferrer");
             output.Attributes.SetAttribute("target", "_blank");
             output.Attributes.SetAttribute("class", "button is-outlined is-primary is-small");
@@ -118,7 +118,7 @@ namespace Twigaten.Web.TagHelpers
 
             output.Attributes.SetAttribute("href", new HtmlString("https://twitter.com/intent/tweet?text=" 
                 + Uri.EscapeDataString(string.Format(Locale.Locale.Title_OneTweet, Tweet.user.screen_name) + " - TwiGaTen")
-                + "&url=" + Uri.EscapeDataString(Builder.ToString())));
+                + "&url=" + Uri.EscapeDataString(Builder.Uri.AbsoluteUri)));
             output.Attributes.SetAttribute("rel", "nofollow noopener noreferrer");
             output.Attributes.SetAttribute("target", "_blank");
             output.Attributes.SetAttribute("class", "button is-outlined is-primary is-small");

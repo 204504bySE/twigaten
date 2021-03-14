@@ -34,4 +34,8 @@
 
   <Import Project="..\Lib\Lib.projitems" Label="Shared" />
 
+  <Import Project="..\Lib.DctHash\Lib.DctHash.projitems" Label="Shared" />
+
+  <Import Project="..\Lib.BlurHash\Lib.BlurHash.projitems" Label="Shared" />
+
 </Project>

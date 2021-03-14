@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MessagePack;
-using Twigaten.Lib;
 
-namespace Twigaten.Crawl
+namespace Twigaten.Lib.DctHash
 {
-    static class PictHashClient
+    class DctHashClient
     {
         readonly struct TcpPoolItem : IDisposable
         {
@@ -39,12 +36,23 @@ namespace Twigaten.Crawl
                 catch { }
             }
         }
+        readonly ConcurrentBag<TcpPoolItem> TcpPool = new ConcurrentBag<TcpPoolItem>();
 
-        readonly static ConcurrentBag<TcpPoolItem> TcpPool = new ConcurrentBag<TcpPoolItem>();
-        static readonly Random random = new Random();
+        readonly string HostName;
+        readonly int Port;
+        public DctHashClient(string HostName, int Port)
+        {
+            this.HostName = HostName;
+            this.Port = Port;
+        }
 
-        ///<summary>クソサーバーからDCTHashをもらってくる</summary>
-        public static async Task<long?> DCTHash(byte[] Source, long media_id, string HostName, int Port)
+        readonly Random random = new Random();
+
+        ///<summary>
+        ///クソサーバーからDCTHashをもらってくる
+        ///自動リトライつき
+        ///</summary>
+        public async Task<long?> DCTHash(byte[] Source, long media_id)
         {
             for (int i = 0; i < 5; i++)
             {
@@ -58,17 +66,17 @@ namespace Twigaten.Crawl
                         if (!TcpPool.TryTake(out tcp)) { tcp = new TcpPoolItem(HostName, Port); }
                     }
                     using var cancel = new CancellationTokenSource(10000);
-                    await MessagePackSerializer.SerializeAsync(tcp.Stream, new PictHashRequest() { UniqueId = media_id, MediaFile = Source },null, cancel.Token).ConfigureAwait(false);
+                    await MessagePackSerializer.SerializeAsync(tcp.Stream, new PictHashRequest() { UniqueId = media_id, MediaFile = Source }, null, cancel.Token).ConfigureAwait(false);
                     var msgpack = await tcp.Reader.ReadAsync(cancel.Token);
                     TcpPool.Add(tcp);
 
-                    if (msgpack.HasValue) 
+                    if (msgpack.HasValue)
                     {
                         var result = MessagePackSerializer.Deserialize<PictHashResult>(msgpack.Value);
                         if (result.UniqueId == media_id) { return result.DctHash; }
                     }
                 }
-                catch 
+                catch
                 {
                     tcp.Dispose();
                     //再試行はdcthashの再起動待ち時間をある程度考慮して選ぶ
@@ -76,6 +84,36 @@ namespace Twigaten.Crawl
                     await Task.Delay(random.Next(retryms, retryms << 1)).ConfigureAwait(false);
                 }
             }
+            return null;
+        }
+
+        ///<summary>
+        ///クソサーバーからDCTHashをもらってくる
+        ///web(画像で検索)用 リトライなし
+        ///</summary>
+        public async Task<long?> DCTHashCrop(byte[] Source)
+        {
+            TcpPool.TryTake(out var tcp);
+            try
+            {
+                //可能な限りプールされた接続を使おうとする
+                while (!tcp.Connected)
+                {
+                    tcp.Dispose();
+                    if (!TcpPool.TryTake(out tcp)) { tcp = new TcpPoolItem(HostName, Port); }
+                }
+                using var cancel = new CancellationTokenSource(10000);
+                long unique = Environment.TickCount64;
+                await MessagePackSerializer.SerializeAsync(tcp.Stream, new PictHashRequest() { UniqueId = unique, Crop = true, MediaFile = Source }, null, cancel.Token).ConfigureAwait(false);
+                var msgpack = await tcp.Reader.ReadAsync(cancel.Token);
+                TcpPool.Add(tcp);
+                if (msgpack.HasValue)
+                {
+                    var result = MessagePackSerializer.Deserialize<PictHashResult>(msgpack.Value);
+                    if (result.UniqueId == unique) { return result.DctHash; }
+                }
+            }
+            catch { tcp.Dispose(); }
             return null;
         }
     }

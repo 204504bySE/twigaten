@@ -9,11 +9,9 @@
     <Import_RootNamespace>Twigaten.Lib</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)Blurhash.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Config.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)MediaFolderPath.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DBHandler.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)PictHash.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)RemoveOldSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SnowFlake.cs" />
   </ItemGroup>

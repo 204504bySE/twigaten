@@ -11,12 +11,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using System.Net.Http;
-using Blurhash;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using CoreTweet;
 using CoreTweet.Streaming;
 using Twigaten.Lib;
+using Twigaten.Lib.DctHash;
+using Twigaten.Lib.BlurHash;
 
 namespace Twigaten.Crawl
 {
@@ -230,7 +231,6 @@ namespace Twigaten.Crawl
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
 
-        internal static readonly BlurhashPool<Blurhash.ImageSharp.Encoder> BlurhashPool = new((size) => new Blurhash.ImageSharp.Encoder(size.Width, size.Height, 9, 9));
         ///<summary>
         ///画像を取得するやつ
         ///RTはこれに入れないでね
@@ -295,6 +295,9 @@ namespace Twigaten.Crawl
             catch { }   //MediaEntityがnullの時があるっぽい
         }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = config.crawl.MediaDownloadThreads });
 
+        static readonly DctHashClient PictHash = new(config.crawl.HashServerHost, config.crawl.HashServerPort);
+        static readonly Blurhash.ImageSharp.Encoder BlurHashEncoder = new(new BasisCache());
+
         /// <summary>
         /// DownloadMediaBlockの続き
         /// Twitterと通信しない部分を分離してこの部分の並列数を抑える
@@ -303,12 +306,12 @@ namespace Twigaten.Crawl
        {
            try
            {
-               var dcthashTask = PictHashClient.DCTHash(a.mem, a.m.Id, config.crawl.HashServerHost, config.crawl.HashServerPort);
+               var dcthashTask = PictHash.DCTHash(a.mem, a.m.Id);
                string blurhash;
                using (var memStream = new MemoryStream(a.mem, false))
                using (var image = await Image.LoadAsync<Rgb24>(memStream).ConfigureAwait(false))
                {
-                   blurhash = BlurhashPool.GetEncoder(image.Width, image.Height).Encode(image, 9, 9);
+                   blurhash = BlurHashEncoder.Encode(image, 9, 9);
                }
                long? dcthash = await dcthashTask.ConfigureAwait(false);
                //画像のハッシュ値の算出→DBへ一式保存に成功したらファイルを保存する

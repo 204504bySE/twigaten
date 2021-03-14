@@ -61,6 +61,7 @@ namespace Twigaten.Web
             if (!string.IsNullOrWhiteSpace(config.ListenUnixSocketPath))
             { new UnixFileInfo(config.ListenUnixSocketPath).FileAccessPermissions = FileAccessPermissions.DefaultPermissions; }
             Console.WriteLine("Ready for requests.");
+
             AutoRefresh();
             await host.WaitForShutdownAsync().ConfigureAwait(false);
 
@@ -74,8 +75,6 @@ namespace Twigaten.Web
                 while (true)
                 {
                     await Task.Delay(600000).ConfigureAwait(false);
-                    int removedPoolCount = twimgStatic.BlurhashPool.RemoveUnused();
-                    if (0 < removedPoolCount) { Console.WriteLine("{0} / {1} Blurhash encoder removed.", removedPoolCount, twimgStatic.BlurhashPool.Count + removedPoolCount); }
                     Counter.PrintReset();
                 }
             });
