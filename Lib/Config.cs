@@ -153,8 +153,6 @@ namespace Twigaten.Lib
             public int MergeSortPostponePairCount { get; }
             public int ZipBufferElements { get; }
             public int MultipleSortBufferElements { get; }
-            public long LastUpdate { get; }
-            public long LastHashCount { get; }
 
             public _hash(string iniPath, FileIniDataParser ini, IniData data)
             {
@@ -168,18 +166,6 @@ namespace Twigaten.Lib
                 MergeSortPostponePairCount = int.Parse(data["hash"][nameof(MergeSortPostponePairCount)] ?? "10000000");
                 ZipBufferElements = int.Parse(data["hash"][nameof(ZipBufferElements)] ?? "32768");
                 MultipleSortBufferElements = int.Parse(data["hash"][nameof(MultipleSortBufferElements)] ?? "25000");
-                LastUpdate = long.Parse(data["hash_info"][nameof(LastUpdate)] ?? "0");
-                LastHashCount = long.Parse(data["hash_info"][nameof(LastHashCount)] ?? "0");
-            }
-            public void NewLastUpdate(long time)
-            {
-                data["hash_info"][nameof(LastUpdate)] = time.ToString();
-                ini.WriteFile(iniPath, data);
-            }
-            public void NewLastHashCount(long Count)
-            {
-                data["hash_info"][nameof(LastHashCount)] = Count.ToString();
-                ini.WriteFile(iniPath, data);
             }
         }
         public _hash hash;

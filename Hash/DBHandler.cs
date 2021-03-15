@@ -6,19 +6,26 @@ using MySqlConnector;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using System.Collections.Concurrent;
+using System.IO;
 
 namespace Twigaten.Hash
 {
     class DBHandler : Lib.DBHandler
     {
-        public DBHandler() : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400) { }
-        
+        public DBHandler(HashFile hashfile) : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400)
+        {
+            this.hashfile = hashfile;
+
+            HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(Math.Max(1, hashfile.LastHashCount), 2));
+            TableListSize = (int)Math.Max(4096, hashfile.LastHashCount >> (63 - HashUnitBits) << 2);
+        }
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpairslim VALUES";
         public const int StoreMediaPairsUnit = 1000;
         static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 2, StoreMediaPairsHead);
 
+        readonly HashFile hashfile;
         readonly ConcurrentBag<MySqlCommand> StoreMediaPairsCmdPool = new ConcurrentBag<MySqlCommand>();
-
+        
         public async Task<int> StoreMediaPairs(HashPair[] StorePairs)
         //類似画像のペアをDBに保存
         {
@@ -71,18 +78,20 @@ namespace Twigaten.Hash
 
         //tableをlarge heapに入れたくなかったら64 + "9" - ~~~ が限度
         //ArrayPool使ってるからもう関係ないけど
-        internal static readonly int HashUnitBits = Math.Min(63, 64 + 11 - (int) Math.Log(Math.Max(1, config.hash.LastHashCount), 2));
+        internal readonly int HashUnitBits;
         //とりあえず平均より十分大きめに
-        internal static int TableListSize = (int)Math.Max(4096, config.hash.LastHashCount >> (63 - HashUnitBits) << 2);
+        internal readonly int TableListSize;
 
         ///<summary>DBから読み込んだハッシュをそのままファイルに書き出す</summary>
-        public async Task<long> AllMediaHash()
+        ///<param name="SaveTime">保存するファイル名に付けるUNIX時刻</param>
+        public async Task<long> AllMediaHash(long SaveTime)
         {
             try
             {
-                using (var writer = new BufferedLongWriter(SplitQuickSort.AllHashFilePath))
+                long TotalHashCount = 0;
+                string HashFilePath = HashFile.AllHashFilePathBase(SaveTime.ToString());
+                using (var writer = new BufferedLongWriter(HashFile.TempFilePath(HashFilePath)))
                 {
-                    long TotalHashCount = 0;
 
                     var LoadHashBlock = new TransformBlock<long, AddOnlyList<long>>(async (i) =>
                     {
@@ -122,8 +131,9 @@ GROUP BY dcthash;"))
                     }
                     LoadHashBlock.Complete();
                     await WriterBlock.Completion.ConfigureAwait(false);
-                    return TotalHashCount;
                 }
+                File.Move(HashFile.TempFilePath(HashFilePath), HashFilePath);
+                return TotalHashCount;
             }
             catch (Exception e) { Console.WriteLine(e); return -1; }
         }
@@ -133,9 +143,11 @@ GROUP BY dcthash;"))
         ///これが始まった後に追加されたハッシュは無視されるが
         ///次回の実行で拾われるから問題ない
         /// </summary>
-        public async Task<HashSet<long>> NewerMediaHash(long BeginUnixTime)
+        ///<param name="SaveTime">保存するファイル名に付けるUNIX時刻</param>
+        ///<param name="BeginTime">downloaded_atがこれ以降のハッシュを取得する</param>
+        public async Task<HashSet<long>> NewerMediaHash(long SaveTime, long BeginTime)
         {
-            string FilePath = SplitQuickSort.NewerHashFilePath(BeginUnixTime.ToString());
+            string FilePath = HashFile.NewerHashFilePathBase(SaveTime.ToString());
             try
             {
                 var ret = new HashSet<long>();
@@ -150,25 +162,26 @@ FROM media_downloaded_at
 NATURAL JOIN media
 WHERE downloaded_at BETWEEN @begin AND @end;"))
                         {
-                            cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * i;
-                            cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = config.hash.LastUpdate + QueryRangeSeconds * (i + 1) - 1;
+                            cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = BeginTime + QueryRangeSeconds * i;
+                            cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = BeginTime + QueryRangeSeconds * (i + 1) - 1;
                             if (await ExecuteReader(cmd, (r) => Table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
                             else { Table.Clear(); }
                         }
                     }
                     lock (ret) { foreach (long h in Table) { ret.Add(h); } }
                 }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
-                for(long i = 0; i < Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - config.hash.LastUpdate) / QueryRangeSeconds + 1; i++)
+                for(long i = 0; i < Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - BeginTime) / QueryRangeSeconds + 1; i++)
                 {
                     LoadHashBlock.Post(i);
                 }
                 LoadHashBlock.Complete();
                 await LoadHashBlock.Completion.ConfigureAwait(false);
                                 
-                using (var writer = new UnbufferedLongWriter(FilePath))
+                using (var writer = new UnbufferedLongWriter(HashFile.TempFilePath(FilePath)))
                 {
                     writer.WriteDestructive(ret.ToArray(), ret.Count);
                 }
+                File.Move(HashFile.TempFilePath(FilePath), FilePath);
                 return ret;
             }catch(Exception e) { Console.WriteLine(e); return null; }
         }

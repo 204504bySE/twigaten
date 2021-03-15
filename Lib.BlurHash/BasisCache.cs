@@ -7,6 +7,10 @@ using Blurhash.Core;
 
 namespace Twigaten.Lib.BlurHash
 {
+    /// <summary>
+    /// blurhashの計算に使うcos(θ)の値を保存する
+    /// どうせ150(x)+150(y)通りなのでLRUなどはしない
+    /// </summary>
     public class BasisCache : IBasisProviderEncode
     {
         readonly BasisProviderEncode provider = new();

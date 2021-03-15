@@ -11,6 +11,7 @@ using System.Threading;
 using System.Numerics;
 using System.Data;
 using System.Runtime.CompilerServices;
+using static Twigaten.Hash.HashFile;
 
 namespace Twigaten.Hash
 {
@@ -18,15 +19,7 @@ namespace Twigaten.Hash
     {
         static readonly Config config = Config.Instance;
 
-        internal const string AllHashFileName = "allhash";
-        internal const string NewerHashPrefix = "newhash";
         internal const string SortFilePrefix = "sort";
-        internal const string FileExtension = ".zst";
-        ///<summary>DBから全ハッシュを読み込んだファイルの命名規則</summary>
-        public static string AllHashFilePath => HashFilePath(AllHashFileName);
-        ///<summary>DBから新しいハッシュを読み込んだファイルの命名規則</summary>
-        public static string NewerHashFilePath(string UnixTime) => HashFilePath(NewerHashPrefix + UnixTime);
-        public static string HashFilePath(string HashFileName) => Path.Combine(config.hash.TempDir, HashFileName) + FileExtension;
 
         ///<summary>ソート過程のファイル名規則</summary>
         public static string SortingFilePath(int SortIndex, int FileIndex) => SortingFilePath(SortIndex.ToString() + "_" +  FileIndex.ToString());
@@ -106,7 +99,7 @@ namespace Twigaten.Hash
             int ToSortNewerCursor = 0;
             await FirstSortSemaphore.WaitAsync().ConfigureAwait(false);
             if (!LongPool.TryTake(out var ToSortNewer)) { ToSortNewer = new long[InitialSortUnit]; }
-            foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(NewerHashFilePath("*"))))
+            foreach (var filePath in Directory.EnumerateFiles(config.hash.TempDir, Path.GetFileName(NewerHashFilePathBase("*"))))
             {
                 using (var reader = new BufferedLongReader(filePath))
                 {
