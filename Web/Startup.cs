@@ -23,11 +23,13 @@ namespace Twigaten.Web
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+            Env = env;
         }
         public IConfiguration Configuration { get; }
+        private IWebHostEnvironment Env { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -47,8 +49,19 @@ namespace Twigaten.Web
             services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
             services.Configure<GzipCompressionProviderOptions>(options => { options.Level = CompressionLevel.Fastest; });
 
+            //GDPRうんたらを切る
             services.Configure<CookiePolicyOptions>(options => { options.CheckConsentNeeded = context => false; });
-            services.AddSession();
+
+            services.AddSession(options => 
+            {
+                //セッションはTwitterログインにしか使ってない
+                options.Cookie.Path = "/auth";
+                options.Cookie.SecurePolicy = Env.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+            });
+            services.AddAntiforgery(options =>
+            {
+                options.Cookie.SecurePolicy = Env.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+            });
 
             services.AddLocalization(options => { options.ResourcesPath = "Locale"; });
             services.AddControllers();
@@ -58,7 +71,10 @@ namespace Twigaten.Web
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-             if (env.IsDevelopment())
+            //nginxからの X-Forwarded-For/Proto を受け取る
+            app.UseForwardedHeaders(new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto });
+
+            if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
                 //ついでにここで自前Cookieの設定もやる
@@ -70,12 +86,6 @@ namespace Twigaten.Web
                 //ここで圧縮ファイルを作る
                 PreCompress.Proceed(env.WebRootPath).Wait();
             }
-
-            //nginxからの X-Forwarded-For/Proto を受け取る
-            app.UseForwardedHeaders(new ForwardedHeadersOptions
-            {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-            });
 
             app.UseResponseCompression();
             app.UseDefaultFiles();
@@ -108,8 +118,8 @@ namespace Twigaten.Web
             app.UseRequestLocalization(Localize.Value);
 
             app.UseCookiePolicy();
-            app.UseSession();
             app.UseRouting();
+            app.UseSession();
 
             app.UseEndpoints(endpoints =>
             {
