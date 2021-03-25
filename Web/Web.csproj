@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
+    <PackageReference Include="CompressedStaticFiles" Version="2.0.0" />
     <PackageReference Include="CoreTweet" Version="1.0.0.483" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
     <PackageReference Include="MessagePack" Version="2.2.85" />

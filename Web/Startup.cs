@@ -46,6 +46,8 @@ namespace Twigaten.Web
                 options.Providers.Add<BrotliCompressionProvider>();
                 options.Providers.Add<GzipCompressionProvider>();
             });
+            services.AddCompressedStaticFiles();
+
             services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
             services.Configure<GzipCompressionProviderOptions>(options => { options.Level = CompressionLevel.Fastest; });
 
