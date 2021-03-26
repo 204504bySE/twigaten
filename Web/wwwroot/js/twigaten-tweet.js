@@ -9,8 +9,16 @@
       fetch(url + '/blurhash')
         .then((res) => res.ok
           && res.text()
-            .then((hash) => blurhash.decodePromise(hash, 150, 150))
-            .then((imgData) => element.parentNode.replaceChild(blurhash.drawImageDataOnNewCanvas(imgData, 150, 150), element))
+            .then((hash) => {
+              const pixels = decodeBlurHash(hash, 150, 150);
+              const imageData = new ImageData(pixels, 150, 150);
+              const canvas = document.createElement('canvas');
+              canvas.width = 150;
+              canvas.height = 150;
+              const ctx = canvas.getContext('2d');
+              ctx.putImageData(imageData, 0, 0);
+              element.parentNode.replaceChild(canvas, element);
+            })
         );
     }
   };
