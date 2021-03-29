@@ -75,6 +75,11 @@ namespace Twigaten.Crawl
                     Elapsed = sw.ElapsedMilliseconds;
                     if (Elapsed < 60000) { await Task.Delay(60000 - (int)Elapsed).ConfigureAwait(false); }
                 }
+                else
+                {
+                    GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce; //これは毎回必要
+                    GC.Collect();
+                }
                 sw.Restart();
                 //最後に取得したツイート等をDBに保存する(画像の消化が終わることを期待して待ってからやる)
                 await manager.StoreCrawlStatus().ConfigureAwait(false);
