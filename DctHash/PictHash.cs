@@ -15,7 +15,6 @@ namespace Twigaten.DctHash
     {
         //static readonly float[,] dct32; //[1,1]-[8,8]だけ
         static readonly float[] cos32_1_8;
-        static readonly int VectorCount;    //Vector<float>の要素数
         static readonly int xCount; //dcthash用
         static readonly Vector<float>[] cos32Vector_1_8; //横方向にVectorCountずつ取った奴
         static PictHash()
@@ -41,12 +40,12 @@ namespace Twigaten.DctHash
                     cos32_1_8[y << 5 | x] = (float)(Math.Cos((2 * x + 1) * (y + 1) * Math.PI / 64));
                 }
 
-            VectorCount = Math.Min(32, Vector<float>.Count);
-            xCount = 32 / VectorCount;
+            if(BitOperations.PopCount((uint)Vector<float>.Count) != 1) { throw new Exception("Vector<float>.Count == " + Vector<float>.Count.ToString()); }
+            xCount = 32 / Vector<float>.Count;
 
             //こっちも1~8行だけ使う
-            cos32Vector_1_8 = new Vector<float>[256 / VectorCount];
-            float[] costmph = new float[VectorCount];
+            cos32Vector_1_8 = new Vector<float>[256 / Vector<float>.Count];
+            float[] costmph = new float[Vector<float>.Count];
             for (int y = 0; y < 8; y++)
             {
                 int n = 0;
@@ -54,9 +53,9 @@ namespace Twigaten.DctHash
                 {
                     costmph[n] = cos32_1_8[y << 5 | x];
                     n++;
-                    if (n == VectorCount)
+                    if (n == Vector<float>.Count)
                     {
-                        cos32Vector_1_8[(y << 5 | x) / VectorCount] = new Vector<float>(costmph);
+                        cos32Vector_1_8[(y << 5 | x) / Vector<float>.Count] = new Vector<float>(costmph);
                         n = 0;
                     }
                 }
@@ -98,13 +97,15 @@ namespace Twigaten.DctHash
                     float sum = 0;
                     for (int y = 0; y < 32; y++)
                     {
-                        var tosumvec = hashbuf[y * xCount] * cos32Vector_1_8[v * xCount];
-                        for (int x = 1; x < xCount; x++)
+                        var hashbuf_y = hashbuf.Slice(y * xCount, xCount);
+                        var cos32_v = cos32Vector_1_8.AsSpan(v * xCount, xCount);
+                        var tosumvec = Vector<float>.Zero;
+                        for (int x = 0; x < hashbuf_y.Length; x++)
                         {
-                            tosumvec += hashbuf[y * xCount + x] * cos32Vector_1_8[v * xCount + x];
+                            tosumvec += hashbuf_y[x] * cos32_v[x];
                         }
                         float tosum = 0;
-                        for (int i = 0; i < VectorCount; i++)
+                        for (int i = 0; i < Vector<float>.Count; i++)
                         {
                             tosum += tosumvec[i];
                         }
@@ -114,10 +115,17 @@ namespace Twigaten.DctHash
                 }
             }
             long ret = 0;
-            float ave = 0;
-            for (int i = 0; i < dctbuf.Length; i++) 
+
+            var dctbufVec = MemoryMarshal.Cast<float, Vector<float>>(dctbuf);
+            var aveVec = Vector<float>.Zero;
+            for(int i = 0; i < dctbufVec.Length; i++)
             {
-                ave += dctbuf[i];
+                aveVec += dctbufVec[i];
+            }
+            float ave = 0;
+            for(int i = 0; i < Vector<float>.Count; i++)
+            {
+                ave += aveVec[i];
             }
             ave /= 64;
             for (int i = 0; i < dctbuf.Length; i++)

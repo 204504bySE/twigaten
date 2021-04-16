@@ -32,7 +32,9 @@ Global
 		Lib\Lib.projitems*{5d4c4fe7-67b2-476a-988b-4c4500257d1b}*SharedItemsImports = 5
 		Lib.DctHash\Lib.DctHash.projitems*{959b8cd3-d4eb-4cd3-ac95-7ec09e1ad09e}*SharedItemsImports = 13
 		Lib.BlurHash\Lib.BlurHash.projitems*{a6010704-ef6f-4724-b83e-d815ebe8c395}*SharedItemsImports = 13
+		Lib.DctHash\Lib.DctHash.projitems*{be6bde09-f094-4088-a078-10df8ae5ae20}*SharedItemsImports = 5
 		Lib\Lib.projitems*{be6bde09-f094-4088-a078-10df8ae5ae20}*SharedItemsImports = 5
+		Lib.DctHash\Lib.DctHash.projitems*{d2545444-be3e-4fbf-b0bd-3a54e5f558af}*SharedItemsImports = 5
 		Lib\Lib.projitems*{d2545444-be3e-4fbf-b0bd-3a54e5f558af}*SharedItemsImports = 5
 		Lib\Lib.projitems*{d50d52eb-e166-4c46-8217-7baf43946f2c}*SharedItemsImports = 5
 		Lib\Lib.projitems*{d5bc6216-3a12-4be3-afcd-c5220197b029}*SharedItemsImports = 5

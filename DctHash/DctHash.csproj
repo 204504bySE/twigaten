@@ -9,6 +9,8 @@
 
   <Import Project="..\Lib\Lib.projitems" Label="Shared" />
 
+  <Import Project="..\Lib.DctHash\Lib.DctHash.projitems" Label="Shared" />
+
   <ItemGroup>
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
     <PackageReference Include="MessagePack" Version="2.2.85" />
