@@ -229,7 +229,6 @@ namespace Twigaten.Crawl
                 catch (TaskCanceledException) { }
             }
             await ConnectBlock.Complete().ConfigureAwait(false);
-            await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false);
 
             //ツイートの取得時刻を保存する(たぶん)
             //ここでREST取得したやつとUser streamに接続済みのやつだけ処理する(もうないけど)
@@ -240,7 +239,11 @@ namespace Twigaten.Crawl
 
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
+
             if (0 < UserStreamerStatic.RetryingCount) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
+            //Retryingが増え続けて復帰しないことがあるのでそのときは殺してもらう
+            else { await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false); }
+
             Console.WriteLine("App: {0} + {1} / {2} Accounts Crawled.", ConnectBlock.ActiveStreamers, ConnectBlock.RestedStreamers, Streamers.Count);
         }
 
