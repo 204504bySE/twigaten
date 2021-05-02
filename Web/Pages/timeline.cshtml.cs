@@ -7,9 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Twigaten.Lib;
-using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
-using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Pages.Tweet
 {
@@ -19,6 +17,7 @@ namespace Twigaten.Web.Pages.Tweet
     /// </summary>
     public class TimelineModel : PageModel
     {
+        static readonly DBHandler DB = DBHandler.Instance;
         /// <summary>
         /// これより古いツイを検索する(SnowFlake)
         /// DateがセットされたらSnowFlakeに変換されてこれに突っ込む
@@ -85,9 +84,9 @@ namespace Twigaten.Web.Pages.Tweet
 
             await ParamsTask.ConfigureAwait(false);
             if (!Params.ID.HasValue) { return LocalRedirect("/"); }
-            var CrawlInfoTask = View.SelectCrawlInfo(Params.ID.Value);
-            var TargetUserTask = View.SelectUser(Params.ID.Value);
-            var TweetsTask = View.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
+            var CrawlInfoTask = DB.SelectCrawlInfo(Params.ID.Value);
+            var TargetUserTask = DB.SelectUser(Params.ID.Value);
+            var TweetsTask = DB.SimilarMediaTimeline(Params.ID.Value, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask, CrawlInfoTask).ConfigureAwait(false);
             TargetUser = TargetUserTask.Result;

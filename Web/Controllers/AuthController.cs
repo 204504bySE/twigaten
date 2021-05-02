@@ -8,7 +8,6 @@ using CoreTweet;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Twigaten.Lib;
-using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
 
 namespace Twigaten.Web.Controllers
@@ -18,7 +17,7 @@ namespace Twigaten.Web.Controllers
     public class AuthController : ControllerBase
     {
         static readonly Config config = Config.Instance;
-               
+        static readonly DBHandler DB = DBHandler.Instance;
 
         /// <summary>
         /// 「Twitterでサインイン」を始める
@@ -66,24 +65,24 @@ namespace Twigaten.Web.Controllers
             }
 
             //(新規)ログインの処理
-            public async Task<DBToken.VerifytokenResult> StoreNewLogin(Tokens Token)
+            public async Task<DBHandler.VerifytokenResult> StoreNewLogin(Tokens Token)
             {
                 //先にVerifyCredentialsを呼んでおく
                 var SelfUserInfoTask = Token.Account.VerifyCredentialsAsync();
 
-                DBToken.VerifytokenResult vt = await DB.Token.Verifytoken(Token).ConfigureAwait(false);
-                if (vt != DBToken.VerifytokenResult.Exist)
+                DBHandler.VerifytokenResult vt = await DB.Verifytoken(Token).ConfigureAwait(false);
+                if (vt != DBHandler.VerifytokenResult.Exist)
                 {
-                    if (await DB.Token.InsertNewtoken(Token).ConfigureAwait(false) < 1)
+                    if (await DB.InsertNewtoken(Token).ConfigureAwait(false) < 1)
                     {
                         throw (new Exception("トークンの保存に失敗しました"));
                     }
                 }
                 var NewToken = LoginTokenEncrypt.NewToken();
-                if (await DB.Token.StoreUserLoginToken(Token.UserId, NewToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
+                if (await DB.StoreUserLoginToken(Token.UserId, NewToken.Hash44).ConfigureAwait(false) < 1) { throw new Exception("トークンの保存に失敗しました"); }
 
                 await SelfUserInfoTask.ConfigureAwait(false);
-                var StoreUserProfileTask = DB.Token.StoreUserProfile(SelfUserInfoTask.Result);
+                var StoreUserProfileTask = DB.StoreUserProfile(SelfUserInfoTask.Result);
 
                 //ここでCookieにも保存する
                 ID = Token.UserId;
@@ -123,7 +122,7 @@ namespace Twigaten.Web.Controllers
             var VeryfyTokenResult = await p.StoreNewLogin(token).ConfigureAwait(false);
 
             //すでにサインインしてたユーザーならそいつのページに飛ばす
-            if (VeryfyTokenResult == DBToken.VerifytokenResult.Exist) 
+            if (VeryfyTokenResult == DBHandler.VerifytokenResult.Exist) 
             {
                 HttpContext.Response.Headers.Add("Location", "/users/" + token.UserId.ToString());
                 return StatusCode(StatusCodes.Status303SeeOther);

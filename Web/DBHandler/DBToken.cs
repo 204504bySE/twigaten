@@ -4,13 +4,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using CoreTweet;
 using MySqlConnector;
+using Twigaten.Lib;
 
-namespace Twigaten.Web.DBHandler
+namespace Twigaten.Web
 {
-    public class DBToken : Lib.DBHandler
+    public partial class DBHandler : Lib.DBHandler
     {
-        public DBToken() : base(config.database.Address, config.database.Protocol, 20, 4, 60) { }
-
         /// <summary>
         /// TokenをDBに保存するだけの簡単なお仕事
         /// </summary>

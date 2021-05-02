@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Twigaten.Lib;
 using Twigaten.Lib.DctHash;
 using Twigaten.Web.Parameters;
-using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Controllers
 {
@@ -21,6 +20,7 @@ namespace Twigaten.Web.Controllers
     public class SearchController : ControllerBase
     {
         static readonly DctHashClient PictHash = new(Config.Instance.web.HashServerCropHost, Config.Instance.web.HashServerCropPort);
+        static readonly DBHandler DB = DBHandler.Instance;
 
         [HttpPost("media")]
         public async Task<ActionResult<long>> Media(IFormFile File)
@@ -41,7 +41,7 @@ namespace Twigaten.Web.Controllers
                 HttpContext.Response.Headers.Add("Location", "/search");
                 return StatusCode(StatusCodes.Status303SeeOther);
             }
-            var MatchMedia = await View.HashtoTweet(hash, Params.ID).ConfigureAwait(false);
+            var MatchMedia = await DB.HashtoTweet(hash, Params.ID).ConfigureAwait(false);
             if (MatchMedia == null) 
             {
                 HttpContext.Response.Headers.Add("Location", "/search");

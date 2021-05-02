@@ -21,6 +21,7 @@ namespace Twigaten.Web.Controllers
     public class TwimgController : ControllerBase
     {
         readonly IWebHostEnvironment _WebHostEnvironment;
+        static readonly DBHandler DB = DBHandler.Instance;
         /// <summary>
         /// DIでIWebHostEnvironmentを受け取る(wwwrootなどが取れる)
         /// </summary>

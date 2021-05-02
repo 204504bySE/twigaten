@@ -7,9 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Twigaten.Lib;
-using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
-using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Pages.Tweet
 {
@@ -18,6 +16,7 @@ namespace Twigaten.Web.Pages.Tweet
     /// </summary>
     public class UsersModel : PageModel
     {
+        static readonly DBHandler DB = DBHandler.Instance;
         /// <summary>
         /// 表示したいアカウントのID
         /// </summary>
@@ -80,7 +79,7 @@ namespace Twigaten.Web.Pages.Tweet
             var sw = Stopwatch.StartNew();
 
             //一瞬でも速くしたいので先にTaskを作って必要なところでawaitする
-            var TargetUserTask = View.SelectUser(UserId);
+            var TargetUserTask = DB.SelectUser(UserId);
             Params = new TLUserParameters();
             var ParamsTask = Params.InitValidate(HttpContext);
 
@@ -90,9 +89,9 @@ namespace Twigaten.Web.Pages.Tweet
 
             await ParamsTask.ConfigureAwait(false);
             //crawlinfoは「自分のツイート」のときだけ取得する
-            var CrawlInfoTask = Params.ID == UserId ? View.SelectCrawlInfo(UserId) : null;
+            var CrawlInfoTask = Params.ID == UserId ? DB.SelectCrawlInfo(UserId) : null;
 
-            var TweetsTask = View.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
+            var TweetsTask = DB.SimilarMediaUser(UserId, Params.ID, LastTweet, Params.TLUser_Count, 3, Params.TLUser_RT, Params.TLUser_Show0, IsBefore);
 
             await Task.WhenAll(TargetUserTask, TweetsTask).ConfigureAwait(false);
             if (CrawlInfoTask != null) { Crawlinfo = await CrawlInfoTask.ConfigureAwait(false); }

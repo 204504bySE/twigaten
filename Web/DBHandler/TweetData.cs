@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 
-namespace Twigaten.Web.DBHandler
+namespace Twigaten.Web
 {
     /// <summary>
     /// 画像とその類似画像1セット

@@ -5,12 +5,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using MySqlConnector;
 
-namespace Twigaten.Web.DBHandler
+namespace Twigaten.Web
 {
-    public class DBTwimg : Lib.DBHandler
+    public partial class DBHandler : Lib.DBHandler
     {
-        public DBTwimg() : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 60) { }
-
         public struct MediaInfo
         {
             public long media_id { get; set; }

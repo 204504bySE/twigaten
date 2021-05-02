@@ -9,11 +9,10 @@ using System.Threading.Tasks.Dataflow;
 using MySqlConnector;
 using Twigaten.Lib;
 
-namespace Twigaten.Web.DBHandler
+namespace Twigaten.Web
 {
-    public class DBView : Lib.DBHandler
+    public partial class DBHandler : Lib.DBHandler
     {
-        public DBView() : base(config.database.Address, config.database.Protocol, 11, 40, 600) { }
         public async Task<TweetData._user> SelectUser(long user_id)
         {
             using (MySqlCommand cmd = new MySqlCommand(GetUsersHead + @"WHERE user_id = @user_id"))

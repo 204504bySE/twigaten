@@ -4,15 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using MySqlConnector;
 
-namespace Twigaten.Web.DBHandler
+namespace Twigaten.Web
 {
     /// <summary>
     /// クローラーのフリを強いられているんだ！
     /// TwimgController絡みの処理でしか使わないはず
     /// </summary>
-    public class DBCrawl : Lib.DBHandler
+    public partial class DBHandler : Lib.DBHandler
     {
-        public DBCrawl() : base(config.database.Address, config.database.Protocol, 20, 4) { }
         /// <summary>
         /// 指定されたツイをDBから消すだけ
         /// </summary>

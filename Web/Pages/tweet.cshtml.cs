@@ -6,14 +6,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Twigaten.Web.DBHandler;
 using Twigaten.Web.Parameters;
-using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Pages.Tweet
 {
     public class TweetModel : PageModel
     {
+        static readonly DBHandler DB = DBHandler.Instance;
         [BindProperty(SupportsGet = true)]
         public long TweetId{ get; set; }
         [BindProperty(SupportsGet = true)]
@@ -31,7 +30,7 @@ namespace Twigaten.Web.Pages.Tweet
         public async Task<ActionResult> OnGetAsync()
         {
             var sw = Stopwatch.StartNew();
-            var RetweetTask = View.SourceTweetRT(TweetId);
+            var RetweetTask = DB.SourceTweetRT(TweetId);
             Params = new LoginParameters();
             await Params.InitValidate(HttpContext).ConfigureAwait(false);
 
@@ -39,8 +38,8 @@ namespace Twigaten.Web.Pages.Tweet
             await RetweetTask.ConfigureAwait(false);
             if (RetweetTask.Result.HasValue) { return LocalRedirectPermanent("/tweet/" + RetweetTask.Result.Value.ToString() + (More ? "/more" : "")); }
             
-            if (More) { Tweets = await View.SimilarMediaTweet(TweetId, Params.ID, 99).ConfigureAwait(false); }
-            else { Tweets = await View.SimilarMediaTweet(TweetId, Params.ID).ConfigureAwait(false); }
+            if (More) { Tweets = await DB.SimilarMediaTweet(TweetId, Params.ID, 99).ConfigureAwait(false); }
+            else { Tweets = await DB.SimilarMediaTweet(TweetId, Params.ID).ConfigureAwait(false); }
 
             if(Tweets.Length == 0) { HttpContext.Response.StatusCode = StatusCodes.Status404NotFound; }
             else

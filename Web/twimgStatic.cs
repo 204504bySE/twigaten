@@ -11,7 +11,6 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Twigaten.Lib;
 using Twigaten.Lib.BlurHash;
-using Twigaten.Web.DBHandler;
 
 namespace Twigaten.Web
 {
@@ -31,20 +30,19 @@ namespace Twigaten.Web
             if (ExtMime.TryGetContentType(FileName, out string mime)) { return mime; }
             else { return "application/octet-stream"; };
         }
-        internal static readonly DBTwimg DB = DBHandler.DB.Twimg;
-        internal static readonly DBCrawl DBCrawl = DBHandler.DB.Crawl;
-        internal static readonly DBView DBView = DBHandler.DB.View;
         internal static readonly RemovedMedia Removed = new RemovedMedia();
+
+        static readonly DBHandler DB = DBHandler.Instance;
 
         static readonly Blurhash.ImageSharp.Encoder BlurHashEncoder = new(new BasisCache());
         /// <summary>
         /// 取得した画像(thumb)を保存 DBはdownloaded_atだけ更新する
         /// </summary>
-        public static readonly ActionBlock<(DBTwimg.MediaInfo, byte[])> StoreMediaBlock
-            = new ActionBlock<(DBTwimg.MediaInfo MediaInfo, byte[] Bytes)>(
+        public static readonly ActionBlock<(DBHandler.MediaInfo, byte[])> StoreMediaBlock
+            = new ActionBlock<(DBHandler.MediaInfo MediaInfo, byte[] Bytes)>(
             async (m) =>
         {
-            if (0 < await DBCrawl.StoreMedia_downloaded_at(m.MediaInfo.media_id).ConfigureAwait(false))
+            if (0 < await DB.StoreMedia_downloaded_at(m.MediaInfo.media_id).ConfigureAwait(false))
             {
                 try
                 {
@@ -58,7 +56,7 @@ namespace Twigaten.Web
                 catch { }
             }
 
-            if (await DBView.SelectBlurhash(m.MediaInfo.media_id).ConfigureAwait(false) == "")
+            if (await DB.SelectBlurhash(m.MediaInfo.media_id).ConfigureAwait(false) == "")
             {
                 try
                 {
@@ -68,7 +66,7 @@ namespace Twigaten.Web
                     {
                         blurhash = BlurHashEncoder.Encode(image, 9, 9);
                     }
-                    await DBView.StoreBlurhash(m.MediaInfo.media_id, blurhash).ConfigureAwait(false);
+                    await DB.StoreBlurhash(m.MediaInfo.media_id, blurhash).ConfigureAwait(false);
                     Counter.MediaBlurhashed.Increment();
                 }
                 catch { }
@@ -79,13 +77,13 @@ namespace Twigaten.Web
         /// <summary>
         /// 取得したアイコン(profile_image)を保存 DBはupdated_atだけ更新する
         /// </summary>
-        public static readonly ActionBlock<(DBTwimg.ProfileImageInfo, byte[])> StoreProfileImageBlock
-            = new ActionBlock<(DBTwimg.ProfileImageInfo ProfileImageInfo, byte[] Bytes)>(
+        public static readonly ActionBlock<(DBHandler.ProfileImageInfo, byte[])> StoreProfileImageBlock
+            = new ActionBlock<(DBHandler.ProfileImageInfo ProfileImageInfo, byte[] Bytes)>(
             async (u) =>
         {
             //初期アイコンはいろいろ面倒なのでここではやらない
             if (!u.ProfileImageInfo.is_default_profile_image
-                && 0 < await DBCrawl.StoreUser_updated_at(u.ProfileImageInfo.user_id).ConfigureAwait(false))
+                && 0 < await DB.StoreUser_updated_at(u.ProfileImageInfo.user_id).ConfigureAwait(false))
             {
                 try
                 {

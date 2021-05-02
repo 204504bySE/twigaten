@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Twigaten.Lib;
-using static Twigaten.Web.DBHandler.DB;
 
 namespace Twigaten.Web.Parameters
 {
@@ -17,6 +16,7 @@ namespace Twigaten.Web.Parameters
     ///</summary>
     public class LoginParameters
     {
+        static readonly DBHandler DB = DBHandler.Instance;
         /// <summary>これを与えないとCookieなどは読めない#ウンコード</summary>
         protected HttpContext Context { get; private set; }
 
@@ -68,12 +68,12 @@ namespace Twigaten.Web.Parameters
             //ログイン確認
             if (ID != null)
             {
-                if (LoginToken != null && LoginTokenEncrypt.VerifyToken(LoginToken, await View.SelectUserLoginToken(ID.Value).ConfigureAwait(false)))
+                if (LoginToken != null && LoginTokenEncrypt.VerifyToken(LoginToken, await DB.SelectUserLoginToken(ID.Value).ConfigureAwait(false)))
                 {
                     //Cookieの有効期限を延長する
                     ID = ID;
                     LoginToken = LoginToken;
-                    if (ScreenName == null) { ScreenName = (await View.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
+                    if (ScreenName == null) { ScreenName = (await DB.SelectUser(ID.Value).ConfigureAwait(false)).screen_name; }
                 }
                 else
                 {

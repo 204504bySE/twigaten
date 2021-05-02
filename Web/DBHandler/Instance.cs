@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Twigaten.Web.DBHandler
+namespace Twigaten.Web
 {
-    static class DB
+    public partial class DBHandler : Lib.DBHandler
     {
-        public static DBCrawl Crawl { get; } = new DBCrawl();
-        public static DBToken Token { get; } = new DBToken();
-        public static DBTwimg Twimg { get; } = new DBTwimg();
-        public static DBView View { get; } = new DBView();
+        private DBHandler() : base(config.database.Address, config.database.Protocol,20, (uint)config.web.MaxDBConnections, 60) { }
+        public static DBHandler Instance { get; } = new DBHandler();
     }
 }

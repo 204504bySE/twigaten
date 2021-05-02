@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using Twigaten.Web.DBHandler;
 using static Twigaten.Web.Locale.Locale;
 
 namespace Twigaten.Web.TagHelpers

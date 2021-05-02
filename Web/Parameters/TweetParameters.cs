@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Twigaten.Web.DBHandler;
-using static Twigaten.Web.DBHandler.DBView;
+using static Twigaten.Web.DBHandler;
 
 namespace Twigaten.Web.Parameters
 {
