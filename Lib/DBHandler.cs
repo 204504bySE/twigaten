@@ -146,7 +146,6 @@ namespace Twigaten.Lib
         {
             try
             {
-                long ret;
                 using (var conn = NewConnection())
                 {
                     await conn.OpenAsync().ConfigureAwait(false);
@@ -156,9 +155,11 @@ namespace Twigaten.Lib
                         {
                             cmd.Connection = conn;
                             cmd.Transaction = tran;
-                            ret = Convert.ToInt64(await cmd.ExecuteScalarAsync().ConfigureAwait(false));
+                            var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
                             await tran.CommitAsync().ConfigureAwait(false);
-                            return ret;
+
+                            if (result is bool b) { return b ? 1 : 0; }
+                            else { return Convert.ToInt64(result); }
                         }
                         catch (MySqlException) { await tran.RollbackAsync().ConfigureAwait(false); }
                     }

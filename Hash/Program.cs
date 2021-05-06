@@ -13,7 +13,9 @@ namespace Twigaten.Hash
     {
         static async Task Main(string[] args)
         {
-            //CheckOldProcess.CheckandExit();
+            //Console.WriteLine(System.Reflection.Assembly.GetEntryAssembly().Location);
+            //var aaa = new MergedEnumerator(0, 2, 0x0000FFFF00000000);
+            //aaa.Enumerator.Read();
 
             var config = Config.Instance;
             var hashfile = new HashFile();

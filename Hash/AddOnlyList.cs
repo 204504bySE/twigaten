@@ -24,12 +24,12 @@ namespace Twigaten.Hash
         /// Add()でCount+1を2回計算するのが嫌だったのでこの紛らわしい仕様に
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ExpendIfNeccesary(int MinSize)
+        void ExpandIfNeccesary(int MinSize)
         {            
             if (InnerArray.Length <= MinSize)
             {
                 var NextArray = Pool.Rent(Math.Max(MinSize, InnerArray.Length << 1));
-                InnerArray.CopyTo(NextArray, 0);
+                InnerArray.AsSpan().CopyTo(NextArray);
                 Pool.Return(InnerArray);
                 InnerArray = NextArray;
             }
@@ -38,7 +38,7 @@ namespace Twigaten.Hash
         public void Add(T value)
         {
             int c = Count;
-            ExpendIfNeccesary(c);
+            ExpandIfNeccesary(c);
             InnerArray[c] = value;
             Count = c + 1;
         }
@@ -46,7 +46,7 @@ namespace Twigaten.Hash
         public void AddRange(Span<T> values)
         {
             int c = Count;
-            ExpendIfNeccesary(c + values.Length);
+            ExpandIfNeccesary(c + values.Length);
             values.CopyTo(InnerArray.AsSpan(c, values.Length));
             Count += values.Length;
         }

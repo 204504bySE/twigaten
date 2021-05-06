@@ -213,10 +213,10 @@ namespace Twigaten.Hash
         
         public override long Read()
         {
-            if (Reader.MoveNext())
+            if (Reader.MoveNext(out var next))
             {
-                Current = Reader.Current;
-                return Current & SortMask;
+                Current = next;
+                return next & SortMask;
             }
             else { return long.MaxValue; }
         }
@@ -306,6 +306,7 @@ namespace Twigaten.Hash
             //ここでSourceから読み込めばおｋ
             FillNextBufTask = Task.Run(() =>
             {
+                var Source = this.Source;
                 var NextBuf = this.NextBuf;
                 int i;
                 for(i = 0; i < NextBuf.Length; i++)

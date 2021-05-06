@@ -9,12 +9,12 @@ namespace Twigaten.Web
 {
     public partial class DBHandler : Lib.DBHandler
     {
-        public struct MediaInfo
+        public readonly struct MediaInfo
         {
-            public long media_id { get; set; }
-            public long source_tweet_id { get; set; }
-            public string screen_name { get; set; }
-            public string media_url { get; set; }
+            public long media_id { get; init; }
+            public long source_tweet_id { get; init; }
+            public string screen_name { get; init; }
+            public string media_url { get; init; }
             public string tweet_url { get { return "https://twitter.com/" + screen_name + "/status/" + source_tweet_id.ToString(); } }
         }
 
@@ -84,7 +84,7 @@ WHERE o.tweet_id = @tweet_id;"))
             if (media_id.Count == 0) { return false; }
 
             //ハッシュ値が同じで古い奴
-            using (var mediacmd = new MySqlCommand(@"SELECT NOT EXISTS(
+            using (var mediacmd = new MySqlCommand(@"SELECT EXISTS(
 SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
@@ -93,7 +93,7 @@ WHERE dcthash = (SELECT dcthash FROM media WHERE media_id = @media_id)
 AND t.tweet_id < @tweet_id
 AND u.isprotected IS FALSE);"))
             //ハッシュ値がちょっと違って古い奴
-            using (var mediacmd2 = new MySqlCommand(@"SELECT NOT EXISTS(
+            using (var mediacmd2 = new MySqlCommand(@"SELECT EXISTS(
 SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
@@ -102,7 +102,7 @@ JOIN dcthashpairslim h ON h.hash_large = m.dcthash
 WHERE h.hash_small = (SELECT dcthash FROM media WHERE media_id = @media_id)
 AND t.tweet_id < @tweet_id
 AND u.isprotected IS FALSE);"))
-            using (var mediacmd3 = new MySqlCommand(@"SELECT NOT EXISTS(
+            using (var mediacmd3 = new MySqlCommand(@"SELECT EXISTS(
 SELECT * FROM media m
 JOIN tweet_media USING (media_id)
 JOIN tweet t USING (tweet_id)
@@ -123,10 +123,10 @@ AND u.isprotected IS FALSE);"))
                     mediaparam.Value = mid;
                     mediaparam2.Value = mid;
                     mediaparam3.Value = mid;
-                    //「存在する」時だけ次の画像に進める
-                    if (await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0
-                        && await SelectCount(mediacmd2, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0
-                        && await SelectCount(mediacmd3, IsolationLevel.ReadUncommitted).ConfigureAwait(false) != 0)
+                    //どれか一つでも存在する時だけ次の画像に進める
+                    if (await SelectCount(mediacmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false) == 0
+                        && await SelectCount(mediacmd2, IsolationLevel.ReadUncommitted).ConfigureAwait(false) == 0
+                        && await SelectCount(mediacmd3, IsolationLevel.ReadUncommitted).ConfigureAwait(false) == 0)
                     { return false; }
                 }
                 return true;

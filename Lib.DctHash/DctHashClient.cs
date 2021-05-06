@@ -12,17 +12,30 @@ namespace Twigaten.Lib.DctHash
 {
     class DctHashClient
     {
-        readonly struct TcpPoolItem : IDisposable
+        class TcpPoolItem : IDisposable
         {
-            readonly TcpClient Client;
-            public readonly NetworkStream Stream { get; }
-            public MessagePackStreamReader Reader { get; }
-            public TcpPoolItem(string hostName, int port)
+            TcpClient Client;
+            public NetworkStream Stream { get; init; }
+            public MessagePackStreamReader Reader { get; init; }
+
+            public static async Task<TcpPoolItem> Connect(string hostName, int port)
             {
-                Client = new TcpClient(hostName, port) { NoDelay = true };
-                Stream = Client.GetStream();
-                Reader = new MessagePackStreamReader(Stream);
+                try
+                {
+                    var client = new TcpClient() { NoDelay = true };
+                    await client.ConnectAsync(hostName, port).ConfigureAwait(false);
+                    var stream = client.GetStream();
+                    var reader = new MessagePackStreamReader(stream);
+                    return new TcpPoolItem()
+                    {
+                        Client = client,
+                        Stream = stream,
+                        Reader = reader
+                    };
+                }
+                catch { return null; }
             }
+
             public bool Connected => Client?.Connected ?? false;
 
             public void Dispose()
@@ -54,16 +67,16 @@ namespace Twigaten.Lib.DctHash
         ///</summary>
         public async Task<long?> DCTHash(byte[] Source, long media_id)
         {
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
                 TcpPool.TryTake(out var tcp);
                 try
                 {
                     //可能な限りプールされた接続を使おうとする
-                    while (!tcp.Connected)
+                    while (tcp?.Connected != true)
                     {
-                        tcp.Dispose();
-                        if (!TcpPool.TryTake(out tcp)) { tcp = new TcpPoolItem(HostName, Port); }
+                        tcp?.Dispose();
+                        if (!TcpPool.TryTake(out tcp)) { tcp = await TcpPoolItem.Connect(HostName, Port).ConfigureAwait(false); }
                     }
                     using var cancel = new CancellationTokenSource(10000);
                     await MessagePackSerializer.SerializeAsync(tcp.Stream, new PictHashRequest() { UniqueId = media_id, MediaFile = Source }, null, cancel.Token).ConfigureAwait(false);
@@ -76,11 +89,15 @@ namespace Twigaten.Lib.DctHash
                         if (result.UniqueId == media_id) { return result.DctHash; }
                     }
                 }
+                catch (TaskCanceledException)
+                {
+                    tcp?.Dispose();
+                }
                 catch
                 {
-                    tcp.Dispose();
+                    tcp?.Dispose();
                     //再試行はdcthashの再起動待ち時間をある程度考慮して選ぶ
-                    int retryms = 4000 << i;
+                    int retryms = 5000;
                     await Task.Delay(random.Next(retryms, retryms << 1)).ConfigureAwait(false);
                 }
             }
@@ -100,7 +117,7 @@ namespace Twigaten.Lib.DctHash
                 while (!tcp.Connected)
                 {
                     tcp.Dispose();
-                    if (!TcpPool.TryTake(out tcp)) { tcp = new TcpPoolItem(HostName, Port); }
+                    if (!TcpPool.TryTake(out tcp)) { tcp = await TcpPoolItem.Connect(HostName, Port).ConfigureAwait(false); }
                 }
                 using var cancel = new CancellationTokenSource(10000);
                 long unique = Environment.TickCount64;
@@ -113,7 +130,7 @@ namespace Twigaten.Lib.DctHash
                     if (result.UniqueId == unique) { return result.DctHash; }
                 }
             }
-            catch { tcp.Dispose(); }
+            catch { tcp?.Dispose(); }
             return null;
         }
     }

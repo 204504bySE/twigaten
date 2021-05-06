@@ -7,7 +7,7 @@ using System.Collections;
 namespace Twigaten.Hash
 {
     /// <summary>
-    /// "n個の要素からx個選ぶ"組合せを扱う
+    /// nCx(n個の要素からx個選ぶ組合せ)を扱う
     /// </summary>
     class Combinations : IEnumerable<int[]>
     {
@@ -18,32 +18,32 @@ namespace Twigaten.Hash
         ///<summary>組合せの個数</summary>
         public int Length { get; }
 
-        public Combinations(int choice, int select)
+        public Combinations(int n, int x)
         {
-            if (choice < 1 || select < 1) { throw new ArgumentOutOfRangeException(); }
-            if (choice < select) { throw new ArgumentException(); }
-            Choice = choice;
-            Select = select;
+            if (n < 1 || x < 1) { throw new ArgumentOutOfRangeException(); }
+            if (n < x) { throw new ArgumentException(); }
+            Choice = n;
+            Select = x;
 
             Length = CombiCount(Choice, Select);
         }
 
-        ///<summary>a個からb個選ぶ組合せの個数</summary>
-        int CombiCount(int a, int b)
+        ///<summary>n個からx個選ぶ組合せの個数</summary>
+        int CombiCount(int n, int x)
         {
             long lengthtmp = 1;
             int d = 1;
-            for (int i = a; i > a - b; i--)
+            for (int i = n; i > n - x; i--)
             {
                 lengthtmp *= i;
 
-                if (lengthtmp % (i - a + b) == 0)
+                if (lengthtmp % (i - n + x) == 0)
                 {
-                    lengthtmp /= i - a + b;
+                    lengthtmp /= i - n + x;
                 }
                 else
                 {
-                    d *= i - a + b;
+                    d *= i - n + x;
                 }
                 for (int j = 2; j < Math.Sqrt(d); j++)
                 {

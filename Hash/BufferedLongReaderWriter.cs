@@ -134,7 +134,7 @@ namespace Twigaten.Hash
     ///<summary>
     /// zstdで圧縮されたlongの配列を読み込む
     ///</summary>
-    class BufferedLongReader : IEnumerable<long>, IEnumerator<long>, IDisposable
+    class BufferedLongReader : IDisposable
     {
         static readonly int BufSize = Config.Instance.hash.ZipBufferElements / Vector<long>.Count * Vector<long>.Count;
         readonly FileStream file;
@@ -208,15 +208,12 @@ namespace Twigaten.Hash
 
         ///<summary>続きのデータがあるかどうか</summary>
         public bool Readable { get; private set; } = true;
-        public long Current { get; private set; }
-        object IEnumerator.Current => Current;
 
         ///<summary>次のデータを読んでCurrentに入れる Readableが別にあるのキモいけどしょうがない</summary>
-        public bool MoveNext()
+        public bool MoveNext(out long next)
         {
-            if (!Readable) { return false; }
-            
-            Current = BufAsLong[BufCursor];
+            if (!Readable) { next = 0; return false; }            
+            next = BufAsLong[BufCursor];
             BufCursor++;
             ActualReadAuto();
             return true;
@@ -233,10 +230,6 @@ namespace Twigaten.Hash
                 BufCursor = -1;
             }
         }
-
-        public IEnumerator<long> GetEnumerator() => this;
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        public void Reset() { throw new NotSupportedException(); }
     }
 
     ///<summary>

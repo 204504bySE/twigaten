@@ -14,8 +14,6 @@ namespace Twigaten.Hash
     {
         public DBHandler(HashFile hashfile) : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400)
         {
-            this.hashfile = hashfile;
-
             HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(Math.Max(1, hashfile.LastHashCount), 2));
             TableListSize = (int)Math.Max(4096, hashfile.LastHashCount >> (63 - HashUnitBits) << 2);
         }
@@ -23,7 +21,6 @@ namespace Twigaten.Hash
         public const int StoreMediaPairsUnit = 1000;
         static readonly string StoreMediaPairsStrFull = BulkCmdStr(StoreMediaPairsUnit, 2, StoreMediaPairsHead);
 
-        readonly HashFile hashfile;
         readonly ConcurrentBag<MySqlCommand> StoreMediaPairsCmdPool = new ConcurrentBag<MySqlCommand>();
         
         public async Task<int> StoreMediaPairs(HashPair[] StorePairs)
@@ -47,6 +44,7 @@ namespace Twigaten.Hash
                 }
                 for (int i = 0; i < StoreMediaPairsUnit; i++)
                 {
+
                     cmd.Parameters[i << 1].Value = StorePairs[i].small;
                     cmd.Parameters[i << 1 | 1].Value = StorePairs[i].large;
                 }
@@ -70,10 +68,8 @@ namespace Twigaten.Hash
 
         public async Task<long> Min_downloaded_at()
         {
-            using (var cmd = new MySqlCommand(@"SELECT MIN(downloaded_at) FROM media_downloaded_at;"))
-            {
-                return await SelectCount(cmd,IsolationLevel.ReadUncommitted).ConfigureAwait(false);
-            }
+            using var cmd = new MySqlCommand(@"SELECT MIN(downloaded_at) FROM media_downloaded_at;");
+            return await SelectCount(cmd, IsolationLevel.ReadUncommitted).ConfigureAwait(false);
         }
 
         //tableをlarge heapに入れたくなかったら64 + "9" - ~~~ が限度
@@ -98,16 +94,14 @@ namespace Twigaten.Hash
                         var table = new AddOnlyList<long>(TableListSize);
                         while(true)
                         {
-                            using (MySqlCommand cmd = new MySqlCommand(@"SELECT DISTINCT dcthash
+                            using var cmd = new MySqlCommand(@"SELECT DISTINCT dcthash
 FROM media
 WHERE dcthash BETWEEN @begin AND @end
-GROUP BY dcthash;"))
-                            {
-                                cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
-                                cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = ((i + 1) << HashUnitBits) - 1;
-                                if( await ExecuteReader(cmd, (r) => table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
-                                else { table.Clear(); }
-                            }
+GROUP BY dcthash;");
+                            cmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = i << HashUnitBits;
+                            cmd.Parameters.Add("@end", MySqlDbType.Int64).Value = ((i + 1) << HashUnitBits) - 1;
+                            if (await ExecuteReader(cmd, (r) => table.Add(r.GetInt64(0)), IsolationLevel.ReadUncommitted).ConfigureAwait(false)) { break; }
+                            else { table.Clear(); }
                         }
                         return table;
                     }, new ExecutionDataflowBlockOptions()

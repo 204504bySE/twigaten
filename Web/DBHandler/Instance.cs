@@ -7,7 +7,7 @@ namespace Twigaten.Web
 {
     public partial class DBHandler : Lib.DBHandler
     {
-        private DBHandler() : base(config.database.Address, config.database.Protocol,20, (uint)config.web.MaxDBConnections, 60) { }
+        private DBHandler() : base(config.database.Address, config.database.Protocol,20, (uint)config.web.MaxDBConnections) { }
         public static DBHandler Instance { get; } = new DBHandler();
     }
 }

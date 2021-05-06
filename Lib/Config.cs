@@ -18,7 +18,7 @@ namespace Twigaten.Lib
             try
             {
                 string iniPath = Environment.GetEnvironmentVariable("TWIGATEN_CONFIG_PATH");
-                if (string.IsNullOrWhiteSpace(iniPath)) { iniPath =  Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twiten.ini"); }
+                if (string.IsNullOrWhiteSpace(iniPath)) { iniPath =  Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twigaten.ini"); }
                 var ini = new FileIniDataParser();
                 var data = ini.ReadFile(iniPath);
                 token = new _token(data);
@@ -82,7 +82,7 @@ namespace Twigaten.Lib
                 StreamSpeedHysteresis = int.Parse(data["crawl"][nameof(StreamSpeedHysteresis)] ?? "16");
                 MaxRestInterval = int.Parse(data["crawl"][nameof(MaxRestInterval)] ?? "900");
                 DefaultConnectionThreads = int.Parse(data["crawl"][nameof(DefaultConnectionThreads)] ?? "1000");
-                MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? "10");
+                MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? Environment.ProcessorCount.ToString());
                 RestTweetThreads = int.Parse(data["crawl"][nameof(RestTweetThreads)] ?? Environment.ProcessorCount.ToString());
                 ReconnectThreads = int.Parse(data["crawl"][nameof(ReconnectThreads)] ?? "1");
                 MediaDownloadThreads = int.Parse(data["crawl"][nameof(MediaDownloadThreads)] ?? Environment.ProcessorCount.ToString());
@@ -191,6 +191,7 @@ namespace Twigaten.Lib
             public bool ListenIPv4 { get; }
             public int ListenPort { get; }
             public string ListenUnixSocketPath { get; }
+            public int MaxDBConnections { get; }
             public string HashServerCropHost { get; }
             public int HashServerCropPort { get; }
             public _web(IniData data)
@@ -200,6 +201,7 @@ namespace Twigaten.Lib
                 ListenIPv4 = bool.Parse(data["web"][nameof(ListenIPv4)] ?? "false");
                 ListenPort = int.Parse(data["web"][nameof(ListenPort)] ?? "12309");
                 ListenUnixSocketPath = data["web"][nameof(ListenUnixSocketPath)];
+                MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? Environment.ProcessorCount.ToString());
                 HashServerCropHost = data["web"][nameof(HashServerCropHost)] ?? "localhost";
                 HashServerCropPort = int.Parse(data["web"][nameof(HashServerCropPort)] ?? "12306");
             }

@@ -107,8 +107,8 @@ namespace Twigaten.Hash
                     {
                         for (; ToSortNewerCursor < ToSortNewer.Length; ToSortNewerCursor++)
                         {
-                            if (!reader.MoveNext()) { break; }
-                            ToSortNewer[ToSortNewerCursor] = reader.Current;
+                            if (!reader.MoveNext(out var next)) { break; }
+                            ToSortNewer[ToSortNewerCursor] = next;
                         }
                         if (InitialSortUnit <= ToSortNewerCursor)
                         {
