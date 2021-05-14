@@ -114,9 +114,9 @@ namespace Twigaten.Lib.DctHash
             try
             {
                 //可能な限りプールされた接続を使おうとする
-                while (!tcp.Connected)
+                while (tcp?.Connected != true)
                 {
-                    tcp.Dispose();
+                    tcp?.Dispose();
                     if (!TcpPool.TryTake(out tcp)) { tcp = await TcpPoolItem.Connect(HostName, Port).ConfigureAwait(false); }
                 }
                 using var cancel = new CancellationTokenSource(10000);
