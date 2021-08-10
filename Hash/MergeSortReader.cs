@@ -142,11 +142,9 @@ namespace Twigaten.Hash
     ///Interfaceで済むはずだけどこっちの方がちょっとだけ速いと聞いた #ウンコード</summary>
     abstract class MergeSorterBase : IDisposable
     {
-        ///<summary>Read()に失敗したら未定義(´・ω・`)</summary>
-        public long Current { get; protected set; }
-        ///<summary>成功したら Current & SortMask
+        ///<summary>成功したら Value & SortMask
         ///失敗したらlong.MaxValue</summary>
-        public abstract long Read();
+        public abstract long Read(out long Value);
         public abstract void Dispose();
     }
 
@@ -154,42 +152,51 @@ namespace Twigaten.Hash
     class MergeSorter : MergeSorterBase
     {
         readonly MergeSorterBase[] Enumerators;
-        readonly long[] LastMasked;
+        readonly (long Masked, long Value)[] LastValues;
         public MergeSorter(IEnumerable<MergeSorterBase> Enumerators) : this(Enumerators.ToArray()) { }
         public MergeSorter(params MergeSorterBase[] Enumerators)
         {
             this.Enumerators = Enumerators;
-            LastMasked = new long[Enumerators.Length];
+            LastValues = new (long, long)[Enumerators.Length];
+            LastValues = new (long, long)[Enumerators.Length];
             InitRead();
         }
         void InitRead()
         {
-            for(int i = 0; i < LastMasked.Length; i++) { LastMasked[i] = Enumerators[i].Read(); }
+            for(int i = 0; i < LastValues.Length; i++)
+            {
+                ref var v = ref LastValues[i];
+                v.Masked = Enumerators[i].Read(out v.Value);
+            }
         }
 
-        ///<summary>1要素進める 比較用の値が戻る 全部読んだらlong.MaxValue</summary>
-        public override long Read()
+        ///<summary>1要素進める 比較用の値が戻る valueには実際の値が入る 全部読んだらlong.MaxValue</summary>
+        public override long Read(out long Value)
         {
             long MinMasked = long.MaxValue;
             int MinIndex = -1;
-            var LastMasked = this.LastMasked;
 
-            for (int i = 0; i < LastMasked.Length; i++)
+            for (int i = 0; i < LastValues.Length; i++)
             {
-                if (LastMasked[i] < MinMasked)
+                var LastMasked_i = LastValues[i].Masked;
+                if (LastMasked_i < MinMasked)
                 {
-                    MinMasked = LastMasked[i];
+                    MinMasked = LastMasked_i;
                     MinIndex = i;
                 }
             }
             if (0 <= MinIndex)
             {
-                var MinEnumerator = Enumerators[MinIndex];
-                Current = MinEnumerator.Current;
-                LastMasked[MinIndex] = MinEnumerator.Read();
+                ref var Min = ref LastValues[MinIndex];
+                Value = Min.Value;
+                Min.Masked = Enumerators[MinIndex].Read(out Min.Value);
                 return MinMasked;
             }
-            else { return long.MaxValue; }
+            else 
+            {
+                Value = 0;
+                return long.MaxValue; 
+            }
         }
         public override void Dispose()
         {
@@ -211,14 +218,18 @@ namespace Twigaten.Hash
             this.FilePath = FilePath;
         }
         
-        public override long Read()
+        public override long Read(out long Value)
         {
             if (Reader.MoveNext(out var next))
             {
-                Current = next;
+                Value = next;
                 return next & SortMask;
             }
-            else { return long.MaxValue; }
+            else 
+            {
+                Value = 0;
+                return long.MaxValue; 
+            }
         }
         bool Disposed;
         public override void Dispose()
@@ -311,8 +322,7 @@ namespace Twigaten.Hash
                 int i;
                 for(i = 0; i < NextBuf.Length; i++)
                 {
-                    if (Source.Read() != long.MaxValue) { NextBuf[i] = Source.Current; }
-                    else { break; }
+                    if (Source.Read(out NextBuf[i]) == long.MaxValue) { break; }
                 }
                 return i;
             });

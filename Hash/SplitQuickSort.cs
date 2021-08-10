@@ -163,15 +163,16 @@ namespace Twigaten.Hash
                 else { PivotMasked = PivotA; }
 
                 int i = -1; int j = SortSpan.Length;
+                long SortSpan_i = 0;
+                long SortSpan_j = 0;
                 while (true)
                 {
                     //do { i++; } while ((SortList[i] & SortMask) < PivotMasked);
-                    for (i++; i < SortSpan.Length; i++) { if ((SortSpan[i] & SortMask) >= PivotMasked) { break; } }
-                    do { j--; } while ((SortSpan[j] & SortMask) > PivotMasked);
+                    for (i++; i < SortSpan.Length; i++) { if (((SortSpan_i = SortSpan[i]) & SortMask) >= PivotMasked) { break; } }
+                    do { j--; } while (((SortSpan_j = SortSpan[j]) & SortMask) > PivotMasked);
                     if (i >= j) { break; }
-                    long SwapHash = SortSpan[i];
-                    SortSpan[i] = SortSpan[j];
-                    SortSpan[j] = SwapHash;
+                    SortSpan[i] = SortSpan_j;
+                    SortSpan[j] = SortSpan_i;
                 }
                 return (SortRange.Begin, SortRange.Begin + j, SortRange.Begin + j + 1, SortRange.End);
             }
