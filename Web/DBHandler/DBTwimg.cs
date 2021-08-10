@@ -49,7 +49,7 @@ WHERE media_id = @media_id;"))
         /// ツイート画像のblurhash
         /// ない場合はnull(DBには空文字が入っててもnull)
         /// </summary>
-        public async Task<string> SelectThumeBlurHash(long media_id)
+        public async Task<string> SelectThumbBlurHash(long media_id)
         {
             string ret = null;
             using (var cmd = new MySqlCommand(@"SELECT blurhash
@@ -70,7 +70,6 @@ WHERE media_id = @media_id;"))
             var media_id = new List<long>();
             using (var cmd = new MySqlCommand(@"SELECT t.media_id
 FROM tweet o
-LEFT JOIN tweet rt ON o.retweet_id = rt.tweet_id
 INNER JOIN tweet_media t ON COALESCE(o.retweet_id, o.tweet_id) = t.tweet_id
 WHERE o.tweet_id = @tweet_id;"))
             {

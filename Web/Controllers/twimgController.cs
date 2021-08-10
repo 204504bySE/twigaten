@@ -69,7 +69,7 @@ namespace Twigaten.Web.Controllers
         public async Task<IActionResult> thumb_blurhash(string FileName)
         {
             if (!long.TryParse(Path.GetFileNameWithoutExtension(FileName), out long media_id)) { return StatusCode(400); }
-            string blurhash = await DB.SelectThumeBlurHash(media_id).ConfigureAwait(false);
+            string blurhash = await DB.SelectThumbBlurHash(media_id).ConfigureAwait(false);
             if(blurhash == null) { return StatusCode(StatusCodes.Status404NotFound); }
             return Content(blurhash);
         }

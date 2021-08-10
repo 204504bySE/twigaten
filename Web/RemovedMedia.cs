@@ -19,11 +19,12 @@ namespace Twigaten.Web
         {
             foreach (long tweet_id in batch.Distinct())
             {
-                Counter.TweetToDelete.Increment();
+                Counter.TweetToCheckDelete.Increment();
                 //もっと古い公開ツイートがある場合だけ消そうな
                 if (await DB.AllHaveOlderMedia(tweet_id).ConfigureAwait(false))
                 {
-                    Counter.TweetDeleted.Add(await DB.RemoveDeletedTweet(tweet_id).ConfigureAwait(false));
+                    Counter.TweetToDelete.Increment();
+                    if (await DB.RemoveDeletedTweet(tweet_id).ConfigureAwait(false)) { Counter.TweetDeleted.Increment(); }
                 }
             }
         }, new ExecutionDataflowBlockOptions() { SingleProducerConstrained = true });

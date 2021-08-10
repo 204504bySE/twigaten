@@ -17,14 +17,14 @@ namespace Twigaten.Web
         /// </summary>
         /// <param name="tweet_id"></param>
         /// <returns></returns>
-        public async Task<int> RemoveDeletedTweet(long tweet_id)
+        public async Task<bool> RemoveDeletedTweet(long tweet_id)
         {
             using (var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;"))
             using (var cmd2 = new MySqlCommand(@"DELETE FROM tweet_text WHERE tweet_id = @tweet_id;"))
             {
                 cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
                 cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
-                return await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false) >> 1;
+                return await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false) > 0;
             }
         }
         /// <summary>
