@@ -137,10 +137,6 @@ namespace Twigaten.DctHash
         }
 
         const int size = 32;
-        //static readonly object GdiPlusLock = new object();
-        //static readonly byte[] imgbuf = new byte[size * size * 4];
-        //static readonly Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-        //static readonly Graphics g = Graphics.FromImage(miniimage);
         /// <summary>
         /// 正方形、モノクロの画像32x32)に
         /// </summary>
@@ -150,9 +146,6 @@ namespace Twigaten.DctHash
         static void MonoImage(Stream imgStream, Span<float> ret, bool Crop = false)
         {
             var imgbuf = ArrayPool<byte>.Shared.Rent(size * size * 4);
-            //wineでネイティブのgdiplusを使うときはシングルスレッドにしないと落ちる＼(^o^)／
-            //なおCPUAffinityも1コアにしないと結局落ちる
-            //lock (GdiPlusLock)
             {
                 using Bitmap miniimage = new Bitmap(size, size, PixelFormat.Format32bppArgb);
                 using Graphics g = Graphics.FromImage(miniimage);
