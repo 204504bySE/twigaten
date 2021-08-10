@@ -38,12 +38,12 @@ namespace Twigaten.Hash
         
         public long LastUpdate
         {
-            get { return long.Parse(ini[nameof(HashFile)][nameof(LastUpdate)] ?? "0"); }
+            get { return long.Parse(ini[nameof(HashFile)]?[nameof(LastUpdate)] ?? "0"); }
             set { ini[nameof(HashFile)][nameof(LastUpdate)] = value.ToString(); Save(); }
         }
         public long LastHashCount
         {
-            get { return long.Parse(ini[nameof(HashFile)][nameof(LastHashCount)] ?? "0"); }
+            get { return long.Parse(ini[nameof(HashFile)]?[nameof(LastHashCount)] ?? "0"); }
             set { ini[nameof(HashFile)][nameof(LastHashCount)] = value.ToString(); Save(); }
         }
 
@@ -51,7 +51,8 @@ namespace Twigaten.Hash
         public HashFile()
         {
             parser = new FileIniDataParser();
-            ini = parser.ReadFile(iniPath);
+            try { ini = parser.ReadFile(iniPath); }
+            catch { ini = new IniData(); }
         }
         void Save() =>  parser.WriteFile(iniPath, ini);
         

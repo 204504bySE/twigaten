@@ -14,7 +14,7 @@ namespace Twigaten.Hash
     {
         public DBHandler(HashFile hashfile) : base(config.database.Address, config.database.Protocol, 20, (uint)Math.Min(Environment.ProcessorCount, 40), 86400)
         {
-            HashUnitBits = Math.Min(63, 64 + 11 - (int)Math.Log(Math.Max(1, hashfile.LastHashCount), 2));
+            HashUnitBits = Math.Min(48, 64 + 11 - (int)Math.Log(Math.Max(1, hashfile.LastHashCount), 2));
             TableListSize = (int)Math.Max(4096, hashfile.LastHashCount >> (63 - HashUnitBits) << 2);
         }
         const string StoreMediaPairsHead = @"INSERT IGNORE INTO dcthashpairslim VALUES";
