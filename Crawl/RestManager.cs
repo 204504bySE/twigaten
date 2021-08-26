@@ -75,6 +75,8 @@ namespace Twigaten.Crawl
         /// <returns></returns>
         public async Task OneAccount(long user_id)
         {
+            var timeOut = Task.Run(async () => { await Task.Delay(60000).ConfigureAwait(false); Environment.Exit(1); });
+
             var t = await db.SelectUserStreamerSetting(user_id).ConfigureAwait(false);
             if (!t.HasValue) { return; }
             //無条件でAPIの最大数のツイートを取得するためにToken以外は捨てる
@@ -86,6 +88,8 @@ namespace Twigaten.Crawl
             var cred = s.VerifyCredentials();
             var timeline = s.RestTimeline();
             await Task.WhenAll(friend, block, tweet, cred, timeline).ConfigureAwait(false);
+
+            Console.WriteLine("{0}: API access completed.", user_id);
 
             //ツイート等の取得を行ったことをDBに保存する
             var savesetting = s.Setting;
