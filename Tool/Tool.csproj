@@ -12,11 +12,13 @@
     <PackageReference Include="CommandLineParser" Version="2.8.0" />
     <PackageReference Include="CoreTweet" Version="1.0.0.483" />
     <PackageReference Include="INIFileParserDotNetCore" Version="2.5.2" />
-    <PackageReference Include="MessagePack" Version="2.2.85" />
-    <PackageReference Include="MySqlConnector" Version="1.2.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="MessagePack" Version="2.3.75" />
+    <PackageReference Include="MySqlConnector" Version="1.3.11" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
   <Import Project="..\Lib\Lib.projitems" Label="Shared" />
+
+  <Import Project="..\Lib.DctHash\Lib.DctHash.projitems" Label="Shared" />
 
 </Project>
