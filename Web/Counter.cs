@@ -26,12 +26,13 @@ namespace Twigaten.Web
         public static CounterValue MediaTotal = new CounterValue();
         public static CounterValue MediaStored = new CounterValue();
         public static CounterValue MediaBlurhashed = new CounterValue();
-        public static CounterValue TweetDeleted = new CounterValue();
+        public static CounterValue TweetToCheckDelete = new CounterValue();
         public static CounterValue TweetToDelete = new CounterValue();
+        public static CounterValue TweetDeleted = new CounterValue();
         public static void PrintReset()
         {
             if (MediaTotal.Get() > 0) { Console.WriteLine("{0} / {1} / {2} / {3} Media Downloaded", MediaBlurhashed.GetReset(), MediaStored.GetReset(), MediaSuccess.GetReset(), MediaTotal.GetReset()); }
-            if (TweetToDelete.Get() > 0) { Console.WriteLine("{0} / {1} Tweet Deleted", TweetDeleted.GetReset(), TweetToDelete.GetReset()); }
+            if (TweetToCheckDelete.Get() > 0) { Console.WriteLine("{0} / {1} / {2} Tweet Deleted", TweetDeleted.GetReset(), TweetToDelete.GetReset(), TweetToCheckDelete.GetReset()); }
         }
     }
 }
