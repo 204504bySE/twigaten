@@ -9,6 +9,7 @@ using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using MessagePack;
 using Twigaten.Lib;
 
@@ -28,7 +29,7 @@ namespace Twigaten.Tool
             client.NoDelay = true;
             using var tcp = client.GetStream();
             using var reader = new MessagePackStreamReader(tcp);
-
+            int mediaCount = 0;
 
             foreach (string p in (await db.GetMediaPath(DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ConfigureAwait(false)).MediaPath)
             {
@@ -44,8 +45,9 @@ namespace Twigaten.Tool
                 }
                 catch (Exception e) { Console.WriteLine(e.Message); continue; }
 
-                var a = PictHashClient.DCTHash(mediabytes, 0, "192.168.238.8", 12306);
-                var b = PictHashClient.DCTHash(mediabytes, 0, "localhost", 12306);
+                mediaCount++;
+                var a = PictHashClient.DCTHash(mediabytes, 0, "192.168.238.126");
+                var b = PictHashClient.DCTHash(mediabytes, 0, "localhost");
                 await Task.WhenAll(a, b).ConfigureAwait(false);
                 if(!a.Result.HasValue || !b.Result.HasValue) { failure++; Console.WriteLine("\t\t\tfailure"); }
                 else if (a.Result.Value != b.Result.Value) 
@@ -60,7 +62,7 @@ namespace Twigaten.Tool
             {
                 if (0 < mismatchBits[i]) { Console.WriteLine("{0}: {1}", i, mismatchBits[i]); }
             }
-            Console.WriteLine("{0} mismatches.", mismatch);
+            Console.WriteLine("{0} / {1} mismatches.", mismatch, mediaCount);
         }
 
         public static async Task Marathon()
@@ -82,9 +84,9 @@ namespace Twigaten.Tool
             {
                 var result = await db.GetMediaPath(downloaded_at).ConfigureAwait(false);
                 downloaded_at = result.MinDownloadedAt - 1;
-                foreach (string p in result.MediaPath)
+
+                var compareHashBlock = new ActionBlock<string>(async (p) => 
                 {
-                    mediaCount++;
                     byte[] mediabytes;
                     try
                     {
@@ -95,20 +97,33 @@ namespace Twigaten.Tool
                             mediabytes = mem.ToArray();
                         }
                     }
-                    catch (Exception e) { Console.WriteLine(e.Message); continue; }
+                    catch (Exception e) { Console.WriteLine(e.Message); return; }
 
-                    var a = PictHashClient.DCTHash(mediabytes, 0, "192.168.238.8", 12306);
-                    var b = PictHashClient.DCTHash(mediabytes, 0, "localhost", 12306);
+                    var a = PictHashClient.DCTHash(mediabytes, 0, "192.168.238.126");
+                    var b = PictHashClient.DCTHash(mediabytes, 0, "localhost");
                     await Task.WhenAll(a, b).ConfigureAwait(false);
-                    if (!a.Result.HasValue || !b.Result.HasValue) { failure++; Console.WriteLine("\t\t\tfailure"); }
+                    if (!a.Result.HasValue || !b.Result.HasValue)
+                    {
+                        Interlocked.Increment(ref failure); 
+                        Console.WriteLine("\t\t\tfailure"); 
+                    }
                     else if (a.Result.Value != b.Result.Value)
                     {
-                        mismatch++;
+                        Interlocked.Increment(ref mismatch);
                         ulong bits = (ulong)(a.Result.Value ^ b.Result.Value);
-                        mismatchBits[Popcnt.X64.PopCount(bits)]++;
+                        Interlocked.Increment(ref mismatchBits[Popcnt.X64.PopCount(bits)]);
                         //Console.WriteLine("{0:X16}", bits);
                     }
+                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
+
+                foreach (string p in result.MediaPath)
+                {
+                    compareHashBlock.Post(p);
                 }
+                mediaCount += result.MediaPath.Length;
+                compareHashBlock.Complete();
+                await compareHashBlock.Completion;
+
                 for (int i = 0; i < mismatchBits.Length; i++)
                 {
                     if (0 < mismatchBits[i]) { Console.WriteLine("{0}: {1}", i, mismatchBits[i]); }
@@ -145,14 +160,17 @@ namespace Twigaten.Tool
             }
         }
 
-        readonly static Stopwatch PoolRelease = Stopwatch.StartNew();
-        static readonly Random random = new Random();
-
+        static readonly ConcurrentDictionary<string, ConcurrentBag<TcpPoolItem>> TcpPool = new();
         ///<summary>クソサーバーからDCTHashをもらってくる</summary>
-        public static async Task<long?> DCTHash(byte[] Source, long media_id, string HostName, int Port)
+        public static async Task<long?> DCTHash(byte[] Source, long media_id, string HostName)
         {
-            var tcp = new TcpPoolItem(HostName, Port);
-
+            if (!TcpPool.TryGetValue(HostName, out var tcpHost)) 
+            {
+                tcpHost = new ConcurrentBag<TcpPoolItem>();
+                TcpPool[HostName] = tcpHost;
+            }
+            if (!tcpHost.TryTake(out var tcp)) { tcp = new TcpPoolItem(HostName, 12306); }
+            long? ret = null;
             try
             {
                 using var cancel = new CancellationTokenSource(10000);
@@ -162,14 +180,12 @@ namespace Twigaten.Tool
                 if (msgpack.HasValue)
                 {
                     var result = MessagePackSerializer.Deserialize<PictHashResult>(msgpack.Value);
-                    if (result.UniqueId == media_id) { return result.DctHash; }
+                    if (result.UniqueId == media_id) { ret = result.DctHash; }
                 }
+                tcpHost.Add(tcp);
             }
-            finally
-            {
-                tcp.Dispose();
-            }
-            return null;
+            catch { tcp.Dispose(); }
+            return ret;
         }
     }
 
