@@ -15,23 +15,32 @@ namespace Twigaten.Lib
         private Config() { Reload(); }
         public void Reload()
         {
+            IniData data;
             try
             {
                 string iniPath = Environment.GetEnvironmentVariable("TWIGATEN_CONFIG_PATH");
-                if (string.IsNullOrWhiteSpace(iniPath)) { iniPath =  Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twigaten.ini"); }
+                if (string.IsNullOrWhiteSpace(iniPath))
+                {
+                    iniPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location), "twigaten.ini");
+                }
                 var ini = new FileIniDataParser();
-                var data = ini.ReadFile(iniPath);
-                token = new _token(data);
-                crawl = new _crawl(data);
-                crawlparent = new _crawlparent(data);
-                locker = new _locker(data);
-                //hashはiniに書き込む必要がある
-                hash = new _hash(iniPath, ini, data);
-                dcthashserver = new _dcthashserver(data);
-                web = new _web(data);
-                database = new _database(data);
+                data = ini.ReadFile(iniPath);
             }
-            catch { Console.WriteLine("FAILED TO LOAD config file."); }
+            catch
+            {
+                data = new IniData();
+                Console.WriteLine("FAILED TO LOAD config file.");
+            }
+            token = new _token(data);
+            crawl = new _crawl(data);
+            crawlparent = new _crawlparent(data);
+            locker = new _locker(data);
+            //hashはiniに書き込む必要がある
+            hash = new _hash(data);
+            dcthashserver = new _dcthashserver(data);
+            web = new _web(data);
+            database = new _database(data);
+
         }
 
         //singletonはこれでインスタンスを取得して使う
@@ -141,9 +150,6 @@ namespace Twigaten.Lib
 
         public class _hash
         {
-            readonly string iniPath;
-            readonly FileIniDataParser ini;
-            readonly IniData data;
             public int MaxHammingDistance { get; }
             public int ExtraBlocks { get; }
             public string TempDir { get; }
@@ -154,9 +160,8 @@ namespace Twigaten.Lib
             public int ZipBufferElements { get; }
             public int MultipleSortBufferElements { get; }
 
-            public _hash(string iniPath, FileIniDataParser ini, IniData data)
+            public _hash(IniData data)
             {
-                this.iniPath = iniPath; this.ini = ini; this.data = data;
                 MaxHammingDistance = int.Parse(data["hash"][nameof(MaxHammingDistance)] ?? "3");
                 ExtraBlocks = int.Parse(data["hash"][nameof(ExtraBlocks)] ?? "1");
                 TempDir = data["hash"][nameof(TempDir)] ?? "";

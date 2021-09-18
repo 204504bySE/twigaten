@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using CommandLine;
 
 namespace Twigaten.Tool
@@ -128,7 +129,13 @@ namespace Twigaten.Tool
             }
             else if (opts.nothai)
             {
-
+                var DeleteUserBlock = new ActionBlock<long>(async (user_id) => await DB.DeleteUser(user_id).ConfigureAwait(false));
+                Counter.AutoRefresh();
+                await DB.ThaiAccounts((user_id) => DeleteUserBlock.Post(user_id)).ConfigureAwait(false);
+                DeleteUserBlock.Complete();
+                await DeleteUserBlock.Completion.ConfigureAwait(false);
+                Counter.PrintReset();
+                Console.WriteLine("＼(^o^)／");
             }
             else
             {

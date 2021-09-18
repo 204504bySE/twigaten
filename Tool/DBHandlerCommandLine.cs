@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using MySqlConnector;
@@ -14,6 +15,11 @@ namespace Twigaten.Tool
     {
         public DBHandlerCommandLine() : base(config.database.Address, config.database.Protocol, 600, (uint)(Environment.ProcessorCount << 2)) { }
 
+        /// <summary>
+        /// screen_nameからアカウントIDを調べる
+        /// </summary>
+        /// <param name="screen_name"></param>
+        /// <returns></returns>
         public async Task<long?> LookupAccount(string screen_name)
         {
             try
@@ -29,6 +35,11 @@ namespace Twigaten.Tool
             catch { return null; }
         }
 
+        /// <summary>
+        /// アカウントの情報をそれっぽいテキストで出す
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <returns></returns>
         public async Task<string> UserInfo(long user_id)
         {
             try
@@ -53,6 +64,11 @@ namespace Twigaten.Tool
             catch { return null; }
         }
 
+        /// <summary>
+        /// そいつのツイートが何個TwiGaTenに保存されているか調べる(RT含む)
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <returns></returns>
         public async Task<long> TweetCount(long user_id)
         {
             try
@@ -67,6 +83,11 @@ namespace Twigaten.Tool
             catch { return -1; }
         }
 
+        /// <summary>
+        /// こいつのツイートを全消しする
+        /// </summary>
+        /// <param name="user_id"></param>
+        /// <returns></returns>
         public async Task DeleteUser(long user_id)
         {
             const int DeleteUnit = 1000;
@@ -145,5 +166,34 @@ WHERE user_id = @user_id;"))
             }
 
         }
+
+        /// <summary>
+        /// タイ語圏っぽいアカウントを全部見つけ出す
+        /// </summary>
+        /// <returns></returns>
+        public async Task ThaiAccounts(Action<long> callback)
+        {
+            var thaiLatinRegexFull = new Regex(@"^[\sA-Za-z0-9ก-๛]{2,}$");
+            var thaiRegex = new Regex(@"[ก-๛]{4,}");
+            //名前と自己紹介の両方がタイ語なら多分そうだろう
+            using(var cmd = new MySqlCommand(@"SELECT user_id, name, screen_name, description FROM user
+WHERE description REGEXP BINARY '^[ก-๛]{4,}$';"))
+            {
+                await ExecuteReader(cmd, (r) =>
+                {
+                    var user_id = r.GetInt64(0);
+                    var name = r.GetString(1);
+                    var screen_name = r.GetString(2);
+                    var description = r.GetString(3);
+                    //MySQLのREGEXPだとキリル文字やギリシャ文字圏に誤爆するのでここでもやる
+                    if (thaiLatinRegexFull.IsMatch(name) && thaiRegex.IsMatch(description))
+                    {
+                        Console.WriteLine("!! " + user_id.ToString() + "\t" + screen_name + "\t" + name + "\t" + description);
+                        callback(user_id);
+                    }
+                }).ConfigureAwait(false);
+            }
+        }
+
     }
 }
