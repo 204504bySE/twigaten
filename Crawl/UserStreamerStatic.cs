@@ -110,6 +110,7 @@ namespace Twigaten.Crawl
             return false;   //返事が来なかったらこれ            
         }
         */
+
         static readonly RemoveOldSet<long> UserLock = new RemoveOldSet<long>(config.crawl.TweetLockSize);
         static readonly ActionBlock<(Status, Tokens, bool stream)> TweetDistinctBlock
             = new ActionBlock<(Status x, Tokens t, bool stream)>((m) =>
@@ -398,6 +399,8 @@ namespace Twigaten.Crawl
         }
 
         //structだからreadonlyにすると更新されなくなるよ
+        public static CounterValue ActiveStreamers = new CounterValue();
+        public static CounterValue RestedStreamers = new CounterValue();
         public static CounterValue MediaSuccess = new CounterValue();
         public static CounterValue MediaToStore = new CounterValue();
         public static CounterValue MediaTotal = new CounterValue();
@@ -410,6 +413,7 @@ namespace Twigaten.Crawl
         //ひとまずアイコンは除外しようか
         public static void PrintReset()
         {
+            Console.WriteLine("App: {0} + {1} Accounts Crawled.", ActiveStreamers.GetReset(), RestedStreamers.GetReset());
             if (TweetToStoreStream.Get() > 0 || TweetToStoreRest.Get() > 0)
             {
                 Console.WriteLine("App: {0} + {1} / {2} + {3} Tweet Stored",
