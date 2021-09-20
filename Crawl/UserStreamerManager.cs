@@ -82,6 +82,7 @@ namespace Twigaten.Crawl
                                     break;
                             }
                         }
+                        ConnectBlockProceeeded.Add(Streamer);
                     }
                     catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
                 }, new ExecutionDataflowBlockOptions()
@@ -170,9 +171,9 @@ namespace Twigaten.Crawl
         readonly ActionBlock<UserStreamer> ConnectBlock;
 
         /// <summary>
-        /// 前回のConnectStreamers()で取得したアカウントのID(Key)と取得時刻(Value)
+        /// ConnectBlockが処理したUserStreamerの一覧
         /// </summary>
-        readonly List<KeyValuePair<long, long>> LastCrawlTime = new List<KeyValuePair<long, long>>();
+        readonly ConcurrentBag<UserStreamer> ConnectBlockProceeeded = new ConcurrentBag<UserStreamer>();
 
         /// <summary>
         /// これを定期的に呼んで再接続やFriendの取得をやらせる
@@ -184,7 +185,17 @@ namespace Twigaten.Crawl
             //アカウントが1個も割り当てられなくなってたら自殺する
             if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); }
 
-            var StoreLastCrawlTimeTask = db.StoreCrawlInfo_Timeline(LastCrawlTime).ConfigureAwait(false);
+            var LastCrawlTime = new Dictionary<long,long>();
+            while (ConnectBlockProceeeded.TryTake(out var proceeded))
+            {
+                //ツイートの取得時刻を保存する(たぶん)
+                //ここで(前回のConnectStreamers()で)REST取得したやつとUser streamに接続済みのやつだけ処理する(もうないけど)
+                if (proceeded.LastReceivedTweetId != 0 || proceeded.NeedConnect() == UserStreamer.NeedConnectResult.StreamConnected)
+                {
+                    LastCrawlTime[proceeded.Token.UserId] = proceeded.LastMessageTime.ToUnixTimeSeconds();
+                }
+            }
+            var StoreLastCrawlTimeTask = db.StoreCrawlInfo_Timeline(LastCrawlTime);
             Counter.PrintReset();
 
             //TLがある程度進んでいるアカウントと一定時間取得してないアカウントだけ接続する
@@ -212,21 +223,14 @@ namespace Twigaten.Crawl
                 catch (TaskCanceledException) { }
             }
 
-            //ツイートの取得時刻を保存する(たぶん)
-            //ここでREST取得したやつとUser streamに接続済みのやつだけ処理する(もうないけど)
-            await StoreLastCrawlTimeTask;
-            LastCrawlTime.Clear();
-            LastCrawlTime.AddRange(StreamersSelected
-                .Where(s => s.LastReceivedTweetId != 0)
-                .Union(Streamers.Select(s => s.Value).Where(s => s.NeedConnect() == UserStreamer.NeedConnectResult.StreamConnected))
-                .Select(s => new KeyValuePair<long, long>(s.Token.UserId, s.LastMessageTime.ToUnixTimeSeconds())));
-
+            await StoreLastCrawlTimeTask.ConfigureAwait(false);
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
 
             if (0 < UserStreamerStatic.RetryingCount) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
             //Retryingが増え続けて復帰しないことがあるのでそのときは殺してもらう
-            else { await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false); }
+            //接続が全然進まないときも同様
+            else if (0 < Counter.ActiveStreamers.Get() + Counter.RestedStreamers.Get()) { await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false); }
         }
 
         ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>
