@@ -25,7 +25,6 @@ create table crawlprocess(
 create table crawlinfo(
 	user_id bigint primary key,
 	timeline_updated_at bigint,
-	foreign key (user_id) references token(user_id) on delete cascade
 )engine=InnoDB row_format=COMPRESSED;
 
 create table friend(
