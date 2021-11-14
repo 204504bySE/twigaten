@@ -46,7 +46,8 @@ namespace Twigaten.Crawl
         {
             return TweetDistinctBlock.InputCount > config.crawl.ConnectPostponeSize
                 || HandleTweetBlock.InputCount > config.crawl.ConnectPostponeSize
-                || DownloadMediaBlock.InputCount > config.crawl.ConnectPostponeSize;
+                || DownloadMediaBlock.InputCount > config.crawl.ConnectPostponeSize
+                || StoreMediaBlock.InputCount > config.crawl.ConnectPostponeSize;
         }
 
         //ツイートをDBに保存したりRTを先に保存したりする
