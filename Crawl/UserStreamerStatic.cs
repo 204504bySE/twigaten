@@ -228,7 +228,7 @@ namespace Twigaten.Crawl
         /// </summary>
         static readonly ActionBlock<(Status, Tokens)> RetryDownloadStoreBlock = new ActionBlock<(Status, Tokens)>(async (a) =>
         {
-            do { await Task.Delay(1000).ConfigureAwait(false); } while (0 < DownloadMediaBlock.InputCount);
+            do { await Task.Delay(100).ConfigureAwait(false); } while (0 < DownloadMediaBlock.InputCount);
             DownloadMediaBlock.Post(a);
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
