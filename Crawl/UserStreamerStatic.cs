@@ -39,9 +39,11 @@ namespace Twigaten.Crawl
             int a, b;
             if ((a = TweetDistinctBlock.InputCount) > 0 | (b = HandleTweetBlock.InputCount) > 0)
             { Console.WriteLine("App: {0} -> {1} Tweets in buffer", a, b); }
-            if ((a = DownloadMediaBlock.InputCount) > 0) { Console.WriteLine("App: {0} Media in buffer", a); }
+            if ((a = DownloadMediaBlock.InputCount) > 0 | (b = StoreMediaBlock.InputCount) > 0)
+            { Console.WriteLine("App: {0} -> {1} Media in buffer", a, b); }
+
         }
-        
+
         public static bool NeedConnectPostpone()
         {
             return TweetDistinctBlock.InputCount > config.crawl.ConnectPostponeSize
@@ -228,7 +230,7 @@ namespace Twigaten.Crawl
         /// </summary>
         static readonly ActionBlock<(Status, Tokens)> RetryDownloadStoreBlock = new ActionBlock<(Status, Tokens)>(async (a) =>
         {
-            do { await Task.Delay(100).ConfigureAwait(false); } while (0 < DownloadMediaBlock.InputCount);
+            await Task.Delay(100).ConfigureAwait(false); 
             DownloadMediaBlock.Post(a);
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;

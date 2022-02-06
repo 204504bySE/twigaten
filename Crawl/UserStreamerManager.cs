@@ -23,6 +23,8 @@ namespace Twigaten.Crawl
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
 
+        static int LastRetryingCount;
+
         private UserStreamerManager()
         {
             ConnectBlock = new ActionBlock<UserStreamer>(
@@ -185,7 +187,7 @@ namespace Twigaten.Crawl
             //アカウントが1個も割り当てられなくなってたら自殺する
             if (!await db.ExistThisPid().ConfigureAwait(false)) { Environment.Exit(1); }
 
-            var LastCrawlTime = new Dictionary<long,long>();
+            var LastCrawlTime = new Dictionary<long, long>();
             while (ConnectBlockProceeeded.TryTake(out var proceeded))
             {
                 //ツイートの取得時刻を保存する(たぶん)
@@ -227,10 +229,14 @@ namespace Twigaten.Crawl
             //Revoke後再試行にも失敗したTokenはここで消す
             await RemoveRevokedTokens().ConfigureAwait(false);
 
-            if (0 < UserStreamerStatic.RetryingCount) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
+            var RetryingCount = UserStreamerStatic.RetryingCount;
+            if (0 < RetryingCount) { Console.WriteLine("App: {0} Media Retrying.", UserStreamerStatic.RetryingCount); }
             //Retryingが増え続けて復帰しないことがあるのでそのときは殺してもらう
             //接続が全然進まないときも同様
-            else if (0 < Counter.ActiveStreamers.Get() + Counter.RestedStreamers.Get()) { await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false); }
+            if (RetryingCount <= LastRetryingCount && 0 < Counter.ActiveStreamers.Get() + Counter.RestedStreamers.Get()) { await WatchDogUdp.SendAsync(BitConverter.GetBytes(ThisPid), sizeof(int), WatchDogEndPoint).ConfigureAwait(false); }
+
+            LastRetryingCount = RetryingCount;
+            UserStreamerStatic.ShowCount();
         }
 
         ///<summary>最後に取得したツイートのIDなどをDBに保存する</summary>
