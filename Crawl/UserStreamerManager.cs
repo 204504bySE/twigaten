@@ -88,7 +88,7 @@ namespace Twigaten.Crawl
                 }, new ExecutionDataflowBlockOptions()
                 {
                     MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
-                    BoundedCapacity = config.crawl.ReconnectThreads << 1,    //これでもawaitする
+                    BoundedCapacity = config.crawl.ReconnectThreads + 1,    //これでもawaitする
                     SingleProducerConstrained = true,
                 });
         }
