@@ -155,13 +155,11 @@ namespace Twigaten.Web.Parameters
     /// </summary>
     static class LoginTokenEncrypt
     {
-        static readonly RNGCryptoServiceProvider RNG = new RNGCryptoServiceProvider();
         static readonly SHA256 SHA = SHA256.Create();
         ///<summary>88文字のCookie用文字列と44文字のDB用文字列を生成</summary>
         public static (string Text88, string Hash44) NewToken()
         {
-            byte[] random = new byte[64];
-            RNG.GetBytes(random);            
+            var random = RandomNumberGenerator.GetBytes(64);
             return (Convert.ToBase64String(random), Convert.ToBase64String(SHA.ComputeHash(random)));
         }
         ///<summary>88文字のCookie用文字列と44文字のDB用文字列を照合</summary>
