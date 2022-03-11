@@ -204,7 +204,7 @@ namespace Twigaten.Crawl
             var now = DateTimeOffset.UtcNow;
             var StreamersSelected = Streamers.Select(s => s.Value)
                 .Where(s => s.EstimatedTweetToReceive >= config.crawl.StreamSpeedTweets
-                    || (s.LastMessageTime - now).TotalSeconds > config.crawl.MaxRestInterval)
+                    || (now - s.LastMessageTime).TotalSeconds > config.crawl.MaxRestInterval)
                 .OrderByDescending(s => s.EstimatedTweetToReceive)
                 .ToArray();
             using (var cancel = new CancellationTokenSource(60000))
