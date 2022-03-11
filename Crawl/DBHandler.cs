@@ -31,7 +31,8 @@ namespace Twigaten.Crawl
             CurrentProcess,
         }
 
-        ///<summary>いろいろ条件付きでTokenを取得する</summary>
+        ///<summary>いろいろ条件付きでTokenを取得する
+        ///Token.UserIdはちゃんとセットされる</summary>
         public async Task<IEnumerable<UserStreamerSetting>> SelectUserStreamerSetting(SelectTokenMode Mode)
         {
             string cmdstr = @"SELECT
