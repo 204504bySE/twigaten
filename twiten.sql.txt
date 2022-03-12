@@ -5,13 +5,13 @@ create table token(
 	user_id bigint primary key,
 	token varchar(255) character set ascii not null,
 	token_secret varchar(255) character set ascii not null
-)engine=InnoDB row_format=COMPRESSED;;
+)engine=InnoDB row_format=COMPRESSED;
 
 create table viewlogin(
 	user_id bigint primary key,
 	logintoken varchar(44) character set ascii not null,
 	foreign key (user_id) references token(user_id) on delete cascade
-)engine=InnoDB row_format=COMPRESSED;;
+)engine=InnoDB row_format=COMPRESSED;
 
 create table crawlprocess(
 	user_id bigint primary key,
@@ -19,7 +19,7 @@ create table crawlprocess(
 	rest_needed bool not null,
 	last_status_id bigint not null default 0,
 	foreign key (user_id) references token(user_id) on delete cascade
-)engine=InnoDB row_format=COMPRESSED;;
+)engine=InnoDB row_format=COMPRESSED;
 	create index pid_index on crawlprocess(pid);
 
 create table crawlinfo(
