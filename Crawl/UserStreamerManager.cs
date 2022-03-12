@@ -33,10 +33,10 @@ namespace Twigaten.Crawl
                     try
                     {
                         var NeedConnect = Streamer.NeedConnect();
-                        //初回だけVerifyCredentials()する
+                        //初回とRevoke疑いのときだけVerifyCredentials()する
                         //プロフィールを取得したい
                         if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
-                        else if (NeedConnect == UserStreamer.NeedConnectResult.First)
+                        else if (NeedConnect == UserStreamer.NeedConnectResult.First || RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
                         {
                             switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
                             {
