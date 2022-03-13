@@ -206,6 +206,7 @@ namespace Twigaten.Crawl
                 .Where(s => s.EstimatedTweetToReceive >= config.crawl.StreamSpeedTweets
                     || (now - s.LastMessageTime).TotalSeconds > config.crawl.MaxRestInterval)
                 .OrderByDescending(s => s.EstimatedTweetToReceive)
+                .ThenBy(s => s.LastMessageTime)
                 .ToArray();
             using (var cancel = new CancellationTokenSource(60000))
             {
