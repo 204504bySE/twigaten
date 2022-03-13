@@ -183,32 +183,28 @@ namespace Twigaten.Crawl
                 {
                     try
                     {
-                        using (var req = new HttpRequestMessage(HttpMethod.Get, ProfileImageUrl))
+                        using var req = new HttpRequestMessage(HttpMethod.Get, ProfileImageUrl);
+                        req.Headers.Referrer = new Uri(StatusUrl(x));
+                        using var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+                        if (res.IsSuccessStatusCode)
                         {
-                            req.Headers.Referrer = new Uri(StatusUrl(x));
-                            using (var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
+                            try
                             {
-                                if (res.IsSuccessStatusCode)
-                                {
-                                    try
-                                    {
-                                        using var file = File.Create(LocalPath);
-                                        await res.Content.CopyToAsync(file).ConfigureAwait(false);
-                                        await file.FlushAsync().ConfigureAwait(false);
-                                        DownloadOK = true; break;
-                                    }
-                                    catch
-                                    {
-                                        File.Delete(LocalPath);
-                                        continue;
-                                    }
-                                }
-                                else if (res.StatusCode == HttpStatusCode.NotFound
-                                    || res.StatusCode == HttpStatusCode.Forbidden
-                                    || res.StatusCode == HttpStatusCode.Gone)
-                                { break; }
+                                using var file = File.Create(LocalPath);
+                                await res.Content.CopyToAsync(file).ConfigureAwait(false);
+                                await file.FlushAsync().ConfigureAwait(false);
+                                DownloadOK = true; break;
+                            }
+                            catch
+                            {
+                                File.Delete(LocalPath);
+                                continue;
                             }
                         }
+                        else if (res.StatusCode == HttpStatusCode.NotFound
+                            || res.StatusCode == HttpStatusCode.Forbidden
+                            || res.StatusCode == HttpStatusCode.Gone)
+                        { break; }
                     }
                     catch { continue; }
                 }
@@ -230,7 +226,8 @@ namespace Twigaten.Crawl
         /// </summary>
         static readonly ActionBlock<(Status, Tokens)> RetryDownloadStoreBlock = new ActionBlock<(Status, Tokens)>(async (a) =>
         {
-            await Task.Delay(100).ConfigureAwait(false); 
+            await Task.Delay(Math.Clamp(100 - RetryingCount, 10, 100)).ConfigureAwait(false);
+            Counter.MediaRetry.Increment();
             DownloadMediaBlock.Post(a);
         });
         public static int RetryingCount => RetryDownloadStoreBlock.InputCount;
@@ -255,45 +252,48 @@ namespace Twigaten.Crawl
                     switch (await db.ExistMedia_source_tweet_id(m.Id).ConfigureAwait(false))
                     {
                         //すでにDBに入ってたらダウンロードしない
-                        case true:
+                        case DBHandler.ExistMediaResult.Exist:
                             if (OtherSourceTweet) { await db.Storetweet_media(a.x.Id, m.Id).ConfigureAwait(false); }
                             continue;
-                        case null:
+                        case DBHandler.ExistMediaResult.NoSourceTweetId:
                             if (OtherSourceTweet && RestId.Value.Add(a.x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, a.t).ConfigureAwait(false); }
                             await db.Storetweet_media(a.x.Id, m.Id).ConfigureAwait(false);
                             await db.UpdateMedia_source_tweet_id(m, a.x).ConfigureAwait(false);
                             continue;
-                        case false:
+                        case DBHandler.ExistMediaResult.NotExist:
                             if (OtherSourceTweet && RestId.Value.Add(a.x.Id)) { await DownloadOneTweet(m.SourceStatusId.Value, a.t).ConfigureAwait(false); }    //コピペつらい
                             break;   //画像の情報がないときだけダウンロードする
+                        default:    //そんなバナナ
+                            break;
                     }
 
                     //m.Urlとm.MediaUrlは違う
                     string MediaUrl = m.MediaUrlHttps ?? m.MediaUrl;
                     string uri = MediaUrl + (MediaUrl.IndexOf("twimg.com") >= 0 ? ":thumb" : "");
 
-                    byte[] mem = null;
                     Counter.MediaToStore.Increment();
-                    using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
+
+                    using var req = new HttpRequestMessage(HttpMethod.Get, uri);
+                    req.Headers.Referrer = new Uri(StatusUrl(a.x));
+                    try
                     {
-                        req.Headers.Referrer = new Uri(StatusUrl(a.x));
-                        try
+                        using var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+                        if (res.IsSuccessStatusCode)
                         {
-                            using (var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
-                            {
-                                if (res.IsSuccessStatusCode) { mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false); }
-                                //この画像はリトライしても無駄なのであきらめる
-                                else if (res.StatusCode == HttpStatusCode.NotFound
-                                    || res.StatusCode == HttpStatusCode.Gone
-                                    || res.StatusCode == HttpStatusCode.Forbidden)
-                                { continue; }
-                                else { RetryDownloadStoreBlock.Post(a); continue; }
-                            }
+                            var mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                            StoreMediaBlock.Post((a.x, m, mem, OtherSourceTweet));
+                            break;
                         }
+                        //この画像はリトライしても無駄なのであきらめる
+                        else if (res.StatusCode == HttpStatusCode.NotFound
+                            || res.StatusCode == HttpStatusCode.Gone
+                            || res.StatusCode == HttpStatusCode.Forbidden)
+                        { break; }
                         //画像の取得に失敗したら多分後でやり直す
-                        catch { RetryDownloadStoreBlock.Post(a); continue; }
+                        else { RetryDownloadStoreBlock.Post(a); }
                     }
-                    if (mem != null) { StoreMediaBlock.Post((a.x, m, mem, OtherSourceTweet)); }
+                    //画像の取得に失敗したら多分後でやり直す
+                    catch { RetryDownloadStoreBlock.Post(a); }
                 }
             }
             catch { }   //MediaEntityがnullの時があるっぽい
@@ -407,6 +407,7 @@ namespace Twigaten.Crawl
         public static CounterValue MediaSuccess = new CounterValue();
         public static CounterValue MediaToStore = new CounterValue();
         public static CounterValue MediaTotal = new CounterValue();
+        public static CounterValue MediaRetry = new CounterValue();
         public static CounterValue TweetStoredStream = new CounterValue();
         public static CounterValue TweetStoredRest = new CounterValue();
         public static CounterValue TweetToStoreStream = new CounterValue();
@@ -425,6 +426,7 @@ namespace Twigaten.Crawl
             }
             if (TweetToDelete.Get() > 0) { Console.WriteLine("App: {0} / {1} Tweet Deleted", TweetDeleted.GetReset(), TweetToDelete.GetReset()); }
             if (MediaTotal.Get() > 0) { Console.WriteLine("App: {0} / {1} / {2} Media Stored", MediaSuccess.GetReset(), MediaToStore.GetReset(), MediaTotal.GetReset()); }
+            if (MediaRetry.Get() > 0) { Console.WriteLine("App: {0} Media Retry Attempts", MediaRetry.GetReset()); }
         }
     }
 }

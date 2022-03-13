@@ -536,25 +536,33 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
             }
         }
 
-        //true→Mediaにmedia_idが載ってる false→載ってない null→source_tweet_idがない
-        public async Task<bool?> ExistMedia_source_tweet_id(long media_id)
+        public enum ExistMediaResult
+        {
+            /// <summary>Mediaにmedia_idが載っていない</summary>
+            NotExist,
+            /// <summary>Mediaにmedia_idが載ってる</summary>
+            Exist,
+            /// <summary>source_tweet_idがない</summary>
+            NoSourceTweetId
+        }
+        public async Task<ExistMediaResult> ExistMedia_source_tweet_id(long media_id)
         {
             bool HasRow = false;
             long? result = null;
             using (var cmd = new MySqlCommand(@"SELECT source_tweet_id FROM media WHERE media_id = @media_id;"))
             {
                 cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
-                if(await ExecuteReader(cmd, (r) => 
+                if (await ExecuteReader(cmd, (r) =>
+                 {
+                     HasRow = true;
+                     result = r.IsDBNull(0) ? null : r.GetInt64(0);
+                 }, IsolationLevel.ReadUncommitted).ConfigureAwait(false))
                 {
-                    HasRow = true;
-                    result = r.IsDBNull(0) ? null as long? : r.GetInt64(0);
-                }, IsolationLevel.ReadUncommitted).ConfigureAwait(false))
-                {
-                    if (!HasRow) { return false; }  //DBが詰まるとあああ #とは
-                    else if (!result.HasValue) { return null; }
-                    else { return true; }
+                    if (!HasRow) { return ExistMediaResult.NotExist; }  //DBが詰まるとあああ #とは
+                    else if (!result.HasValue) { return ExistMediaResult.NoSourceTweetId; }
+                    else { return ExistMediaResult.Exist; }
                 }
-                else { return false; }
+                else { return ExistMediaResult.NotExist; }
             }
         }
 
