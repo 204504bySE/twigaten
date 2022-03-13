@@ -201,10 +201,8 @@ namespace Twigaten.Crawl
                                 continue;
                             }
                         }
-                        else if (res.StatusCode == HttpStatusCode.NotFound
-                            || res.StatusCode == HttpStatusCode.Forbidden
-                            || res.StatusCode == HttpStatusCode.Gone)
-                        { break; }
+                        //この画像はリトライしても無駄なのであきらめる
+                        else if (400 <= (int)res.StatusCode && (int)res.StatusCode <= 499) { break; }
                     }
                     catch { continue; }
                 }
@@ -282,13 +280,10 @@ namespace Twigaten.Crawl
                         {
                             var mem = await res.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                             StoreMediaBlock.Post((a.x, m, mem, OtherSourceTweet));
-                            break;
+                            continue;
                         }
                         //この画像はリトライしても無駄なのであきらめる
-                        else if (res.StatusCode == HttpStatusCode.NotFound
-                            || res.StatusCode == HttpStatusCode.Gone
-                            || res.StatusCode == HttpStatusCode.Forbidden)
-                        { break; }
+                        else if (400 <= (int)res.StatusCode && (int)res.StatusCode <= 499) { continue; }
                         //画像の取得に失敗したら多分後でやり直す
                         else { RetryDownloadStoreBlock.Post(a); }
                     }
