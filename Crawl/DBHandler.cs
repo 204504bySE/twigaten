@@ -71,7 +71,7 @@ JOIN crawlprocess USING (user_id)
         /// </summary>
         /// <param name="user_id"></param>
         /// <returns></returns>
-        public async Task<UserStreamerSetting?>SelectUserStreamerSetting(long user_id)
+        public async Task<UserStreamerSetting?> SelectUserStreamerSetting(long user_id)
         {
             using (var cmd = new MySqlCommand(@"SELECT
 user_id, token, token_secret
@@ -80,7 +80,7 @@ WHERE user_id = @user_id;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = user_id;
 
-                UserStreamerSetting? ret = null;           
+                UserStreamerSetting? ret = null;
                 if (await ExecuteReader(cmd, (r) =>
                 {
                     ret = new UserStreamerSetting()
@@ -225,8 +225,8 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @location, @description)
 ON DUPLICATE KEY UPDATE name=@name, screen_name=@screen_name, isprotected=@isprotected, location=@location, description=@description;"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = ProfileResponse.Id;
-                cmd.Parameters.Add("@name", MySqlDbType.VarChar).Value =  ProfileResponse.Name;
-                cmd.Parameters.Add("@screen_name",MySqlDbType.VarChar).Value = ProfileResponse.ScreenName;
+                cmd.Parameters.Add("@name", MySqlDbType.VarChar).Value = ProfileResponse.Name;
+                cmd.Parameters.Add("@screen_name", MySqlDbType.VarChar).Value = ProfileResponse.ScreenName;
                 cmd.Parameters.Add("@isprotected", MySqlDbType.Byte).Value = ProfileResponse.IsProtected;
                 //こっちではアイコンはダウンロードしてないし更新もしない
                 cmd.Parameters.Add("@location", MySqlDbType.TinyText).Value = ProfileResponse.Location;
@@ -292,7 +292,7 @@ WHERE user_id = @user_id;"))
         public async Task<int> StoreUser(Status x, bool IconDownloaded, bool ForceUpdate = true)
         {
             //DBにユーザーを入れる RTは先にやらないとキー制約が
-            
+
             if (x.Entities.Media == null) { return 0; }    //画像なしツイートは捨てる
             using (var cmd = new MySqlCommand())
             using (var cmd2 = new MySqlCommand())
@@ -355,7 +355,7 @@ VALUES (@user_id, @name, @screen_name, @isprotected, @profile_image_url, @is_def
         {
             if (x.Entities.Media == null) { return 0; }    //画像なしツイートは捨てる
             var cmd = new MySqlCommand();
-            
+
             if (update) //同じツイートがあったらふぁぼRT数を更新する
             {
                 cmd.CommandText = @"INSERT
@@ -407,7 +407,7 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
                     {
                         cmd.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64);
                         cmd2.Parameters.Add("@" + j.ToString(), MySqlDbType.Int64);
-                    }                    
+                    }
                     for (i = 0; i < DeleteID.Length / BulkUnit; i++)
                     {
                         for (j = 0; j < BulkUnit; j++)
@@ -418,7 +418,7 @@ VALUES(@tweet_id, @user_id, @created_at, @retweet_id, @retweet_count, @favorite_
                         int DeletedCount = await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false);
                         if (DeletedCount >= 0) { Counter.TweetDeleted.Add(DeletedCount); }
                         else { foreach (long f in DeleteID.Skip(BulkUnit * i).Take(BulkUnit)) { ret.Add(f); } }
-                        
+
                     }
                 }
             }
@@ -605,7 +605,7 @@ VALUES(@media_id, @downloaded_at)");
             cmdDownload.Parameters.Add("@media_id", MySqlDbType.Int64).Value = m.Id;
             cmdDownload.Parameters.Add("@downloaded_at", MySqlDbType.Int64).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            return await ExecuteNonQuery(new [] { cmd, cmdText, cmdDownload }).ConfigureAwait(false) >= 0 | await Storetweet_media(x.Id, m.Id).ConfigureAwait(false) > 0;
+            return await ExecuteNonQuery(new[] { cmd, cmdText, cmdDownload }).ConfigureAwait(false) >= 0 | await Storetweet_media(x.Id, m.Id).ConfigureAwait(false) > 0;
         }
 
         public async Task<int> Storetweet_media(long tweet_id, long media_id)
@@ -652,7 +652,7 @@ VALUES(@media_id, @downloaded_at)");
         ///<summary>自分のpidにtokenの割り当てがなかったら自殺する</summary>
         public async Task<bool> ExistThisPid()
         {
-            using(MySqlCommand cmd = new MySqlCommand("SELECT EXISTS(SELECT * FROM crawlprocess WHERE pid = @pid);"))
+            using (MySqlCommand cmd = new MySqlCommand("SELECT EXISTS(SELECT * FROM crawlprocess WHERE pid = @pid);"))
             {
                 cmd.Parameters.Add("@pid", MySqlDbType.Int32).Value = ThisPid;
                 return await SelectCount(cmd).ConfigureAwait(false) != 0;   //DBにアクセスできなかったときは存在することにする
