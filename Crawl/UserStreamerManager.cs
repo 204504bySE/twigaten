@@ -31,6 +31,7 @@ namespace Twigaten.Crawl
                     try
                     {
                         var NeedConnect = Streamer.NeedConnect();
+                        bool RevokeCheckSuccess = false;
                         //初回とRevoke疑いのときだけVerifyCredentials()する
                         //プロフィールを取得したい
                         if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
@@ -46,7 +47,7 @@ namespace Twigaten.Crawl
                                     return;
                                 case UserStreamer.TokenStatus.Success:
                                     UnmarkRevoked(Streamer.Token.UserId);
-                                    NeedConnect = UserStreamer.NeedConnectResult.JustNeeded;    //無理矢理接続処理に突っ込む #ウンコード
+                                    RevokeCheckSuccess = true;
                                     break;
                             }
                         }
@@ -66,7 +67,9 @@ namespace Twigaten.Crawl
                                 case UserStreamer.TokenStatus.Locked:
                                     Streamer.PostponeConnect(); break;
                                 case UserStreamer.TokenStatus.Revoked:
-                                    MarkRevoked(Streamer.Token.UserId); break;
+                                    if (RevokeCheckSuccess) { Streamer.PostponeConnect(); } //VerifyCredentialsしか通らない謎アカウントがたくさんある
+                                    else { MarkRevoked(Streamer.Token.UserId); }
+                                    break;
                                 default:
                                     UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
                                     if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Counter.ActiveStreamers.Increment(); }
