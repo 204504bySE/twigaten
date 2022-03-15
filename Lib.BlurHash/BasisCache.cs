@@ -24,7 +24,7 @@ namespace Twigaten.Lib.BlurHash
                 ret = new Vector<float>[9][];
                 for(int i = 0; i < ret.Length; i++)
                 {
-                    ret[i] = provider.BasisX(width, componentX);
+                    ret[i] = provider.BasisX(width,  i);
                 }
                 BasisDicX[width] = ret;
             }
@@ -38,7 +38,7 @@ namespace Twigaten.Lib.BlurHash
                 ret = new float[9][];
                 for(int i = 0; i < ret.Length; i++)
                 {
-                    ret[i] = provider.BasisY(height, componentY);
+                    ret[i] = provider.BasisY(height, i);
                 }
                 BasisDicY[height] = ret;
             }

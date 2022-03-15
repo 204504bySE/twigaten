@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29009.5
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrawlParent", "CrawlParent\CrawlParent.csproj", "{D50D52EB-E166-4C46-8217-7BAF43946F2C}"
 EndProject
@@ -21,6 +21,8 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Lib.DctHash", "Lib.DctHash\
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Lib.BlurHash", "Lib.BlurHash\Lib.BlurHash.shproj", "{A6010704-EF6F-4724-B83E-D815EBE8C395}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{A5E9CC35-DD20-4199-9BB5-7FCB4CC7EFB3}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Lib\Lib.projitems*{1996d371-ad00-4d45-a03a-511e942b8dd5}*SharedItemsImports = 13
@@ -31,6 +33,7 @@ Global
 		Lib.DctHash\Lib.DctHash.projitems*{5d4c4fe7-67b2-476a-988b-4c4500257d1b}*SharedItemsImports = 5
 		Lib\Lib.projitems*{5d4c4fe7-67b2-476a-988b-4c4500257d1b}*SharedItemsImports = 5
 		Lib.DctHash\Lib.DctHash.projitems*{959b8cd3-d4eb-4cd3-ac95-7ec09e1ad09e}*SharedItemsImports = 13
+		Lib.BlurHash\Lib.BlurHash.projitems*{a5e9cc35-dd20-4199-9bb5-7fcb4cc7efb3}*SharedItemsImports = 5
 		Lib.BlurHash\Lib.BlurHash.projitems*{a6010704-ef6f-4724-b83e-d815ebe8c395}*SharedItemsImports = 13
 		Lib.DctHash\Lib.DctHash.projitems*{be6bde09-f094-4088-a078-10df8ae5ae20}*SharedItemsImports = 5
 		Lib\Lib.projitems*{be6bde09-f094-4088-a078-10df8ae5ae20}*SharedItemsImports = 5
@@ -68,6 +71,10 @@ Global
 		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D2545444-BE3E-4FBF-B0BD-3A54E5F558AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5E9CC35-DD20-4199-9BB5-7FCB4CC7EFB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5E9CC35-DD20-4199-9BB5-7FCB4CC7EFB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5E9CC35-DD20-4199-9BB5-7FCB4CC7EFB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5E9CC35-DD20-4199-9BB5-7FCB4CC7EFB3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
