@@ -14,6 +14,7 @@ using System.Threading.Tasks.Dataflow;
 using CoreTweet;
 using Twigaten.Lib;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Twigaten.Tool
 {
@@ -191,7 +192,7 @@ ORDER BY updated_at LIMIT @limit;"))
             Console.WriteLine("{0} Icons removed.", RemovedCount);
         }
 
-        public async Task<(long MinDownloadedAt,string[] MediaPath)> GetMediaPath(long downloaded_at)
+        public async Task<(long MinDownloadedAt, string[] MediaPath)> GetMediaPath(long downloaded_at)
         {
             using (var cmd = new MySqlCommand(@"SELECT
 m.media_id, mt.media_url
@@ -210,12 +211,74 @@ LIMIT @limit"))
                 await ExecuteReader(cmd, (r) =>
                 {
                     long down = r.GetInt64(0);
-                    if(down < minDownloadedAt) { minDownloadedAt = down; }
+                    if (down < minDownloadedAt) { minDownloadedAt = down; }
                     ret.Add(MediaFolderPath.ThumbPath(down, r.GetString(1)));
                 }).ConfigureAwait(false);
                 return (minDownloadedAt, ret.ToArray());
             }
         }
+
+        /// <summary>
+        /// BlurHashが壊れてたから全消しする
+        /// </summary>
+        /// <returns></returns>
+        public async Task DeleteAllBlurHash()
+        {
+            const string updateCmdStr = @"UPDATE media_text SET blurhash = '' WHERE media_id = @a";
+
+            long MediaCount = 0;
+            long InsertCount = 0;
+
+            var brokenHashRegex = new Regex(@"(..)\1{4,}", RegexOptions.Compiled);
+
+            var doblock = new ActionBlock<long>(async (snowflake) =>
+            {
+                var medialist = new List<(long media_id, string blurhash)>();
+                while (true)
+                {
+                    using (var getcmd = new MySqlCommand(@"SELECT media_id, blurhash FROM media_text USE INDEX(PRIMARY) 
+WHERE media_id BETWEEN @begin AND @end
+AND blurhash != '';"))
+                    {
+                        getcmd.Parameters.Add("@begin", MySqlDbType.Int64).Value = snowflake;
+                        getcmd.Parameters.Add("@end", MySqlDbType.Int64).Value = snowflake + SnowFlake.msinSnowFlake * 1000 * 60 - 1;
+                        if (await ExecuteReader(getcmd, (r) => medialist.Add((r.GetInt64(0), r.GetString(1)))).ConfigureAwait(false)) { break; }
+                    }
+                }
+                Interlocked.Add(ref MediaCount, medialist.Count);
+                int localUpdateCount = 0;
+                using (var updateCmd = new MySqlCommand(updateCmdStr))
+                {
+                    var p = updateCmd.Parameters.Add("@a", MySqlDbType.Int64);
+                    foreach (var m in medialist)
+                    {
+                        if (!brokenHashRegex.IsMatch(m.blurhash)) { continue; }
+                        p.Value = m.media_id;
+                        localUpdateCount += await ExecuteNonQuery(updateCmd).ConfigureAwait(false);
+                    }
+                }
+                Interlocked.Add(ref InsertCount, localUpdateCount);
+            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = Environment.ProcessorCount + 1 });
+
+            var sw = Stopwatch.StartNew();
+
+            long endsnowflake = SnowFlake.SecondinSnowFlake(DateTimeOffset.UtcNow, false);
+            long snowflakecount;
+            for (snowflakecount = 1125015780388372481; snowflakecount < endsnowflake; snowflakecount += SnowFlake.msinSnowFlake * 1000 * 60)
+            {
+                await doblock.SendAsync(snowflakecount).ConfigureAwait(false);
+                if (sw.ElapsedMilliseconds >= 60000)
+                {
+                    Console.WriteLine("{0}\t{1} / {2}\t{3}", DateTime.Now, InsertCount, MediaCount, snowflakecount);
+                    sw.Restart();
+                }
+            }
+            doblock.Complete();
+            await doblock.Completion.ConfigureAwait(false);
+            Console.WriteLine("{0}\t{1} / {2}\t{3}", DateTime.Now, InsertCount, MediaCount, snowflakecount);
+        }
+
+
 
         /*
         // innodb→rocksdbに使ったやつ

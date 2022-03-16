@@ -119,6 +119,11 @@ namespace Twigaten.Tool
             //タイ語圏の収集ツイの治安が悪すぎるので消すやつ(ひどいオプションだ)
             [Option("nothai")]
             public bool nothai { get; set; }
+
+
+            //blurhashが間違ってたから消す奴
+            [Option("deleteblurhash")]
+            public bool deleteblurhash { get; set; }
         }
         static async Task CompareHashCommand(SecretOption opts)
         {
@@ -136,6 +141,12 @@ namespace Twigaten.Tool
                 await DeleteUserBlock.Completion.ConfigureAwait(false);
                 Counter.PrintReset();
                 Console.WriteLine("＼(^o^)／");
+            }
+            else if (opts.deleteblurhash)
+            {
+                await new DBHandler().DeleteAllBlurHash().ConfigureAwait(false);
+                Console.WriteLine("＼(^o^)／");
+
             }
             else
             {
