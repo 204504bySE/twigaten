@@ -77,7 +77,11 @@ namespace Twigaten.Crawl
                                             MarkRevoked(Streamer.Token.UserId, RevokeRetryStatus.TimeLinePostponed);
                                         }
                                     }
-                                    else { MarkRevoked(Streamer.Token.UserId); }
+                                    else 
+                                    {
+                                        Streamer.PostponeConnect(900);
+                                        MarkRevoked(Streamer.Token.UserId); 
+                                    }
                                     break;
                                 case UserStreamer.TokenStatus.Locked:
                                     if (RevokeCheckSuccess) { UnmarkRevoked(Streamer.Token.UserId); }

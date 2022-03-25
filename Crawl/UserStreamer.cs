@@ -181,6 +181,7 @@ namespace Twigaten.Crawl
 
         DateTimeOffset? PostponedTime;    //ロックされたアカウントが再試行する時刻
         public void PostponeConnect() { PostponedTime = DateTimeOffset.Now.AddSeconds(config.crawl.LockedTokenPostpone); }
+        public void PostponeConnect(int Seconds) { PostponedTime = DateTimeOffset.Now.AddSeconds(Seconds); }
         bool IsPostponed()
         {
             if (PostponedTime == null) { return false; }
