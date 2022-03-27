@@ -79,7 +79,7 @@ namespace Twigaten.Crawl
                                     }
                                     else 
                                     {
-                                        Streamer.PostponeConnect(900);
+                                        Streamer.PostponeConnect(1800);
                                         MarkRevoked(Streamer.Token.UserId); 
                                     }
                                     break;
