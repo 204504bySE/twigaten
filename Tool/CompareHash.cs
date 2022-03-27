@@ -25,10 +25,6 @@ namespace Twigaten.Tool
             var config = Config.Instance;
             var db = new DBHandler();
 
-            using var client = new TcpClient("localhost", 12306);
-            client.NoDelay = true;
-            using var tcp = client.GetStream();
-            using var reader = new MessagePackStreamReader(tcp);
             int mediaCount = 0;
 
             foreach (string p in (await db.GetMediaPath(DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ConfigureAwait(false)).MediaPath)
@@ -49,7 +45,14 @@ namespace Twigaten.Tool
                 var a = PictHashClient.DCTHash(mediabytes, 0, "192.168.238.126");
                 var b = PictHashClient.DCTHash(mediabytes, 0, "localhost");
                 await Task.WhenAll(a, b).ConfigureAwait(false);
-                if(!a.Result.HasValue || !b.Result.HasValue) { failure++; Console.WriteLine("\t\t\tfailure"); }
+                if(!a.Result.HasValue || !b.Result.HasValue)
+                {
+                    failure++;
+                    Console.Write(mediaCount);
+                    if (!a.Result.HasValue) { Console.Write(" a "); }
+                    if (!b.Result.HasValue) { Console.Write(" b "); }
+                    Console.WriteLine("\tfailure"); 
+                }
                 else if (a.Result.Value != b.Result.Value) 
                 {
                     mismatch++;

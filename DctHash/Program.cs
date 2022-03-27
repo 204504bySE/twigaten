@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using MessagePack;
@@ -15,6 +16,7 @@ using Twigaten.Lib;
 #pragma warning disable CS4014 // この呼び出しは待機されなかったため、現在のメソッドの実行は呼び出しの完了を待たずに続行されます
 namespace Twigaten.DctHash
 {
+    [SupportedOSPlatform("windows")]
     class Program
     {
         static async Task Main(string[] args)
@@ -58,7 +60,11 @@ namespace Twigaten.DctHash
                             PictHashRequest req;
                             {
                                 var msgpack = await reader.ReadAsync(cancel.Token).ConfigureAwait(false);
-                                if (!msgpack.HasValue) { break; }
+                                if (!msgpack.HasValue) 
+                                {
+                                    Console.WriteLine("Failed to read MessagePack stream");
+                                    break;
+                                }
                                 req = MessagePackSerializer.Deserialize<PictHashRequest>(msgpack.Value);
                             }
                             PictHashResult res;

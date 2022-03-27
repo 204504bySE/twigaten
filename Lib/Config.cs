@@ -178,13 +178,11 @@ namespace Twigaten.Lib
         public class _dcthashserver
         {
             public bool ListenIPv6 { get; }
-            public bool ListenIPv4 { get; }
             public int ListenPort { get; }
             public _dcthashserver(IniData data)
             {
                 ListenIPv6 = bool.Parse(data["dcthashserver"][nameof(ListenIPv6)] ?? "true");
-                ListenIPv4 = bool.Parse(data["dcthashserver"][nameof(ListenIPv4)] ?? "false");
-                ListenPort = int.Parse(data["dcthashserver"][nameof(ListenPort)] ?? "12305");
+                ListenPort = int.Parse(data["dcthashserver"][nameof(ListenPort)] ?? "12306");
             }
         }
         public _dcthashserver dcthashserver;

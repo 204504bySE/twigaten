@@ -8,9 +8,11 @@ using System.Numerics;
 using System.Buffers;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Advanced;
+using System.Runtime.Versioning;
 
 namespace Twigaten.DctHash
 {
+    [SupportedOSPlatform("windows")]
     static class PictHash
     {
         //static readonly float[,] dct32; //[1,1]-[8,8]だけ
