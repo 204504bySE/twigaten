@@ -31,6 +31,7 @@ namespace Twigaten.Crawl
                     try
                     {
                         var NeedConnect = Streamer.NeedConnect();
+                        //VerifyCredentialsを実行して成功したらtrue
                         bool RevokeCheckSuccess = false;
                         //初回とRevoke疑いのときだけVerifyCredentials()する
                         //プロフィールを取得したい
@@ -42,7 +43,7 @@ namespace Twigaten.Crawl
                                 case UserStreamer.TokenStatus.Locked:
                                     Streamer.PostponeConnect(); return;
                                 case UserStreamer.TokenStatus.Revoked:
-                                    MarkRevoked(Streamer.Token.UserId); return;
+                                    MarkRevoked(Streamer); return;
                                 case UserStreamer.TokenStatus.Failure:
                                     return;
                                 case UserStreamer.TokenStatus.Success:
@@ -64,31 +65,22 @@ namespace Twigaten.Crawl
                             switch (await Streamer.RestTimeline().ConfigureAwait(false))
                             {
                                 case UserStreamer.TokenStatus.Revoked:
-                                    if (RevokeCheckSuccess)
+                                    //長期間ログインされていないアカウントはVerifyCredentialsしか通らなくなるっぽい
+                                    //こういうアカウントは別に消さない
+                                    if (RevokeCheckSuccess) 
                                     {
-                                        //長期間ログインされていないアカウントはVerifyCredentialsしか通らなくなるっぽい
-                                        //こういうアカウントは後で再確認してからtokenを消す
-                                        if (RevokeRetryUserID.TryGetValue(Streamer.Token.UserId, out var r)
-                                            && r == RevokeRetryStatus.TimeLinePostponed)
-                                        { MarkRevoked(Streamer.Token.UserId); }
-                                        else
-                                        {
-                                            Streamer.PostponeConnect();
-                                            MarkRevoked(Streamer.Token.UserId, RevokeRetryStatus.TimeLinePostponed);
-                                        }
+                                        UnmarkRevoked(Streamer); 
+                                        Streamer.PostponeConnect();
                                     }
-                                    else 
-                                    {
-                                        Streamer.PostponeConnect(1800);
-                                        MarkRevoked(Streamer.Token.UserId); 
-                                    }
+                                    //普通のRevoke疑い
+                                    else { MarkRevoked(Streamer); }
                                     break;
                                 case UserStreamer.TokenStatus.Locked:
-                                    if (RevokeCheckSuccess) { UnmarkRevoked(Streamer.Token.UserId); }
-                                    Streamer.PostponeConnect(); 
+                                    if (RevokeCheckSuccess) { UnmarkRevoked(Streamer); }
+                                    Streamer.PostponeConnect();
                                     break;
                                 default:
-                                    if (RevokeCheckSuccess) { UnmarkRevoked(Streamer.Token.UserId); }
+                                    if (RevokeCheckSuccess) { UnmarkRevoked(Streamer); }
                                     UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
                                     if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Counter.ActiveStreamers.Increment(); }
                                     //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
@@ -147,35 +139,46 @@ namespace Twigaten.Crawl
             }
         }
 
-        enum RevokeRetryStatus
+        ///<summary>再試行に失敗した回数を入れる KeyはUserID</summary>
+        readonly ConcurrentDictionary<long, int> RevokeRetryUserID = new ConcurrentDictionary<long, int>();
+
+        readonly Random random = new Random();
+
+        ///<summary>Revokeの回数を数えると同時に次回のツイート取得の延期を行う</summary>
+        void MarkRevoked(UserStreamer Streamer)
         {
-            First,
-            TimeLinePostponed,
-            ToRemove,
-        }
-        ///<summary>再試行にも失敗したらtrue KeyはUserID</summary>
-        readonly ConcurrentDictionary<long, RevokeRetryStatus> RevokeRetryUserID = new ConcurrentDictionary<long, RevokeRetryStatus>();
-        ///<summary>Revoke直後→再試行マーク 2連続Revoked→Token削除</summary>
-        void MarkRevoked(long UserId)
-        {
-            if (RevokeRetryUserID.ContainsKey(UserId))
+            var UserId = Streamer.Token.UserId;
+            if (!RevokeRetryUserID.TryGetValue(UserId, out var status)) { status = 0; }
+            switch (status)
             {
-                //再試行にも失敗した→削除対象にする
-                RevokeRetryUserID[UserId] = RevokeRetryStatus.ToRemove;
+                //再試行毎に待ち時間を適当に延ばす
+                case 0:
+                    //不規則なUnauthorized対策として再試行まで時間をおく
+                    //15分待てば大丈夫っぽいけどダメなときはダメ
+                    RevokeRetryUserID[UserId] = 1;
+                    Streamer.PostponeConnect(random.Next(1200, 2400));
+                    break;
+                case 1:
+                    RevokeRetryUserID[UserId] = 2;
+                    Streamer.PostponeConnect();
+                    break;
+                case 2:
+                    //つまり3(以上)になったらTokenを消す
+                    RevokeRetryUserID[UserId] = 3;
+                    break;
+                default:
+                    //そんなバナナ
+                    UnmarkRevoked(Streamer);
+                    break;
             }
-            //初めてRevokedにされた→再試行する
-            else { RevokeRetryUserID[UserId] = RevokeRetryStatus.First; }
         }
-        void MarkRevoked(long UserId, RevokeRetryStatus value)
-        {
-            RevokeRetryUserID[UserId] = value;
-        }
+
         ///<summary>ツイート取得等に成功したTokenをRevoke再試行対象から外す</summary>
-        bool UnmarkRevoked(long UserId) { return RevokeRetryUserID.TryRemove(UserId, out _); }
+        bool UnmarkRevoked(UserStreamer Streamer) { return RevokeRetryUserID.TryRemove(Streamer.Token.UserId, out _); }
         ///<summary>RevokeされたTokenを全部StreamersとDBから消す</summary>
         async Task RemoveRevokedTokens()
         {
-            foreach (var r in RevokeRetryUserID.Where(r => r.Value == RevokeRetryStatus.ToRemove).OrderBy(r => r.Key).ToArray())
+            foreach (var r in RevokeRetryUserID.Where(r => 3 <= r.Value).OrderBy(r => r.Key).ToArray())
             {
                 if (await db.DeleteToken(r.Key).ConfigureAwait(false) >= 0
                     && RevokeRetryUserID.TryRemove(r.Key, out _))
@@ -186,7 +189,7 @@ namespace Twigaten.Crawl
                         Console.WriteLine("{0}: Streamer removed", streamer.Token.UserId);
                     }
                     //Streamersからの削除に失敗したらちゃんと再試行する
-                    else { RevokeRetryUserID[r.Key] = RevokeRetryStatus.ToRemove; }
+                    else { RevokeRetryUserID[r.Key] = 3; }
                 }
             }
         }
