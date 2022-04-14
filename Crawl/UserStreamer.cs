@@ -180,8 +180,10 @@ namespace Twigaten.Crawl
         }
 
         DateTimeOffset? PostponedTime;    //ロックされたアカウントが再試行する時刻
-        public void PostponeConnect() { PostponedTime = DateTimeOffset.Now.AddSeconds(config.crawl.LockedTokenPostpone); }
-        public void PostponeConnect(int Seconds) { PostponedTime = DateTimeOffset.Now.AddSeconds(Seconds); }
+
+        static readonly Random random = new Random();
+        public void PostponeConnect() { PostponedTime = DateTimeOffset.Now.AddSeconds(random.Next(config.crawl.LockedTokenPostpone) + config.crawl.LockedTokenPostpone); }
+        public void PostponeConnect(int BaseSeconds) { PostponedTime = DateTimeOffset.Now.AddSeconds(random.Next(BaseSeconds) + BaseSeconds); }
         bool IsPostponed()
         {
             if (PostponedTime == null) { return false; }

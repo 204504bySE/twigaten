@@ -66,12 +66,8 @@ namespace Twigaten.Crawl
                             {
                                 case UserStreamer.TokenStatus.Revoked:
                                     //長期間ログインされていないアカウントはVerifyCredentialsしか通らなくなるっぽい
-                                    //こういうアカウントは別に消さない
-                                    if (RevokeCheckSuccess) 
-                                    {
-                                        UnmarkRevoked(Streamer); 
-                                        Streamer.PostponeConnect();
-                                    }
+                                    //またVerifyCredentialsに失敗するまで放っとく
+                                    if (RevokeCheckSuccess) { Streamer.PostponeConnect(); }
                                     //普通のRevoke疑い
                                     else { MarkRevoked(Streamer); }
                                     break;
@@ -142,8 +138,6 @@ namespace Twigaten.Crawl
         ///<summary>再試行に失敗した回数を入れる KeyはUserID</summary>
         readonly ConcurrentDictionary<long, int> RevokeRetryUserID = new ConcurrentDictionary<long, int>();
 
-        readonly Random random = new Random();
-
         ///<summary>Revokeの回数を数えると同時に次回のツイート取得の延期を行う</summary>
         void MarkRevoked(UserStreamer Streamer)
         {
@@ -156,7 +150,7 @@ namespace Twigaten.Crawl
                     //不規則なUnauthorized対策として再試行まで時間をおく
                     //15分待てば大丈夫っぽいけどダメなときはダメ
                     RevokeRetryUserID[UserId] = 1;
-                    Streamer.PostponeConnect(random.Next(1200, 2400));
+                    Streamer.PostponeConnect(1200);
                     break;
                 case 1:
                     RevokeRetryUserID[UserId] = 2;
