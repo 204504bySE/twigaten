@@ -133,7 +133,7 @@ namespace Twigaten.Crawl
             await HandleTweet(m.x, m.t, m.stream, m.rtlocked, m.storeuser, m.storertuser).ConfigureAwait(false);
         }, new ExecutionDataflowBlockOptions()
         {
-            MaxDegreeOfParallelism = Math.Max(Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections), config.crawl.MediaDownloadThreads), //一応これで
+            MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount, config.crawl.MaxDBConnections),
             SingleProducerConstrained = true
         });
 

@@ -23,84 +23,6 @@ namespace Twigaten.Crawl
         static readonly Config config = Config.Instance;
         static readonly DBHandler db = DBHandler.Instance;
 
-        private UserStreamerManager()
-        {
-            ConnectBlock = new ActionBlock<UserStreamer>(
-                async (Streamer) =>
-                {
-                    try
-                    {
-                        var NeedConnect = Streamer.NeedConnect();
-                        //VerifyCredentialsを実行して成功したらtrue
-                        bool RevokeCheckSuccess = false;
-                        //初回とRevoke疑いのときだけVerifyCredentials()する
-                        //プロフィールを取得したい
-                        if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
-                        else if (NeedConnect == UserStreamer.NeedConnectResult.First || RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
-                        {
-                            switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
-                            {
-                                case UserStreamer.TokenStatus.Locked:
-                                    Streamer.PostponeConnect(); return;
-                                case UserStreamer.TokenStatus.Revoked:
-                                    MarkRevoked(Streamer); return;
-                                case UserStreamer.TokenStatus.Failure:
-                                    return;
-                                case UserStreamer.TokenStatus.Success:
-                                    RevokeCheckSuccess = true;
-                                    break;
-                            }
-                        }
-
-                        //Streamに接続したりRESTだけにしたり
-                        if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
-                        {
-                            if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); return; }
-                            else { Counter.ActiveStreamers.Increment(); }
-                        }
-                        else
-                        {
-                            //TLの速度を測定して必要ならStreamに接続
-                            Counter.RestedStreamers.Increment();
-                            switch (await Streamer.RestTimeline().ConfigureAwait(false))
-                            {
-                                case UserStreamer.TokenStatus.Revoked:
-                                    //長期間ログインされていないアカウントはVerifyCredentialsしか通らなくなるっぽい
-                                    //またVerifyCredentialsに失敗するまで放っとく
-                                    if (RevokeCheckSuccess) { Streamer.PostponeConnect(); }
-                                    //普通のRevoke疑い
-                                    else { MarkRevoked(Streamer); }
-                                    break;
-                                case UserStreamer.TokenStatus.Locked:
-                                    if (RevokeCheckSuccess) { UnmarkRevoked(Streamer); }
-                                    Streamer.PostponeConnect();
-                                    break;
-                                default:
-                                    if (RevokeCheckSuccess) { UnmarkRevoked(Streamer); }
-                                    UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
-                                    if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Counter.ActiveStreamers.Increment(); }
-                                    //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
-                                    if (Streamer.NeedRestMyTweet)
-                                    {
-                                        await Streamer.RestMyTweet().ConfigureAwait(false);
-                                        //User streamに繋がない場合はこっちでフォローを取得する必要がある
-                                        if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend().ConfigureAwait(false); }
-                                        await Streamer.RestBlock().ConfigureAwait(false);
-                                        Streamer.NeedRestMyTweet = false;
-                                    }
-                                    break;
-                            }
-                        }
-                        ConnectBlockProceeeded.Add(Streamer);
-                    }
-                    catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
-                }, new ExecutionDataflowBlockOptions()
-                {
-                    MaxDegreeOfParallelism = config.crawl.ReconnectThreads,
-                    BoundedCapacity = config.crawl.ReconnectThreads + 1,    //これでもawaitする
-                    SingleProducerConstrained = true,
-                });
-        }
         public static async Task<UserStreamerManager> Create()
         {
             var ret = new UserStreamerManager();
@@ -194,14 +116,14 @@ namespace Twigaten.Crawl
         static readonly int ThisPid = Process.GetCurrentProcess().Id;
 
         /// <summary>
-        /// UserStreamerの再接続やRESTによるツイート取得などを行うやつ
-        /// </summary>
-        readonly ActionBlock<UserStreamer> ConnectBlock;
-
-        /// <summary>
         /// ConnectBlockが処理したUserStreamerの一覧
         /// </summary>
         readonly ConcurrentBag<UserStreamer> ConnectBlockProceeeded = new ConcurrentBag<UserStreamer>();
+
+        /// <summary>
+        /// ConnectBlockの並列数 所要時間に応じて適応的に変える
+        /// </summary>
+        int ConnectBlockConcurrency = config.crawl.MaxReconnectThreads;
 
         /// <summary>
         /// これを定期的に呼んで再接続やFriendの取得をやらせる
@@ -234,6 +156,85 @@ namespace Twigaten.Crawl
                 .OrderByDescending(s => s.EstimatedTweetToReceive)
                 .ThenBy(s => s.LastMessageTime)
                 .ToArray();
+
+            // UserStreamerの再接続やRESTによるツイート取得などを行うやつ
+            var ConnectBlock = new ActionBlock<UserStreamer>(async (Streamer) =>
+            {
+                try
+                {
+                    var NeedConnect = Streamer.NeedConnect();
+                    //VerifyCredentialsを実行して成功したらtrue
+                    bool RevokeCheckSuccess = false;
+                    //初回とRevoke疑いのときだけVerifyCredentials()する
+                    //プロフィールを取得したい
+                    if (NeedConnect == UserStreamer.NeedConnectResult.Postponed) { return; }
+                    else if (NeedConnect == UserStreamer.NeedConnectResult.First || RevokeRetryUserID.ContainsKey(Streamer.Token.UserId))
+                    {
+                        switch (await Streamer.VerifyCredentials().ConfigureAwait(false))
+                        {
+                            case UserStreamer.TokenStatus.Locked:
+                                Streamer.PostponeConnect(); return;
+                            case UserStreamer.TokenStatus.Revoked:
+                                MarkRevoked(Streamer); return;
+                            case UserStreamer.TokenStatus.Failure:
+                                return;
+                            case UserStreamer.TokenStatus.Success:
+                                RevokeCheckSuccess = true;
+                                break;
+                        }
+                    }
+
+                    //Streamに接続したりRESTだけにしたり
+                    if (NeedConnect == UserStreamer.NeedConnectResult.StreamConnected)
+                    {
+                        if (Streamer.NeedStreamSpeed() == UserStreamer.NeedStreamResult.RestOnly) { Streamer.DisconnectStream(); return; }
+                        else { Counter.ActiveStreamers.Increment(); }
+                    }
+                    else
+                    {
+                        //TLの速度を測定して必要ならStreamに接続
+                        Counter.RestedStreamers.Increment();
+                        switch (await Streamer.RestTimeline().ConfigureAwait(false))
+                        {
+                            case UserStreamer.TokenStatus.Revoked:
+                                //長期間ログインされていないアカウントはVerifyCredentialsしか通らなくなるっぽい
+                                //またVerifyCredentialsに失敗するまで放っとく
+                                if (RevokeCheckSuccess) { Streamer.PostponeConnect(); }
+                                //普通のRevoke疑い
+                                else { MarkRevoked(Streamer); }
+                                break;
+                            case UserStreamer.TokenStatus.Locked:
+                                if (RevokeCheckSuccess) { UnmarkRevoked(Streamer); }
+                                Streamer.PostponeConnect();
+                                break;
+                            default:
+                                if (RevokeCheckSuccess) { UnmarkRevoked(Streamer); }
+                                UserStreamer.NeedStreamResult NeedStream = Streamer.NeedStreamSpeed();
+                                if (NeedStream == UserStreamer.NeedStreamResult.Stream) { Streamer.RecieveStream(); Counter.ActiveStreamers.Increment(); }
+                                //DBが求めていればToken読み込み直後だけ自分のツイートも取得(初回サインイン狙い
+                                if (Streamer.NeedRestMyTweet)
+                                {
+                                    await Streamer.RestMyTweet().ConfigureAwait(false);
+                                    //User streamに繋がない場合はこっちでフォローを取得する必要がある
+                                    if (NeedStream != UserStreamer.NeedStreamResult.Stream) { await Streamer.RestFriend().ConfigureAwait(false); }
+                                    await Streamer.RestBlock().ConfigureAwait(false);
+                                    Streamer.NeedRestMyTweet = false;
+                                }
+                                break;
+                        }
+                    }
+                    ConnectBlockProceeeded.Add(Streamer);
+                }
+                catch (Exception e) { Console.WriteLine("ConnectBlock Faulted: {0}", e); }
+            }, new ExecutionDataflowBlockOptions()
+            {
+                MaxDegreeOfParallelism = ConnectBlockConcurrency,
+                BoundedCapacity = ConnectBlockConcurrency + 1,    //これでもawaitする
+                SingleProducerConstrained = true,
+            });
+
+            var connectStopWatch = Stopwatch.StartNew();
+            bool connectTimedout = false;
             using (var cancel = new CancellationTokenSource(60000))
             {
                 try
@@ -249,8 +250,12 @@ namespace Twigaten.Crawl
                         }
                     }
                 }
-                catch (TaskCanceledException) { }
+                catch (TaskCanceledException) { connectTimedout = true; }
             }
+
+            //ConnectBlockの同時接続数を調整する
+            connectStopWatch.Stop();
+            if (connectTimedout) { ConnectBlockConcurrency = config.crawl.MaxReconnectThreads; }
 
             await StoreLastCrawlTimeTask.ConfigureAwait(false);
             //Revoke後再試行にも失敗したTokenはここで消す

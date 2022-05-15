@@ -72,7 +72,7 @@ namespace Twigaten.Lib
             public int DefaultConnectionThreads { get; }
             public int MaxDBConnections { get; }
             public int RestTweetThreads { get; }
-            public int ReconnectThreads { get; }
+            public int MaxReconnectThreads { get; }
             public int MediaDownloadThreads { get; }
             public int DeleteTweetBufferSize { get; }
             public int LockedTokenPostpone { get; }
@@ -93,7 +93,7 @@ namespace Twigaten.Lib
                 DefaultConnectionThreads = int.Parse(data["crawl"][nameof(DefaultConnectionThreads)] ?? "1000");
                 MaxDBConnections = int.Parse(data["crawl"][nameof(MaxDBConnections)] ?? Environment.ProcessorCount.ToString());
                 RestTweetThreads = int.Parse(data["crawl"][nameof(RestTweetThreads)] ?? Environment.ProcessorCount.ToString());
-                ReconnectThreads = int.Parse(data["crawl"][nameof(ReconnectThreads)] ?? "1");
+                MaxReconnectThreads = int.Parse(data["crawl"][nameof(MaxReconnectThreads)] ?? Environment.ProcessorCount.ToString());
                 MediaDownloadThreads = int.Parse(data["crawl"][nameof(MediaDownloadThreads)] ?? Environment.ProcessorCount.ToString());
                 DeleteTweetBufferSize = int.Parse(data["crawl"][nameof(DeleteTweetBufferSize)] ?? "1000");
                 LockedTokenPostpone = int.Parse(data["crawl"][nameof(LockedTokenPostpone)] ?? "86400");
