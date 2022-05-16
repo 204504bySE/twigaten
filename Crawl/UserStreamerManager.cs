@@ -256,6 +256,8 @@ namespace Twigaten.Crawl
             //ConnectBlockの同時接続数を調整する
             connectStopWatch.Stop();
             if (connectTimedout) { ConnectBlockConcurrency = config.crawl.MaxReconnectThreads; }
+            else if (connectStopWatch.ElapsedMilliseconds < 45000) { ConnectBlockConcurrency = Math.Max(1, ConnectBlockConcurrency - 1); }
+            else if (50000 < connectStopWatch.ElapsedMilliseconds) { ConnectBlockConcurrency = Math.Min(config.crawl.MaxReconnectThreads, ConnectBlockConcurrency + 1); }
 
             await StoreLastCrawlTimeTask.ConfigureAwait(false);
             //Revoke後再試行にも失敗したTokenはここで消す
