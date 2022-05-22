@@ -268,7 +268,7 @@ namespace Twigaten.Crawl
             {
                 ConnectBlockConcurrency = Math.Clamp((int)Math.Ceiling(ConnectBlockConcurrency * (connectStopWatch.ElapsedMilliseconds / 50000d)), 1, config.crawl.MaxReconnectThreads);
             }
-            if (oldConnectBlockConcurrency != ConnectBlockConcurrency) { Console.WriteLine("ConnectBlockConcurrency: {0}->{1}", oldConnectBlockConcurrency, ConnectBlockConcurrency); }
+            if (oldConnectBlockConcurrency != ConnectBlockConcurrency) { Console.WriteLine("ConnectBlockConcurrency: {0} -> {1}", oldConnectBlockConcurrency, ConnectBlockConcurrency); }
 
             await StoreLastCrawlTimeTask.ConfigureAwait(false);
             //Revoke後再試行にも失敗したTokenはここで消す
