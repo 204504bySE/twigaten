@@ -30,6 +30,8 @@ namespace Twigaten.Tool
             public string screen_name { get; set; }
             [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
             public long? user_id { get; set; }
+            [Option('y', "yes", HelpText = "delete automatically")]
+            public bool yes { get; set; }
         }
         static async Task DeleteTweetsCommand(DeleteOption opts)
         {
@@ -42,17 +44,21 @@ namespace Twigaten.Tool
                 else { Console.WriteLine("Account not found."); return; }
             }
             await LookupCommand(new LookupOption() { user_id = user_id }).ConfigureAwait(false);
-            Console.Write("Delete this account? [type \"y\" to delete]: ");
-            string yn = Console.ReadLine();
-            if (yn.Trim() == "y")
+            if (!opts.yes)
             {
+                Console.Write("Delete this account? [type \"y\" to delete]: ");
+                string yn = Console.ReadLine();
+                if (yn.Trim() != "y")
+                {
+                    Console.WriteLine("Canceled.");
+                    return;
+                }
                 Console.WriteLine("OK. Deleting...");
-                Counter.AutoRefresh();
-                await DB.DeleteUser(user_id).ConfigureAwait(false);
-                Counter.PrintReset();
-                Console.WriteLine("＼(^o^)／");
             }
-            else { Console.WriteLine("Canceled."); }
+            Counter.AutoRefresh();
+            await DB.DeleteUser(user_id).ConfigureAwait(false);
+            Counter.PrintReset();
+            Console.WriteLine("＼(^o^)／");
         }
 
         [Verb("lookup", HelpText = "Lookup account information by ID or screen_name.")]
@@ -108,7 +114,7 @@ namespace Twigaten.Tool
         }
 
         [Verb("secret", Hidden = true)]
-        class SecretOption 
+        class SecretOption
         {
             //2つのサーバー(Windowsとwine等)で同じdct hashが返ってくるか確かめるやつ
             [Option('c', "compare")]
