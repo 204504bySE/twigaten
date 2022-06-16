@@ -19,7 +19,7 @@ namespace Twigaten.Web.TagHelpers
             output.TagName = "div";
             output.TagMode = TagMode.StartTagAndEndTag;
             output.Attributes.SetAttribute("class", "twigaten-thumb");
-            output.Content.SetHtmlContent(@"<img data-src=""" + Media.local_media_url + @""" class=""twigaten-thumb"">");
+            output.Content.SetHtmlContent(@"<img class=""lazy twigaten-thumb"" data-src=""" + Media.local_media_url + @""">");
         }
     }
 
