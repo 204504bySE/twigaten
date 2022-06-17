@@ -24,7 +24,6 @@
     "inputFiles": [
       "wwwroot/js/flatpickr.min.js",
       "wwwroot/js/twigaten-user-tl.js",
-      "wwwroot/js/lazyload.min.js"
     ]
   },
   {
@@ -37,7 +36,8 @@
     "outputFileName": "wwwroot/js/twigaten-tweet.min.js",
     "inputFiles": [
       "wwwroot/js/fast-blurhash.js",
-      "wwwroot/js/twigaten-tweet.js"
+      "wwwroot/js/twigaten-tweet.js",
+      "wwwroot/js/lazyload.min.js"
     ]
   }
 ]
