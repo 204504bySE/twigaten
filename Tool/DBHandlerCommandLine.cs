@@ -73,14 +73,21 @@ namespace Twigaten.Tool
         {
             try
             {
-                using (var cmd = new MySqlCommand(@"SELECT COUNT(*) FROM tweet WHERE user_id = @user_id;"))
-                {
-                    var ret = new StringBuilder();
-                    cmd.Parameters.Add("user_id", MySqlDbType.Int64).Value = user_id;
-                    return await SelectCount(cmd).ConfigureAwait(false);
-                }
+                using var cmd = new MySqlCommand(@"SELECT COUNT(*) FROM tweet WHERE user_id = @user_id;");
+                var ret = new StringBuilder();
+                cmd.Parameters.Add("user_id", MySqlDbType.Int64).Value = user_id;
+                return await SelectCount(cmd).ConfigureAwait(false);
             }
             catch { return -1; }
+        }
+
+        public async Task<bool> DeleteTweet(long tweet_id)
+        {
+            using var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;");
+            using var cmd2 = new MySqlCommand(@"DELETE FROM tweet_text WHERE tweet_id = @tweet_id;");
+            cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
+            cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
+            return 0 < await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -96,13 +103,7 @@ namespace Twigaten.Tool
             var RemoveTweetBlock = new ActionBlock<long>(async (tweet_id) =>
             {
                 Counter.TweetToDelete.Increment();
-                using (var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;"))
-                using (var cmd2 = new MySqlCommand(@"DELETE FROM tweet_text WHERE tweet_id = @tweet_id;"))
-                {
-                    cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
-                    cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
-                    if (await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false) > 0) { Counter.TweetDeleted.Increment(); }
-                }
+                if (await DeleteTweet(tweet_id)) { Counter.TweetDeleted.Increment(); }
             }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = DeleteUnit });
 
 

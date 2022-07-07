@@ -26,6 +26,8 @@ namespace Twigaten.Tool
         [Verb("delete", HelpText = "Delete specified account and its tweets.")]
         class DeleteOption
         {
+            [Option('t', "tweetid", HelpText = "id of the tweet", Required = false)]
+            public long? tweet_id { get; set; }
             [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
             public string screen_name { get; set; }
             [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
@@ -35,29 +37,36 @@ namespace Twigaten.Tool
         }
         static async Task DeleteTweetsCommand(DeleteOption opts)
         {
-            long user_id;
-            if (opts.user_id.HasValue) { user_id = opts.user_id.Value; }
+            if (opts.tweet_id.HasValue)
+            {
+                if(!await DB.DeleteTweet(opts.tweet_id.Value)) { Console.WriteLine("Tweet not found."); return; }
+            }
             else
             {
-                var id = await LookupUserId(opts.screen_name).ConfigureAwait(false);
-                if (id.HasValue) { user_id = id.Value; }
-                else { Console.WriteLine("Account not found."); return; }
-            }
-            await LookupCommand(new LookupOption() { user_id = user_id }).ConfigureAwait(false);
-            if (!opts.yes)
-            {
-                Console.Write("Delete this account? [type \"y\" to delete]: ");
-                string yn = Console.ReadLine();
-                if (yn.Trim() != "y")
+                long user_id;
+                if (opts.user_id.HasValue) { user_id = opts.user_id.Value; }
+                else
                 {
-                    Console.WriteLine("Canceled.");
-                    return;
+                    var id = await LookupUserId(opts.screen_name).ConfigureAwait(false);
+                    if (id.HasValue) { user_id = id.Value; }
+                    else { Console.WriteLine("Account not found."); return; }
                 }
-                Console.WriteLine("OK. Deleting...");
+                await LookupCommand(new LookupOption() { user_id = user_id }).ConfigureAwait(false);
+                if (!opts.yes)
+                {
+                    Console.Write("Delete this account? [type \"y\" to delete]: ");
+                    string yn = Console.ReadLine();
+                    if (yn.Trim() != "y")
+                    {
+                        Console.WriteLine("Canceled.");
+                        return;
+                    }
+                    Console.WriteLine("OK. Deleting...");
+                }
+                Counter.AutoRefresh();
+                await DB.DeleteUser(user_id).ConfigureAwait(false);
+                Counter.PrintReset();
             }
-            Counter.AutoRefresh();
-            await DB.DeleteUser(user_id).ConfigureAwait(false);
-            Counter.PrintReset();
             Console.WriteLine("＼(^o^)／");
         }
 
