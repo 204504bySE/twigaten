@@ -81,7 +81,7 @@ LIMIT @limit;"))
                         DeleteCmd2.Parameters.Add("@media_id", MySqlDbType.Int64).Value = row.media_id;
 
                         int deleted = await ExecuteNonQuery(new[] { DeleteCmd, DeleteCmd2 }).ConfigureAwait(false);
-                        if (deleted > 0) { Interlocked.Add(ref RemovedCount, deleted >> 1); }
+                        if (deleted > 0) { Interlocked.Increment(ref RemovedCount); }
                     }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
                     foreach (var row in Table) { DeleteMediaBlock.Post(row); }
