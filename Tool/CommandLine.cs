@@ -44,6 +44,7 @@ namespace Twigaten.Tool
                 if (opts.similar)
                 {
                     var tweetIds = await DB.TweetAndSimilar(opts.tweet_id.Value);
+                    if (tweetIds.Count == 0) { Console.WriteLine("Tweet not found."); return; }
                     Console.WriteLine("{0} tweets to delete", tweetIds.Count);
                     if (!opts.yes)
                     {
