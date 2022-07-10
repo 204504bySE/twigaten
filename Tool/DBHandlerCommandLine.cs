@@ -81,6 +81,11 @@ namespace Twigaten.Tool
             catch { return -1; }
         }
 
+        /// <summary>
+        /// 指定したツイートを消す
+        /// </summary>
+        /// <param name="tweet_id"></param>
+        /// <returns></returns>
         public async Task<bool> DeleteTweet(long tweet_id)
         {
             using var cmd = new MySqlCommand(@"DELETE FROM tweet WHERE tweet_id = @tweet_id;");
@@ -88,6 +93,62 @@ namespace Twigaten.Tool
             cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
             cmd2.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
             return 0 < await ExecuteNonQuery(new[] { cmd, cmd2 }).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 指定したツイートと類似画像を含むツイートを返す
+        /// </summary>
+        /// <param name="tweet_id"></param>
+        /// <returns></returns>
+        public async Task<ICollection<long>> TweetAndSimilar(long tweet_id)
+        {
+            //そのツイートに含まれる画像を探す
+            var dctHashes = new List<long>();
+            using (var cmd = new MySqlCommand(@"SELECT
+DISTINCT m.dcthash
+FROM tweet o
+JOIN user ou ON o.user_id = ou.user_id
+LEFT JOIN tweet rt ON o.retweet_id = rt.tweet_id
+JOIN tweet_media t ON COALESCE(o.retweet_id, o.tweet_id) = t.tweet_id
+JOIN media m ON t.media_id = m.media_id
+WHERE o.tweet_id = @tweet_id;"))
+            {
+                cmd.Parameters.Add("@tweet_id", MySqlDbType.Int64).Value = tweet_id;
+                await ExecuteReader(cmd, (r) => { dctHashes.Add(r.GetInt64(0)); }).ConfigureAwait(false);
+            }
+            //各画像の類似画像を含むツイートを探す
+            var tweetIds = new HashSet<long>();
+            foreach (var dctHash in dctHashes)
+            {
+                using (var cmd2 = new MySqlCommand(@"SELECT 
+DISTINCT o.tweet_id
+FROM(
+    SELECT t.tweet_id, m.media_id
+    FROM ((
+            SELECT media_id FROM media 
+            WHERE dcthash = @media_hash
+        ) UNION ALL (
+            SELECT media.media_id FROM media
+            JOIN dcthashpairslim p on p.hash_large = media.dcthash
+            WHERE p.hash_small = @media_hash
+        ) UNION ALL (
+            SELECT media.media_id FROM media
+            JOIN dcthashpairslim p on p.hash_small = media.dcthash
+            WHERE p.hash_large = @media_hash
+        )
+    ) AS i
+    JOIN media m ON i.media_id = m.media_id
+    JOIN tweet_media t ON m.media_id = t.media_id
+ORDER BY t.tweet_id
+) AS a
+JOIN tweet o USING (tweet_id);"))
+                {
+                    cmd2.Parameters.Add("@media_hash", MySqlDbType.Int64).Value = dctHash;
+                    await ExecuteReader(cmd2, (r) => { tweetIds.Add(r.GetInt64(0)); }).ConfigureAwait(false);
+                }
+            }
+
+            return tweetIds;
         }
 
         /// <summary>
@@ -177,7 +238,7 @@ WHERE user_id = @user_id;"))
             var thaiLatinRegexFull = new Regex(@"^[\sA-Za-z0-9ก-๛]{2,}$");
             var thaiRegex = new Regex(@"[ก-๛]{4,}");
             //名前と自己紹介の両方がタイ語なら多分そうだろう
-            using(var cmd = new MySqlCommand(@"SELECT user_id, name, screen_name, description FROM user
+            using (var cmd = new MySqlCommand(@"SELECT user_id, name, screen_name, description FROM user
 WHERE description REGEXP BINARY '^[ก-๛]{4,}$';"))
             {
                 await ExecuteReader(cmd, (r) =>

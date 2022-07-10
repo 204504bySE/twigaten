@@ -28,6 +28,8 @@ namespace Twigaten.Tool
         {
             [Option('t', "tweetid", HelpText = "id of the tweet", Required = false)]
             public long? tweet_id { get; set; }
+            [Option('s', "similar", HelpText = "also delete tweets having similar images. only effective with -t", Required = false)]
+            public bool similar { get; set; }
             [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
             public string screen_name { get; set; }
             [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
@@ -39,7 +41,29 @@ namespace Twigaten.Tool
         {
             if (opts.tweet_id.HasValue)
             {
-                if(!await DB.DeleteTweet(opts.tweet_id.Value)) { Console.WriteLine("Tweet not found."); return; }
+                if (opts.similar)
+                {
+                    var tweetIds = await DB.TweetAndSimilar(opts.tweet_id.Value);
+                    Console.WriteLine("{0} tweets to delete", tweetIds.Count);
+                    if (!opts.yes)
+                    {
+                        Console.Write("Delete the tweets? [type \"y\" to delete]: ");
+                        string yn = Console.ReadLine();
+                        if (yn.Trim() != "y")
+                        {
+                            Console.WriteLine("Canceled.");
+                            return;
+                        }
+                        Console.WriteLine("OK. Deleting...");
+                    }
+                    int deletedCount = 0;
+                    foreach (var t in tweetIds)
+                    {
+                        if (await DB.DeleteTweet(t).ConfigureAwait(false)) { deletedCount++; }
+                    }
+                    Console.WriteLine("{0} tweets deleted.", deletedCount);
+                }
+                else if (!await DB.DeleteTweet(opts.tweet_id.Value)) { Console.WriteLine("Tweet not found."); return; }
             }
             else
             {
