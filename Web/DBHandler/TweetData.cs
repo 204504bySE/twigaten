@@ -57,6 +57,7 @@ namespace Twigaten.Web
         public class _media
         {
             public long media_id { get; set; }
+            public long dcthash { get; set; }
 
             /// <summary>photo/video/animated_gif</summary>
             public string type { get; set; }

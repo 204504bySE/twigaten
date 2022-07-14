@@ -661,7 +661,7 @@ ou.user_id, ou.name, ou.screen_name, ou.profile_image_url, ou.is_default_profile
 o.tweet_id, o.created_at, ot.text, o.favorite_count, o.retweet_count,
 rt.tweet_id, ru.user_id, ru.name, ru.screen_name, ru.profile_image_url, ru.is_default_profile_image, ru.isprotected,
 rt.created_at, rtt.text, rt.favorite_count, rt.retweet_count,
-m.media_id, mt.media_url, mt.type,
+m.media_id, m.dcthash, mt.media_url, mt.type,
 (SELECT COUNT(media_id) FROM media WHERE dcthash = m.dctHash) - 1
     + (SELECT COUNT(media_id) FROM dcthashpairslim
         JOIN media ON hash_large = media.dcthash
@@ -678,7 +678,7 @@ m.media_id, mt.media_url, mt.type,
 ou.user_id, ou.name, ou.screen_name, ou.profile_image_url, ou.is_default_profile_image, ou.isprotected,
 o.tweet_id, o.created_at, ot.text, o.favorite_count, o.retweet_count,
 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-m.media_id, mt.media_url, mt.type,
+m.media_id, m.dcthash, mt.media_url, mt.type,
 (SELECT COUNT(media_id) FROM media WHERE dcthash = m.dctHash) - 1
     + (SELECT COUNT(media_id) FROM dcthashpairslim
         JOIN media ON hash_large = media.dcthash
@@ -706,7 +706,7 @@ m.media_id, mt.media_url, mt.type,
                 GetSimilarsBlock = new ActionBlock<SimilarMediaTweet>(async (rettmp) =>
                 {
                     //この中でTableToTweet()が呼ばれる
-                    rettmp.Similars = await SimilarMedia(rettmp.media.media_id, SimilarLimit, (rettmp.tweet.retweet ?? rettmp.tweet).tweet_id, login_user_id).ConfigureAwait(false);
+                    rettmp.Similars = await SimilarMedia(rettmp.media.dcthash, SimilarLimit, (rettmp.tweet.retweet ?? rettmp.tweet).tweet_id, login_user_id).ConfigureAwait(false);
                 }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount });
             }
 
@@ -714,46 +714,50 @@ m.media_id, mt.media_url, mt.type,
             await ExecuteReader(cmd, (r) =>
             {
                 SimilarMediaTweet rettmp = new SimilarMediaTweet();
-                rettmp.tweet.user.user_id = r.GetInt64(0);
-                rettmp.tweet.user.name = r.GetString(1);
-                rettmp.tweet.user.screen_name = r.GetString(2);
-                rettmp.tweet.user.local_profile_image_url = r.GetString(3);
-                rettmp.tweet.user.isprotected = r.GetBoolean(4);
-                rettmp.tweet.user.isprotected = r.GetBoolean(5);
-                rettmp.tweet.tweet_id = r.GetInt64(6);
-                rettmp.tweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
-                rettmp.tweet.text = r.IsDBNull(8) ? null :r.GetString(8);
-                rettmp.tweet.favorite_count = r.GetInt32(9);
-                rettmp.tweet.retweet_count = r.GetInt32(10);
+                var tw = rettmp.tweet;
+                tw.user.user_id = r.GetInt64(0);
+                tw.user.name = r.GetString(1);
+                tw.user.screen_name = r.GetString(2);
+                tw.user.local_profile_image_url = r.GetString(3);
+                tw.user.isprotected = r.GetBoolean(4);
+                tw.user.isprotected = r.GetBoolean(5);
+                tw.tweet_id = r.GetInt64(6);
+                tw.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
+                tw.text = r.IsDBNull(8) ? null :r.GetString(8);
+                tw.favorite_count = r.GetInt32(9);
+                tw.retweet_count = r.GetInt32(10);
 
-                rettmp.tweet.text_html = LocalText.TextToLink(rettmp.tweet.text);
+                tw.text_html = LocalText.TextToLink(tw.text);
                 //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
-                rettmp.tweet.user.local_profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.user, r.GetBoolean(4));
+                tw.user.local_profile_image_url = LocalText.ProfileImageUrl(tw.user, r.GetBoolean(4));
 
                 if (!r.IsDBNull(11)) //RTなら元ツイートが入っている
                 {
-                    rettmp.tweet.retweet = new TweetData._tweet();
-                    rettmp.tweet.retweet.tweet_id = r.GetInt64(11);
-                    rettmp.tweet.retweet.user.user_id = r.GetInt64(12);
-                    rettmp.tweet.retweet.user.name = r.GetString(13);
-                    rettmp.tweet.retweet.user.screen_name = r.GetString(14);
-                    rettmp.tweet.retweet.user.local_profile_image_url = r.GetString(15);
-                    rettmp.tweet.retweet.user.is_default_profile_image = r.GetBoolean(16);
-                    rettmp.tweet.retweet.user.isprotected = r.GetBoolean(17);
-                    rettmp.tweet.retweet.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(18));
-                    rettmp.tweet.retweet.text = r.GetString(19);
-                    rettmp.tweet.retweet.favorite_count = r.GetInt32(20);
-                    rettmp.tweet.retweet.retweet_count = r.GetInt32(21);
+                    var rt = new TweetData._tweet();
+                    tw.retweet = rt;
+                    rt.tweet_id = r.GetInt64(11);
+                    rt.user.user_id = r.GetInt64(12);
+                    rt.user.name = r.GetString(13);
+                    rt.user.screen_name = r.GetString(14);
+                    rt.user.local_profile_image_url = r.GetString(15);
+                    rt.user.is_default_profile_image = r.GetBoolean(16);
+                    rt.user.isprotected = r.GetBoolean(17);
+                    rt.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(18));
+                    rt.text = r.GetString(19);
+                    rt.favorite_count = r.GetInt32(20);
+                    rt.retweet_count = r.GetInt32(21);
 
-                    rettmp.tweet.retweet.text_html = LocalText.TextToLink(rettmp.tweet.retweet.text);
+                    rt.text_html = LocalText.TextToLink(rt.text);
                     //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
-                    rettmp.tweet.retweet.user.local_profile_image_url = LocalText.ProfileImageUrl(rettmp.tweet.retweet.user, r.GetBoolean(16));
+                    rt.user.local_profile_image_url = LocalText.ProfileImageUrl(rt.user, r.GetBoolean(16));
                 }
-                rettmp.media.media_id = r.GetInt64(22);
-                rettmp.media.orig_media_url = r.GetString(23);
-                rettmp.media.type = r.GetString(24);
-                rettmp.media.local_media_url = LocalText.MediaUrl(rettmp.media);
-                rettmp.SimilarMediaCount = r.IsDBNull(25) ? -1 : r.GetInt64(25);    //COUNTはNOT NULLじゃない
+                var m = rettmp.media;
+                m.media_id = r.GetInt64(22);
+                m.dcthash = r.GetInt64(23);
+                m.orig_media_url = r.GetString(24);
+                m.type = r.GetString(25);
+                m.local_media_url = LocalText.MediaUrl(m);
+                rettmp.SimilarMediaCount = r.IsDBNull(26) ? -1 : r.GetInt64(26);    //COUNTはNOT NULLじゃない
                 rettmp.ExistsMoreMedia = SimilarLimit < rettmp.SimilarMediaCount;
 
                 TweetList.Add(rettmp);
@@ -781,36 +785,28 @@ m.media_id, mt.media_url, mt.type,
         /// <param name="login_user_id"></param>
         /// <returns></returns>
 
-        async Task<SimilarMediaTweet[]> SimilarMedia(long media_id, int SimilarLimit, long except_tweet_id, long? login_user_id = null)
+        async Task<SimilarMediaTweet[]> SimilarMedia(long dcthash, int SimilarLimit, long except_tweet_id, long? login_user_id = null)
         {
-            //先に画像のハッシュ値を取得する #ウンコード
-            long media_hash;
-            using (MySqlCommand cmd = new MySqlCommand(@"SELECT dcthash FROM media WHERE media_id = @media_id"))
-            {
-                cmd.Parameters.Add("@media_id", MySqlDbType.Int64).Value = media_id;
-                media_hash = await SelectCount(cmd).ConfigureAwait(false);
-            }
-
             //リレーションの形式はSimilarMediaHeadNoRTに準じる
             using (MySqlCommand cmd = new MySqlCommand(@"SELECT 
 ou.user_id, ou.name, ou.screen_name, ou.profile_image_url,  ou.is_default_profile_image, ou.isprotected,
 o.tweet_id, o.created_at, ot.text, o.favorite_count, o.retweet_count,
 NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-a.media_id, a.media_url, a.type,
+a.media_id, a.dcthash, a.media_url, a.type,
 NULL
 FROM(
-    SELECT t.tweet_id, m.media_id, mt.media_url, mt.type
+    SELECT t.tweet_id, m.media_id, m.dcthash, mt.media_url, mt.type
     FROM ((
-            SELECT media_id FROM media 
+            SELECT media_id, dcthash FROM media 
             WHERE dcthash = @media_hash
             ORDER BY media_id LIMIT @limitplus
         ) UNION ALL (
-            SELECT media.media_id FROM media
+            SELECT media.media_id, media.dcthash FROM media
             JOIN dcthashpairslim p on p.hash_large = media.dcthash
             WHERE p.hash_small = @media_hash
             ORDER BY media.media_id LIMIT @limitplus
         ) UNION ALL (
-            SELECT media.media_id FROM media
+            SELECT media.media_id, media.dcthash FROM media
             JOIN dcthashpairslim p on p.hash_small = media.dcthash
             WHERE p.hash_large = @media_hash
             ORDER BY media.media_id LIMIT @limitplus
@@ -830,7 +826,7 @@ ORDER BY o.tweet_id
 LIMIT @limit"))
             {
                 cmd.Parameters.Add("@user_id", MySqlDbType.Int64).Value = login_user_id;
-                cmd.Parameters.Add("@media_hash", MySqlDbType.Int64).Value = media_hash;
+                cmd.Parameters.Add("@media_hash", MySqlDbType.Int64).Value = dcthash;
                 cmd.Parameters.Add("@except_tweet_id", MySqlDbType.Int64).Value = except_tweet_id;
                 cmd.Parameters.Add("@limit", MySqlDbType.Int64).Value = SimilarLimit;
                 cmd.Parameters.Add("@limitplus", MySqlDbType.Int64).Value = SimilarLimit << 2;
