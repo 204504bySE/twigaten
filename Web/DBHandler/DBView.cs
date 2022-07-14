@@ -715,12 +715,13 @@ m.media_id, m.dcthash, mt.media_url, mt.type,
             {
                 SimilarMediaTweet rettmp = new SimilarMediaTweet();
                 var tw = rettmp.tweet;
-                tw.user.user_id = r.GetInt64(0);
-                tw.user.name = r.GetString(1);
-                tw.user.screen_name = r.GetString(2);
-                tw.user.local_profile_image_url = r.GetString(3);
-                tw.user.isprotected = r.GetBoolean(4);
-                tw.user.isprotected = r.GetBoolean(5);
+                var tu = tw.user;
+                tu.user_id = r.GetInt64(0);
+                tu.name = r.GetString(1);
+                tu.screen_name = r.GetString(2);
+                tu.local_profile_image_url = r.GetString(3);
+                tu.isprotected = r.GetBoolean(4);
+                tu.isprotected = r.GetBoolean(5);
                 tw.tweet_id = r.GetInt64(6);
                 tw.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(7));
                 tw.text = r.IsDBNull(8) ? null :r.GetString(8);
@@ -729,19 +730,20 @@ m.media_id, m.dcthash, mt.media_url, mt.type,
 
                 tw.text_html = LocalText.TextToLink(tw.text);
                 //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
-                tw.user.local_profile_image_url = LocalText.ProfileImageUrl(tw.user, r.GetBoolean(4));
+                tw.user.local_profile_image_url = LocalText.ProfileImageUrl(tu, r.GetBoolean(4));
 
                 if (!r.IsDBNull(11)) //RTなら元ツイートが入っている
                 {
                     var rt = new TweetData._tweet();
+                    var ru = rt.user;
                     tw.retweet = rt;
                     rt.tweet_id = r.GetInt64(11);
-                    rt.user.user_id = r.GetInt64(12);
-                    rt.user.name = r.GetString(13);
-                    rt.user.screen_name = r.GetString(14);
-                    rt.user.local_profile_image_url = r.GetString(15);
-                    rt.user.is_default_profile_image = r.GetBoolean(16);
-                    rt.user.isprotected = r.GetBoolean(17);
+                    ru.user_id = r.GetInt64(12);
+                    ru.name = r.GetString(13);
+                    ru.screen_name = r.GetString(14);
+                    ru.local_profile_image_url = r.GetString(15);
+                    ru.is_default_profile_image = r.GetBoolean(16);
+                    ru.isprotected = r.GetBoolean(17);
                     rt.created_at = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(18));
                     rt.text = r.GetString(19);
                     rt.favorite_count = r.GetInt32(20);
@@ -749,7 +751,7 @@ m.media_id, m.dcthash, mt.media_url, mt.type,
 
                     rt.text_html = LocalText.TextToLink(rt.text);
                     //アイコンが鯖内にあってもなくてもそれの絶対パスに置き換える
-                    rt.user.local_profile_image_url = LocalText.ProfileImageUrl(rt.user, r.GetBoolean(16));
+                    rt.user.local_profile_image_url = LocalText.ProfileImageUrl(ru, r.GetBoolean(16));
                 }
                 var m = rettmp.media;
                 m.media_id = r.GetInt64(22);
