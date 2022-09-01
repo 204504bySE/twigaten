@@ -62,17 +62,10 @@ namespace Twigaten.Hash
             //ソート用の配列の個数に制限を設ける
             var FirstSortSemaphore = new SemaphoreSlim(config.hash.InitialSortConcurrency);
 
-            //ソートは並列 書き込みは並列させない
-            var FirstSortBlock = new TransformBlock<FirstSort, FirstSort>(async (t) =>
+            //並列にソートを行う
+            var FirstSortBlock = new ActionBlock<FirstSort>(async (t) =>
             {
                 await QuickSortParllel(SortMask, t.ToSort, t.Length, SortComp).ConfigureAwait(false);
-                return t;
-            }, new ExecutionDataflowBlockOptions()
-            {   SingleProducerConstrained = true,
-                MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
-            });
-            var WriterBlock = new ActionBlock<FirstSort>((t) =>
-            {
                 using (var writer = new UnbufferedLongWriter(t.WriteFilePath))
                 {
                     writer.WriteDestructive(t.ToSort, t.Length);
@@ -80,8 +73,11 @@ namespace Twigaten.Hash
                 //ここでLongPoolに配列を返却する
                 if (LongPoolReturn) { LongPool.Add(t.ToSort); }
                 FirstSortSemaphore.Release();
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
-            FirstSortBlock.LinkTo(WriterBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+
+            }, new ExecutionDataflowBlockOptions()
+            {   SingleProducerConstrained = true,
+                MaxDegreeOfParallelism = config.hash.InitialSortConcurrency,
+            });
 
             //まずはAllHashを読む
             using (var reader = new UnbufferedLongReader(AllHashFilePath))
@@ -132,7 +128,7 @@ namespace Twigaten.Hash
             LongPoolReturn = false;
             LongPool.Clear();
 
-            await WriterBlock.Completion.ConfigureAwait(false);
+            await FirstSortBlock.Completion.ConfigureAwait(false);
             return FileCount;
         }
 
