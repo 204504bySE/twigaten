@@ -264,4 +264,16 @@
   <data name="Title_Search" xml:space="preserve">
     <value>検索</value>
   </data>
+  <data name="Top_SearchWith" xml:space="preserve">
+    <value>ユーザー名/ツイートURL/画像で検索</value>
+  </data>
+  <data name="Top_SignIn" xml:space="preserve">
+    <value>サインインすると</value>
+  </data>
+  <data name="Top_Usage" xml:space="preserve">
+    <value>なお用途は</value>
+  </data>
+  <data name="Top_WhatIsThis" xml:space="preserve">
+    <value>とは</value>
+  </data>
 </root>

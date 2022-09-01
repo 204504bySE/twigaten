@@ -18,6 +18,7 @@
 }
 <h2>@(ViewBag.Title)</h2>
 <p>アカウント名(@@***) またはツイートのURL(twitter.com/***/status/***)で検索できます。</p>
+<p>You can search tweets with @@username or URL of tweets.</p>
 <form class="field has-addons twigaten-search">
     <input name="q" placeholder="@@name/URL" class="input twigaten-input-long" />
     <input name="direct" value="false" type="hidden" />
@@ -29,7 +30,11 @@
         画像で検索(永遠に仮)<br />
         出てこないことの方が多いけどしょうがないね(´・ω・`)<br />
         画像をこの辺にドラッグドロップしても動くかも。<br />
-        ツイートが見つからなかったときは何も起こらないよ。
+        ツイートが見つからなかったときは何も起こらないよ。<br />
+        <br />
+        Search with Image(incomplete)<br />
+        Drag &amp; drop an image here to search.<br />
+        When image is not found, nothing happens.
     </p>
     <form id="twigaten-media-form" action="/search/media" method="post" enctype="multipart/form-data" class="form-inline">
         <input id="twigaten-media-input" name="file" accept="image/*" type="file" />

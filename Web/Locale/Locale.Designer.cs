@@ -19,7 +19,7 @@ namespace Twigaten.Web.Locale {
     // または Visual Studio のようなツールを使用して自動生成されました。
     // メンバーを追加または削除するには、.ResX ファイルを編集して、/str オプションと共に
     // ResGen を実行し直すか、または VS プロジェクトをビルドし直します。
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Locale {
@@ -462,6 +462,42 @@ namespace Twigaten.Web.Locale {
         public static string Title_UserTweet {
             get {
                 return ResourceManager.GetString("Title_UserTweet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   ユーザー名/ツイートURL/画像で検索 に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Top_SearchWith {
+            get {
+                return ResourceManager.GetString("Top_SearchWith", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   サインインすると に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Top_SignIn {
+            get {
+                return ResourceManager.GetString("Top_SignIn", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   なお用途は に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Top_Usage {
+            get {
+                return ResourceManager.GetString("Top_Usage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   とは に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        public static string Top_WhatIsThis {
+            get {
+                return ResourceManager.GetString("Top_WhatIsThis", resourceCulture);
             }
         }
         

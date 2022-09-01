@@ -39,20 +39,25 @@
     <blockquote class="twitter-tweet" data-lang="ja"><p lang="ja" dir="ltr">ツイートの共有メニューからTwiGaTenに飛ぶためのアプリを作ってみたよ&#13;&#13;&quot;Jump to TwiGaTen - Google Play の Android アプリ&quot; <a href="https://t.co/9ZUZppHQQN">https://t.co/9ZUZppHQQN</a></p>&mdash; 銀卿 (@@Ginkyo0523) <a href="https://twitter.com/Ginkyo0523/status/899956017424777217?ref_src=twsrc%5Etfw">2017年8月22日</a></blockquote>
 </div>
 <div>
-    <h2>#とは</h2>
+    <h2>#@(Locale.Top_WhatIsThis)</h2>
     <p>
         Twitter上の画像付きツイートを収集し、よく似た画像が含まれるツイートをまとめて表示します。<br />
         ユーザー名やツイートのURLで検索することもできます。<br />
-        画像でも一応検索できます。
+        画像でも一応検索できます。<br />
+        Twigaten collects media tweets and displays you groups of tweets having similar image.<br />
+        You can search tweets with @@username, URL of tweets, or image itself.
     </p>
-    <p><a href="/search/" class="button is-success">ユーザー名/ツイートURL/画像で検索 »</a></p>
+    <p><a href="/search/" class="button is-success">@(Locale.Top_SearchWith) »</a></p>
 </div>
 <div>
-    <h2>#サインインすると</h2>
+    <h2>#@(Locale.Top_SignIn)</h2>
     <p>
         タイムライン上の画像付きツイートから、よく似た画像が存在するものを確認できます。<br />
         また、タイムライン上の画像付きツイートが収集されます。<br />
-        収集対象のツイートが増え、検索のヒット率が向上します(たぶん)
+        収集対象のツイートが増え、検索のヒット率が向上します(たぶん)<br />
+        You can see groups of tweets having similar image on your timeline.<br />
+        Tweets of your timeline will be collected.<br />
+        You can find more and more tweets.
     </p>
     <form action="/auth/login" method="post" class="is-flex">
         @Html.AntiForgeryToken()
@@ -60,11 +65,12 @@
     </form>
 </div>
 <div>
-    <h2>#なお用途は</h2>
+    <h2>#@(Locale.Top_Usage)</h2>
     <p>
         画像転載が発見できるかもしれないし、できないかもしれない。<br />
         もしかしたら画像転載の検索がこれ一本、とはまだ行かない。<br />
-        あるいは思いもよらない用途があるかもしれない。
+        あるいは思いもよらない用途があるかもしれない。<br />
+        You may be find media reprints. Or... you can find idea of any other usage.
     </p>
 </div>
 <div>

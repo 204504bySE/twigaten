@@ -264,4 +264,16 @@
   <data name="Title_Search" xml:space="preserve">
     <value>Search</value>
   </data>
+  <data name="Top_SearchWith" xml:space="preserve">
+    <value>Search with @username/URL/Image</value>
+  </data>
+  <data name="Top_SignIn" xml:space="preserve">
+    <value>BenefitOfSignIn</value>
+  </data>
+  <data name="Top_Usage" xml:space="preserve">
+    <value>Usage</value>
+  </data>
+  <data name="Top_WhatIsThis" xml:space="preserve">
+    <value>WhatIsThis</value>
+  </data>
 </root>

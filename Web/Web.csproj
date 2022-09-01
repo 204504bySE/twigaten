@@ -17,7 +17,7 @@
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.2.0" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="5.0.2" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
-    <PackageReference Include="MySqlConnector" Version="2.1.8" />
+    <PackageReference Include="MySqlConnector" Version="2.1.11" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.0" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta0001" />
   </ItemGroup>
