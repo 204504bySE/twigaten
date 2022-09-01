@@ -60,7 +60,7 @@ namespace Twigaten.DctHash
                             PictHashRequest req;
                             {
                                 var msgpack = await reader.ReadAsync(cancel.Token).ConfigureAwait(false);
-                                if (!msgpack.HasValue) 
+                                if (!msgpack.HasValue)
                                 {
                                     Console.WriteLine("Failed to read MessagePack stream");
                                     break;
@@ -88,7 +88,7 @@ namespace Twigaten.DctHash
                     catch (ExternalException e) { Console.WriteLine(e.Message); }   //gdiplusの例外
                     catch (OperationCanceledException) { }  //CancellationToken
                     catch (Exception e) { Console.WriteLine(e); }
-                    client.Dispose();
+                    finally { client.Dispose(); }
                     //Interlocked.Decrement(ref connectionCount);
                     //Console.WriteLine("Disconnected({0}): {1}", connectionCount, endpoint);
                 });
