@@ -263,10 +263,13 @@ namespace Twigaten.Crawl
             connectStopWatch.Stop();
             int oldConnectBlockConcurrency = ConnectBlockConcurrency;
             if (connectTimedout) { ConnectBlockConcurrency = config.crawl.MaxReconnectThreads; }
-            else if (connectStopWatch.ElapsedMilliseconds < 40000) { ConnectBlockConcurrency = Math.Max(1, ConnectBlockConcurrency - 1); }
-            else if (50000 < connectStopWatch.ElapsedMilliseconds)
+            else if (connectStopWatch.ElapsedMilliseconds < Math.Max(
+                60000 - 2 * (60000 - config.crawl.TargetCrawlDuration),
+                config.crawl.TargetCrawlDuration / 2
+                )) { ConnectBlockConcurrency = Math.Max(1, ConnectBlockConcurrency - 1); }
+            else if (config.crawl.TargetCrawlDuration < connectStopWatch.ElapsedMilliseconds)
             {
-                ConnectBlockConcurrency = Math.Clamp((int)Math.Ceiling(ConnectBlockConcurrency * (connectStopWatch.ElapsedMilliseconds / 50000d)), 1, config.crawl.MaxReconnectThreads);
+                ConnectBlockConcurrency = Math.Clamp((int)Math.Ceiling(ConnectBlockConcurrency * (connectStopWatch.ElapsedMilliseconds / (double)config.crawl.TargetCrawlDuration)), 1, config.crawl.MaxReconnectThreads);
             }
             if (oldConnectBlockConcurrency != ConnectBlockConcurrency) { Console.WriteLine("ConnectBlockConcurrency: {0} -> {1}", oldConnectBlockConcurrency, ConnectBlockConcurrency); }
 
