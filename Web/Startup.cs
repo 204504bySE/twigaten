@@ -48,7 +48,7 @@ namespace Twigaten.Web
             });
             services.AddCompressedStaticFiles();
 
-            services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = (CompressionLevel)5; });
+            services.Configure<BrotliCompressionProviderOptions>(options => { options.Level = CompressionLevel.Optimal; });
             services.Configure<GzipCompressionProviderOptions>(options => { options.Level = CompressionLevel.Fastest; });
 
             //GDPRうんたらを切る

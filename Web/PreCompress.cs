@@ -28,9 +28,9 @@ namespace Twigaten.Web {
             {
                 using var ReadFile = File.OpenRead(Info.FullName);
                 using var WriteZip = File.Create(Info.FullName + ".gz");
-                using var Zip = new GZipStream(WriteZip, CompressionLevel.Optimal);
+                using var Zip = new GZipStream(WriteZip, CompressionLevel.SmallestSize);
                 using var WriteBrotli = File.Create(Info.FullName + ".br");
-                using var Brotli = new BrotliStream(WriteBrotli, CompressionLevel.Optimal);
+                using var Brotli = new BrotliStream(WriteBrotli, CompressionLevel.SmallestSize);
                 await ReadFile.CopyToAsync(Zip);
                 ReadFile.Seek(0, SeekOrigin.Begin);
                 await ReadFile.CopyToAsync(Brotli);
