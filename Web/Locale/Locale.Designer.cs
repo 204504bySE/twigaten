@@ -214,7 +214,7 @@ namespace Twigaten.Web.Locale {
         }
         
         /// <summary>
-        ///   Twitterでサインイン に類似しているローカライズされた文字列を検索します。
+        ///   おわり に類似しているローカライズされた文字列を検索します。
         /// </summary>
         public static string Menu_Login {
             get {
