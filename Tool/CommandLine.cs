@@ -30,9 +30,11 @@ namespace Twigaten.Tool
             public long? tweet_id { get; set; }
             [Option('s', "similar", HelpText = "also delete tweets having similar images. only effective with -t", Required = false)]
             public bool similar { get; set; }
+            [Option("nuke", HelpText = "also delete accounts having similar images. only effective with -t", Required = false)]
+            public bool nuke { get; set; }
             [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
             public string screen_name { get; set; }
-            [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
+            [Option('i', "userid", HelpText = "user_id of the account", Required = false)]
             public long? user_id { get; set; }
             [Option('y', "yes", HelpText = "delete automatically")]
             public bool yes { get; set; }
@@ -57,12 +59,40 @@ namespace Twigaten.Tool
                         }
                         Console.WriteLine("OK. Deleting...");
                     }
+                    Counter.AutoRefresh();
                     int deletedCount = 0;
                     foreach (var t in tweetIds)
                     {
                         if (await DB.DeleteTweet(t).ConfigureAwait(false)) { deletedCount++; }
                     }
+                    Counter.PrintReset();
                     Console.WriteLine("{0} tweets deleted.", deletedCount);
+                }
+                else if (opts.nuke)
+                {
+                    var userIds = await DB.TweetNuke(opts.tweet_id.Value);
+                    if (userIds.Count == 0) { Console.WriteLine("Tweet not found."); return; }
+                    Console.WriteLine("{0} accounts to delete", userIds.Count);
+                    if (!opts.yes)
+                    {
+                        Console.Write("Delete the accounts? [type \"y\" to delete]: ");
+                        string yn = Console.ReadLine();
+                        if (yn.Trim() != "y")
+                        {
+                            Console.WriteLine("Canceled.");
+                            return;
+                        }
+                        Console.WriteLine("OK. Deleting...");
+                    }
+                    Counter.AutoRefresh();
+                    int deletedCount = 0;
+                    foreach (var u in userIds)
+                    {
+                        await DB.DeleteUser(u).ConfigureAwait(false);
+                        deletedCount++;
+                    }
+                    Counter.PrintReset();
+                    Console.WriteLine("{0} accounts deleted.", deletedCount);
                 }
                 else if (!await DB.DeleteTweet(opts.tweet_id.Value)) { Console.WriteLine("Tweet not found."); return; }
             }
@@ -100,7 +130,7 @@ namespace Twigaten.Tool
         {
             [Option('n', "name", HelpText = "screen_name of the account", Required = false)]
             public string screen_name { get; set; }
-            [Option('u', "userid", HelpText = "user_id of the account", Required = false)]
+            [Option('i', "userid", HelpText = "user_id of the account", Required = false)]
             public long? user_id { get; set; }
         }
         static async Task LookupCommand(LookupOption opts)
