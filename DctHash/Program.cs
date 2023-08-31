@@ -95,5 +95,4 @@ namespace Twigaten.DctHash
             }
         }
     }
-
 }
