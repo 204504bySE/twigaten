@@ -14,6 +14,9 @@ User-agent: Sogou inst spider
 Disallow: /
 
 User-agent: *
+Disallow: /featured/
 Disallow: /auth/
+Disallow: /users/
+Disallow: /tweet/
 Disallow: /timeline/
 Disallow: /.well-known/
